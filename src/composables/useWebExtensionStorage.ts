@@ -1,20 +1,18 @@
-import { StorageSerializers } from '@vueuse/core'
-import { pausableWatch, toValue, tryOnScopeDispose } from '@vueuse/shared'
-import { ref, shallowRef } from 'vue-demi'
+import type { Storage } from 'webextension-polyfill'
+import { createEffect, createSignal, onCleanup } from 'solid-js'
 import { storage } from 'webextension-polyfill'
 
-import type {
-  StorageLikeAsync,
-  UseStorageAsyncOptions,
-} from '@vueuse/core'
-import type { MaybeRefOrGetter, RemovableRef } from '@vueuse/shared'
-import type { Ref } from 'vue-demi'
-import type { Storage } from 'webextension-polyfill'
+export interface WebExtensionStorageOptions<T> {
+  writeDefaults?: boolean
+  mergeDefaults?: boolean | ((value: T, initial: T) => T)
+  serializer?: {
+    read: (v: string) => T | Promise<T>
+    write: (v: T) => string | Promise<string>
+  }
+  onError?: (error: any) => void
+}
 
-export type WebExtensionStorageOptions<T> = UseStorageAsyncOptions<T>
-
-// https://github.com/vueuse/vueuse/blob/658444bf9f8b96118dbd06eba411bb6639e24e88/packages/core/useStorage/guess.ts
-export function guessSerializerType(rawInit: unknown) {
+function guessSerializerType(rawInit: unknown) {
   return rawInit == null
     ? 'any'
     : rawInit instanceof Set
@@ -34,133 +32,151 @@ export function guessSerializerType(rawInit: unknown) {
                   : 'number'
 }
 
-const storageInterface: StorageLikeAsync = {
-  removeItem(key: string) {
-    return storage.local.remove(key)
+const StorageSerializers = {
+  boolean: {
+    read: (v: string) => v === 'true',
+    write: (v: boolean) => String(v),
   },
-
-  setItem(key: string, value: string) {
-    return storage.local.set({ [key]: value })
+  object: {
+    read: (v: string) => JSON.parse(v),
+    write: (v: any) => JSON.stringify(v),
   },
-
-  async getItem(key: string) {
-    const storedData = await storage.local.get(key)
-
-    return storedData[key] as string
+  number: {
+    read: (v: string) => Number.parseFloat(v),
+    write: (v: number) => String(v),
+  },
+  any: {
+    read: (v: string) => JSON.parse(v),
+    write: (v: any) => JSON.stringify(v),
+  },
+  string: {
+    read: (v: string) => v,
+    write: (v: string) => v,
+  },
+  map: {
+    read: (v: string) => new Map(JSON.parse(v)),
+    write: (v: Map<any, any>) => JSON.stringify(Array.from(v.entries())),
+  },
+  set: {
+    read: (v: string) => new Set(JSON.parse(v)),
+    write: (v: Set<any>) => JSON.stringify(Array.from(v)),
+  },
+  date: {
+    read: (v: string) => new Date(v),
+    write: (v: Date) => v.toISOString(),
   },
 }
 
-/**
- * https://github.com/vueuse/vueuse/blob/658444bf9f8b96118dbd06eba411bb6639e24e88/packages/core/useStorageAsync/index.ts
- *
- * @param key
- * @param initialValue
- * @param options
- */
 export function useWebExtensionStorage<T>(
   key: string,
-  initialValue: MaybeRefOrGetter<T>,
+  initialValue: T,
   options: WebExtensionStorageOptions<T> = {},
-): { data: RemovableRef<T>, dataReady: Promise<T> } {
+) {
   const {
-    flush = 'pre',
-    deep = true,
-    listenToStorageChanges = true,
     writeDefaults = true,
     mergeDefaults = false,
-    shallow,
-    eventFilter,
-    onError = (e) => {
-      console.error(e)
-    },
+    onError = e => console.error(e),
   } = options
 
-  const rawInit: T = toValue(initialValue)
-  const type = guessSerializerType(rawInit)
-
-  const data = (shallow ? shallowRef : ref)(initialValue) as Ref<T>
+  const type = guessSerializerType(initialValue) as keyof typeof StorageSerializers
   const serializer = options.serializer ?? StorageSerializers[type]
+
+  const [data, setData] = createSignal<T>(initialValue)
+  const [dataReady, setDataReady] = createSignal(false)
 
   async function read(event?: { key: string, newValue: string | null }) {
     if (event && event.key !== key)
       return
 
     try {
-      const rawValue = event ? event.newValue : await storageInterface.getItem(key)
+      const rawValue = event ? event.newValue : (await storage.local.get(key))[key] as string | undefined
+
       if (rawValue == null) {
-        data.value = rawInit
-        if (writeDefaults && rawInit !== null)
-          await storageInterface.setItem(key, await serializer.write(rawInit))
+        setData(() => initialValue)
+        if (writeDefaults && initialValue !== null) {
+          await storage.local.set({ [key]: await serializer.write(initialValue) })
+        }
       }
       else if (mergeDefaults) {
         const value = await serializer.read(rawValue) as T
-        if (typeof mergeDefaults === 'function')
-          data.value = mergeDefaults(value, rawInit)
-        else if (type === 'object' && !Array.isArray(value))
-          data.value = { ...(rawInit as Record<keyof unknown, unknown>), ...(value as Record<keyof unknown, unknown>) } as T
-        else data.value = value
-      }
-      else {
-        data.value = await serializer.read(rawValue) as T
-      }
-    }
-    catch (error) {
-      onError(error)
-    }
-  }
-
-  const dataReadyPromise = new Promise<T>((resolve, reject) => {
-    read().then(() => resolve(data.value)).catch(reject)
-  })
-
-  async function write() {
-    try {
-      await (
-        data.value == null
-          ? storageInterface.removeItem(key)
-          : storageInterface.setItem(key, await serializer.write(data.value))
-      )
-    }
-    catch (error) {
-      onError(error)
-    }
-  }
-
-  const { pause: pauseWatch, resume: resumeWatch } = pausableWatch(
-    data,
-    write,
-    {
-      flush,
-      deep,
-      eventFilter,
-    },
-  )
-
-  if (listenToStorageChanges) {
-    const listener = async (changes: Record<string, Storage.StorageChange>) => {
-      try {
-        pauseWatch()
-        for (const [key, change] of Object.entries(changes)) {
-          await read({
-            key,
-            newValue: change.newValue as string | null,
-          })
+        if (typeof mergeDefaults === 'function') {
+          setData(() => mergeDefaults(value, initialValue))
+        }
+        else if (type === 'object' && !Array.isArray(value)) {
+          setData(() => ({ ...(initialValue as any), ...(value as any) } as T))
+        }
+        else {
+          setData(() => value)
         }
       }
-      finally {
-        resumeWatch()
+      else {
+        const value = await serializer.read(rawValue) as T
+        setData(() => value)
       }
     }
-
-    storage.onChanged.addListener(listener)
-
-    tryOnScopeDispose(() => {
-      storage.onChanged.removeListener(listener)
-    })
+    catch (error) {
+      onError(error)
+    }
   }
 
+  async function write(newValue: T) {
+    try {
+      if (newValue == null) {
+        await storage.local.remove(key)
+      }
+      else {
+        await storage.local.set({ [key]: await serializer.write(newValue) })
+      }
+    }
+    catch (error) {
+      onError(error)
+    }
+  }
+
+  // Initialize data
+  read().then(() => setDataReady(true))
+
+  // Listen to storage changes
+  const listener = async (changes: Record<string, Storage.StorageChange>) => {
+    for (const [storageKey, change] of Object.entries(changes)) {
+      if (storageKey === key) {
+        await read({
+          key: storageKey,
+          newValue: change.newValue as string | null,
+        })
+      }
+    }
+  }
+
+  storage.onChanged.addListener(listener)
+  onCleanup(() => {
+    storage.onChanged.removeListener(listener)
+  })
+
+  // Create effect to write changes
+  createEffect(() => {
+    const currentData = data()
+    if (dataReady()) {
+      write(currentData)
+    }
+  })
+
+  const dataReadyPromise = new Promise<T>((resolve) => {
+    const checkReady = () => {
+      if (dataReady()) {
+        resolve(data())
+      }
+      else {
+        setTimeout(checkReady, 10)
+      }
+    }
+    checkReady()
+  })
+
   return {
-    data: data as RemovableRef<T>,
+    data,
+    setData,
     dataReady: dataReadyPromise,
+    isReady: dataReady,
   }
 }
