@@ -1,8 +1,11 @@
 /* eslint-disable no-console */
+import { render } from 'solid-js/web'
 import { onMessage } from 'webext-bridge/content-script'
-import { createApp } from 'vue'
-import App from './views/App.vue'
-import { setupApp } from '~/logic/common-setup'
+import browser from 'webextension-polyfill'
+import App from './views/App'
+
+declare const __DEV__: boolean
+declare const __NAME__: string
 
 // Firefox `browser.tabs.executeScript()` requires scripts return a primitive value
 (() => {
@@ -10,7 +13,9 @@ import { setupApp } from '~/logic/common-setup'
 
   // communication example: send previous tab title from background page
   onMessage('tab-prev', ({ data }) => {
-    console.log(`[vitesse-webext] Navigate from page "${data.title}"`)
+    if (data && typeof data === 'object' && 'title' in data) {
+      console.log(`[vitesse-webext] Navigate from page "${(data as any).title}"`)
+    }
   })
 
   // mount component to context window
@@ -24,7 +29,5 @@ import { setupApp } from '~/logic/common-setup'
   shadowDOM.appendChild(styleEl)
   shadowDOM.appendChild(root)
   document.body.appendChild(container)
-  const app = createApp(App)
-  setupApp(app)
-  app.mount(root)
+  render(() => <App />, root)
 })()
