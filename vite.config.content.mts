@@ -1,36 +1,57 @@
-import { defineConfig } from 'vite'
-import packageJson from './package.json'
+import type { UserConfig } from 'vite'
+import { build, mergeConfig } from 'vite'
+import { contentScripts } from '~/utils/contentScripts'
 import { isDev, r } from './scripts/utils'
-import { sharedConfig } from './vite.config.mjs'
+import { injectEngageWithSite } from './scripts/vite-plugin-inject-engage'
+import { sharedDOMConfig } from './vite.config.mjs'
 
-// bundling the content script using Vite
-export default defineConfig({
-  ...sharedConfig,
-  define: {
-    '__DEV__': isDev,
-    '__NAME__': JSON.stringify(packageJson.name),
-    // https://github.com/vitejs/vite/issues/9320
-    // https://github.com/vitejs/vite/issues/9186
-    'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'production'),
-  },
-  build: {
-    watch: isDev
-      ? {}
-      : undefined,
-    outDir: r('extension/dist/contentScripts'),
-    cssCodeSplit: false,
-    emptyOutDir: false,
-    sourcemap: isDev ? 'inline' : false,
-    lib: {
-      entry: r('src/contentScripts/index.tsx'),
-      name: packageJson.name,
-      formats: ['iife'],
-    },
-    rollupOptions: {
-      output: {
-        entryFileNames: 'index.global.js',
-        extend: true,
+await Promise.all(contentScripts.map(async (entry) => {
+  const base = `dist/contentScripts/${entry.directory}`
+  return build(mergeConfig(sharedDOMConfig({
+    unoCSS: !entry.directory.includes('site/') && !entry.directory.includes('root/'),
+  }), {
+    // base: '/__dynamic_base__/',
+    plugins: [
+      injectEngageWithSite(['**/contentScripts/site/*/main.{ts,tsx}']),
+      // dynamicBase({
+      //   // dynamic public path var string, default window.__dynamic_base__
+      //   publicPath: `chrome.extension.getURL("${base}")`,
+      //   // dynamic load resources on index.html, default false. maybe change default true
+      //   transformIndexHtml: false,
+      //   // provide conversion configuration parameters. by 1.1.0
+      //   // transformIndexHtmlConfig: { insertBodyAfter: false }
+      // }),
+    ],
+    build: {
+      watch: isDev
+        ? {}
+        : undefined,
+      outDir: r(`extension/${base}`),
+      cssCodeSplit: false,
+      emptyOutDir: false,
+      // lib: {
+      //   entry: entry.path,
+      //   name: entry.name,
+      //   // formats: ['es'],
+      //   formats: ['es'],
+      // },
+      rollupOptions: {
+        input: {
+          [entry.name]: entry.path,
+        },
+        output: {
+          // entryFileNames: entry.name,
+          // // inlineDynamicImports: true,
+          // extend: true,
+          // format: 'iife',
+
+          inlineDynamicImports: true,
+          format: 'iife',
+          name: 'TBD',
+          entryFileNames: `[name]`,
+          assetFileNames: `[name][extname]`,
+        },
       },
     },
-  },
-})
+  } as UserConfig))
+}))

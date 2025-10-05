@@ -1,6 +1,7 @@
 import type { Storage } from 'webextension-polyfill'
 import { createEffect, createSignal, onCleanup } from 'solid-js'
 import { storage } from 'webextension-polyfill'
+import { logger } from '~/utils/logger'
 
 export interface WebExtensionStorageOptions<T> {
   writeDefaults?: boolean
@@ -10,6 +11,7 @@ export interface WebExtensionStorageOptions<T> {
     write: (v: T) => string | Promise<string>
   }
   onError?: (error: any) => void
+  target?: 'local' | 'sync'
 }
 
 function guessSerializerType(rawInit: unknown) {
@@ -75,7 +77,8 @@ export function useWebExtensionStorage<T>(
   const {
     writeDefaults = true,
     mergeDefaults = false,
-    onError = e => console.error(e),
+    onError = e => logger.error(e),
+    target = 'local',
   } = options
 
   const type = guessSerializerType(initialValue) as keyof typeof StorageSerializers
@@ -89,12 +92,12 @@ export function useWebExtensionStorage<T>(
       return
 
     try {
-      const rawValue = event ? event.newValue : (await storage.local.get(key))[key] as string | undefined
+      const rawValue = event ? event.newValue : (await storage[target].get(key))[key] as string | undefined
 
       if (rawValue == null) {
         setData(() => initialValue)
         if (writeDefaults && initialValue !== null) {
-          await storage.local.set({ [key]: await serializer.write(initialValue) })
+          await storage[target].set({ [key]: await serializer.write(initialValue) })
         }
       }
       else if (mergeDefaults) {
@@ -122,10 +125,10 @@ export function useWebExtensionStorage<T>(
   async function write(newValue: T) {
     try {
       if (newValue == null) {
-        await storage.local.remove(key)
+        await storage[target].remove(key)
       }
       else {
-        await storage.local.set({ [key]: await serializer.write(newValue) })
+        await storage[target].set({ [key]: await serializer.write(newValue) })
       }
     }
     catch (error) {
@@ -161,22 +164,22 @@ export function useWebExtensionStorage<T>(
     }
   })
 
-  const dataReadyPromise = new Promise<T>((resolve) => {
-    const checkReady = () => {
-      if (dataReady()) {
-        resolve(data())
-      }
-      else {
-        setTimeout(checkReady, 10)
-      }
-    }
-    checkReady()
-  })
-
   return {
     data,
     setData,
-    dataReady: dataReadyPromise,
+    get dataReady() {
+      return new Promise<T>((resolve) => {
+        const checkReady = () => {
+          if (dataReady()) {
+            resolve(data())
+          }
+          else {
+            setTimeout(checkReady, 10)
+          }
+        }
+        checkReady()
+      })
+    },
     isReady: dataReady,
   }
 }
