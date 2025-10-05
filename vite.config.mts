@@ -1,5 +1,4 @@
 /// <reference types="vitest" />
-/// < reference types="vite/client" />
 
 import type { UserConfig } from 'vite'
 import { dirname, relative } from 'node:path'
