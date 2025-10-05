@@ -1,3 +1,29 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M26.6667 1.66667H24V7H8V9.66667H5.33333V20.3333H8V23H10.6667V28.3333H21.3333V25.6667H26.6667V23H21.3333V20.3333H26.6667V17.6667H21.3333V15H10.6667V20.3333H8V9.66667H24V7H26.6667V1.66667ZM18.6667 25.6667H13.3333V17.6667H18.6667V25.6667Z" fill="#69717d"/>
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad10" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f857a6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff5858;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="512" height="512" rx="96" fill="url(#grad10)"/>
+  
+  <!-- Circular progress rings -->
+  <circle cx="256" cy="256" r="168" fill="none" stroke="#ffffff" 
+          stroke-width="24" opacity="0.3"/>
+  <circle cx="256" cy="256" r="168" fill="none" stroke="#ffffff" 
+          stroke-width="24" opacity="0.9" stroke-dasharray="880 1056" 
+          stroke-dashoffset="0" stroke-linecap="round" 
+          transform="rotate(-90 256 256)"/>
+  
+  <circle cx="256" cy="256" r="128" fill="none" stroke="#ffd700" 
+          stroke-width="20" opacity="0.4"/>
+  <circle cx="256" cy="256" r="128" fill="none" stroke="#ffd700" 
+          stroke-width="20" opacity="0.95" stroke-dasharray="600 804" 
+          stroke-dashoffset="0" stroke-linecap="round" 
+          transform="rotate(-90 256 256)"/>
+  
+  <!-- Center star -->
+  <path d="M 256 192 L 272 232 L 316 232 L 280 260 L 296 300 L 256 272 L 216 300 L 232 260 L 196 232 L 240 232 Z" 
+        fill="#ffffff" opacity="0.95"/>
 </svg>

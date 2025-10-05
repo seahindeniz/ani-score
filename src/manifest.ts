@@ -1,13 +1,14 @@
 import type { Manifest } from 'webextension-polyfill'
 import type PkgType from '../package.json'
+import type { Meta } from './contentScripts/site/base'
+import { join } from 'node:path'
 import fs from 'fs-extra'
 import { isDev, isFirefox, port, r } from '../scripts/utils'
+import { contentScripts } from './utils/contentScripts'
 
 export async function getManifest() {
   const pkg = await fs.readJSON(r('package.json')) as typeof PkgType
 
-  // update this file to update this manifest.json
-  // can also be conditional based on your need
   const manifest: Manifest.WebExtensionManifest = {
     manifest_version: 3,
     name: pkg.displayName || pkg.name,
@@ -17,10 +18,10 @@ export async function getManifest() {
       default_icon: 'assets/icon-512.png',
       default_popup: 'dist/popup/index.html',
     },
-    options_ui: {
-      page: 'dist/options/index.html',
-      open_in_tab: true,
-    },
+    // options_ui: {
+    //   page: 'dist/options/index.html',
+    //   open_in_tab: true,
+    // },
     background: isFirefox
       ? {
           scripts: ['dist/background/index.mjs'],
@@ -35,25 +36,45 @@ export async function getManifest() {
       128: 'assets/icon-512.png',
     },
     permissions: [
-      'tabs',
-      'storage',
+      // 'tabs',
       'activeTab',
+      'storage',
       'sidePanel',
+      'notifications',
+      'identity',
+      'unlimitedStorage',
     ],
     host_permissions: ['*://*/*'],
     content_scripts: [
-      {
-        matches: [
-          '<all_urls>',
-        ],
-        js: [
-          'dist/contentScripts/index.global.js',
-        ],
-      },
+      ...await Promise.all(contentScripts.map(async (entry) => {
+        let config = {
+          urlPatterns: ['<all_urls>'] as unknown as `*://${string}`[],
+        } as Meta
+        const filePath = join(entry.relativeDir, 'meta').replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/')
+
+        try {
+          const moduleContent = (await import(filePath)) as typeof import('./contentScripts/site/anizm/meta')
+
+          if (moduleContent?.meta) {
+            config = moduleContent.meta
+          }
+        }
+        catch {
+          //
+        }
+
+        return ({
+          matches: config.urlPatterns,
+          js: [`dist/contentScripts/${entry.directory}/${entry.name}`],
+        })
+      })),
     ],
     web_accessible_resources: [
       {
-        resources: ['dist/contentScripts/style.css'],
+        resources: [
+          'dist/contentScripts/**/*.css',
+          'dist/sidepanel/index.html',
+        ],
         matches: ['<all_urls>'],
       },
     ],
@@ -72,8 +93,7 @@ export async function getManifest() {
     }
   }
   else {
-    // the sidebar_action does not work for chromium based
-    (manifest as any).side_panel = {
+    ((manifest as any).side_panel as chrome.sidePanel.SidePanel) = {
       default_path: 'dist/sidepanel/index.html',
     }
   }

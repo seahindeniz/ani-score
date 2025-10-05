@@ -6,5 +6,6 @@
   },
   "files.associations": {
     "*.css": "postcss"
-  }
+  },
+  "svg.preview.background": "custom"
 }

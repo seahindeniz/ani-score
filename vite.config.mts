@@ -1,12 +1,11 @@
 /// <reference types="vitest" />
-/// < reference types="vite/client" />
 
-import { dirname, relative } from 'node:path'
 import type { UserConfig } from 'vite'
+import { dirname, relative } from 'node:path'
 import UnoCSS from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import Icons from 'unplugin-icons/vite'
-import { defineConfig } from 'vite'
+import { defineConfig, mergeConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
 import { isDev, port, r } from './scripts/utils'
@@ -20,15 +19,17 @@ export const sharedConfig: UserConfig = {
     conditions: ['development', 'browser'],
   },
   define: {
-    __DEV__: isDev,
-    __NAME__: JSON.stringify(packageJson.name),
+    '__DEV__': isDev,
+    '__NAME__': JSON.stringify(packageJson.name),
+    // https://github.com/vitejs/vite/issues/9320
+    // https://github.com/vitejs/vite/issues/9186
+    'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'production'),
+
   },
   plugins: [
     solid(),
-
     AutoImport({
       imports: [
-        'solid-js',
         {
           'webextension-polyfill': [
             ['=', 'browser'],
@@ -37,36 +38,56 @@ export const sharedConfig: UserConfig = {
       ],
       dts: r('src/auto-imports.d.ts'),
     }),
-
-    // https://github.com/antfu/unplugin-icons
-    Icons(),
-
-    // https://github.com/unocss/unocss
-    UnoCSS(),
-
-    // rewrite assets to use relative path
-    {
-      name: 'assets-rewrite',
-      enforce: 'post',
-      apply: 'build',
-      transformIndexHtml(html, { path }) {
-        return html.replace(/"\/assets\//g, `"${relative(dirname(path), '/assets')}/`)
-      },
-    },
   ],
+  build: {
+    cssMinify: !isDev,
+    minify: !isDev,
+    sourcemap: isDev && 'inline',
+  },
   optimizeDeps: {
     include: [
       'solid-js',
       'solid-js/web',
       'webextension-polyfill',
     ],
-    exclude: [
-    ],
+    exclude: [],
+  },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // @ts-expect-error -- IGNORE --
+        api: 'modern-compiler', // or "modern"
+      },
+    },
   },
 }
 
-export default defineConfig(({ command }) => ({
-  ...sharedConfig,
+export function sharedDOMConfig(props: { icons?: boolean, unoCSS?: boolean } = {}) {
+  const propsWithDefaults = {
+    icons: true,
+    unoCSS: true,
+    ...props,
+  }
+
+  return mergeConfig(sharedConfig, {
+    plugins: [
+      propsWithDefaults.icons && Icons({ compiler: 'solid' }),
+      propsWithDefaults.unoCSS && UnoCSS(),
+
+      // rewrite assets to use relative path
+      {
+        name: 'assets-rewrite',
+        enforce: 'post',
+        apply: 'build',
+        transformIndexHtml(html, { path }) {
+          return html.replace(/"\/assets\//g, `"${relative(dirname(path), '/assets')}/`)
+        },
+      },
+    ],
+  } as UserConfig)
+}
+
+export default defineConfig(({ command }) => mergeConfig(sharedDOMConfig(), {
   base: command === 'serve' ? `http://localhost:${port}/` : '/dist/',
   server: {
     port,
@@ -83,7 +104,6 @@ export default defineConfig(({ command }) => ({
     emptyOutDir: false,
     sourcemap: isDev ? 'inline' : false,
     target: 'esnext',
-    // https://developer.chrome.com/docs/webstore/program_policies/#:~:text=Code%20Readability%20Requirements
     terserOptions: {
       mangle: false,
     },

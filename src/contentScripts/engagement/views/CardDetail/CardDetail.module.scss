@@ -1,0 +1,42 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  padding-inline: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  column-gap: 6px;
+  flex-flow: wrap;
+}
+
+.spread {
+  justify-content: space-between;
+}
+
+.genres {
+  column-gap: 7px;
+  font-size: 0.7rem;
+  flex-wrap: wrap;
+  line-height: 1rem;
+  color: #cccccc;
+}
+
+.detail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.subDetail {
+
+  &,
+  & sub {
+    font-size: 0.9em;
+    white-space: nowrap;
+  }
+}

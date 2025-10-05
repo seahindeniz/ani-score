@@ -1,0 +1,37 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="animatedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f857a6;stop-opacity:1">
+        <animate attributeName="stop-color" 
+          values="#f857a6;#667eea;#56ab2f;#f2994a;#a044ff;#4facfe;#11998e;#2c3e50;#eb3349;#134e5e;#ff512f;#f857a6" 
+          dur="20s" 
+          repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" style="stop-color:#ff5858;stop-opacity:1">
+        <animate attributeName="stop-color" 
+          values="#ff5858;#764ba2;#a8e063;#f2c94c;#6a3093;#00f2fe;#38ef7d;#3498db;#f45c43;#71b280;#dd2476;#ff5858" 
+          dur="20s" 
+          repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+  </defs>
+  
+  <rect width="64" height="64" rx="12" fill="url(#animatedGrad)"/>
+  
+  <circle cx="32" cy="32" r="21" fill="none" stroke="#ffffff" 
+          stroke-width="3" opacity="0.3"/>
+  <circle cx="32" cy="32" r="21" fill="none" stroke="#ffffff" 
+          stroke-width="3" opacity="0.9" stroke-dasharray="110 132" 
+          stroke-dashoffset="0" stroke-linecap="round" 
+          transform="rotate(-90 32 32)"/>
+  
+  <circle cx="32" cy="32" r="16" fill="none" stroke="#ffd700" 
+          stroke-width="2.5" opacity="0.4"/>
+  <circle cx="32" cy="32" r="16" fill="none" stroke="#ffd700" 
+          stroke-width="2.5" opacity="0.95" stroke-dasharray="75 100.5" 
+          stroke-dashoffset="0" stroke-linecap="round" 
+          transform="rotate(-90 32 32)"/>
+  
+  <path d="M 32 24 L 34 29 L 39.5 29 L 35 32.5 L 37 37.5 L 32 34 L 27 37.5 L 29 32.5 L 24.5 29 L 30 29 Z" 
+        fill="#ffffff" opacity="0.95"/>
+</svg>
