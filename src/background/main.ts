@@ -19,7 +19,9 @@ if (chrome.sidePanel) {
 }
 
 checkAnilistAuthorization().then(() => {
-  void loadDatabase()
+  setTimeout(() => {
+    void loadDatabase()
+  }, 400)
 })
 
 browser.runtime.onInstalled.addListener((): void => {

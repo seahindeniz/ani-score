@@ -1,7 +1,8 @@
 import type { Component } from 'solid-js'
-import { tokenStore } from '~/logic'
+import { useTokenStore } from '~/logic'
 
 export const TokenReceived: Component = () => {
+  const tokenStore = useTokenStore()
   const hash = new URLSearchParams(location.hash.slice(1))
   const token = hash.get('access_token')
 

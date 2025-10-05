@@ -1,6 +1,6 @@
 import type { EpisodeCard } from '~/contentScripts/site/base'
 import type { Media } from '~/gql/graphql'
-import { cacheStore, tokenStore } from '~/logic'
+import { useCacheStore, useTokenStore } from '~/logic'
 import { logger } from '~/utils/logger'
 import { anilistClient } from '../client/anilist'
 import { searchAnimeByTitle } from './loadDatabase'
@@ -134,6 +134,7 @@ export async function fetchDetails(props: Props) {
   logger.log('Fetching details for titles:', uniqueTitles)
 
   try {
+    const cacheStore = useCacheStore()
     const dbResult = findAnimeListInDatabase(uniqueTitles)
     const query = generateBatchQuery(dbResult)
     const result = await anilistClient.query<Record<string, {
@@ -154,6 +155,8 @@ export async function fetchDetails(props: Props) {
       logger.error('GraphQL query error:', result.error)
 
       if (result.error.message.includes('Invalid token')) {
+        const tokenStore = useTokenStore()
+
         tokenStore.setData({ ...tokenStore.data(), anilist: '' })
 
         browser.notifications.create('open-side-panel', {

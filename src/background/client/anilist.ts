@@ -1,11 +1,13 @@
 import { cacheExchange, Client, fetchExchange } from '@urql/core'
-import { tokenStore } from '~/logic'
+import { useTokenStore } from '~/logic'
 
 export const anilistClient = new Client({
   url: 'https://graphql.anilist.co',
   exchanges: [cacheExchange, fetchExchange],
   preferGetMethod: false,
   async fetch(input, init) {
+    const tokenStore = useTokenStore()
+
     await tokenStore.dataReady
 
     return fetch(input, {

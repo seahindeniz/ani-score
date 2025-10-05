@@ -1,8 +1,8 @@
 import logo from '~/assets/logo.svg'
-import { storageComposable } from '~/logic/storage'
+import { useStorageComposable } from '~/logic'
 
 export default function Options() {
-  const { data: storageDemo, setData: setStorageDemo } = storageComposable
+  const { data: storageDemo, setData: setStorageDemo } = useStorageComposable()
 
   function handleInput(event: InputEvent) {
     const target = event.currentTarget as HTMLInputElement

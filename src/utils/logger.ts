@@ -22,9 +22,9 @@ border-radius: 4px;
 const methods = ['log', 'info', 'warn', 'error'] as const satisfies ExtractCallableMethods<Console>[]
 
 function methodFacilitator<Method extends typeof methods[number]>(method: Method, scope?: string) {
-  if (!__DEV__) {
-    return () => {}
-  }
+  // if (!__DEV__) {
+  //   return () => {}
+  // }
 
   return Function.prototype.bind.call(
     // eslint-disable-next-line no-console

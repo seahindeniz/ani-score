@@ -1,10 +1,11 @@
 import type { AnimeData } from '~/logic'
 import MiniSearch from 'minisearch'
-import { animeDatabaseStore } from '~/logic'
+import { useAnimeDatabaseStore } from '~/logic'
 import { logger } from '~/utils/logger'
 
 const DATABASE_URL = 'https://github.com/manami-project/anime-offline-database/releases/download/latest/anime-offline-database-minified.json'
 const metaURL = 'https://github.com/manami-project/anime-offline-database/releases/download/latest/animenewsnetwork-minified.json'
+const animeDatabaseStore = useAnimeDatabaseStore()
 
 const miniSearch = new MiniSearch<AnimeData>({
   fields: ['title', 'synonyms'],
