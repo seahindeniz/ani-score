@@ -1,7 +1,9 @@
 import { createEffect, on } from 'solid-js'
-import { tokenStore } from '~/logic'
+import { useTokenStore } from '~/logic'
 
 export async function checkAnilistAuthorization() {
+  const tokenStore = useTokenStore()
+
   await tokenStore.dataReady
 
   if (tokenStore.data().anilist) {

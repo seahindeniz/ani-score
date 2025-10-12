@@ -1,19 +1,14 @@
-import { useWebExtensionStorage } from '~/composables/useWebExtensionStorage'
+import { createPersistedStore } from './createPersistedStore'
 
-export const storageComposable = useWebExtensionStorage('webext-demo', 'Storage Demo')
-export const storageDemo = storageComposable.data
-export const setStorageDemo = storageComposable.setData
-export const storageDemoReady = storageComposable.dataReady
+export const useStorageComposable = createPersistedStore('webext-demo', 'Storage Demo')
 
-export const tokenStore = useWebExtensionStorage('token', {
-  anilist: '',
-})
+export const useTokenStore = createPersistedStore('token', { anilist: '' })
 
-export const cacheStore = useWebExtensionStorage('cache', {
+export const useCacheStore = createPersistedStore('cache', {
   fetchDetails: true,
 })
 
-export const settingsStore = useWebExtensionStorage('settings', {
+export const useSettingsStore = createPersistedStore('settings', {
   genreColor: {} as Record<string, string>,
   tagColor: {} as Record<string, string>,
 }, { target: 'sync' })
@@ -97,7 +92,7 @@ export interface AnimeData {
   tags: string[]
 }
 
-export const animeDatabaseStore = useWebExtensionStorage('animeDatabase', {
+export const useAnimeDatabaseStore = createPersistedStore('animeDatabase', {
   lastUpdate: '',
   data: [] as AnimeData[],
 })

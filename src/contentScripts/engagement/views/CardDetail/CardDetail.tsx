@@ -8,7 +8,7 @@ import AntDesignTagsFilled from '~icons/ant-design/tags-filled'
 import DeviconPlainPlaywright from '~icons/devicon-plain/playwright'
 import SvgSpinners3DotsMove from '~icons/svg-spinners/3-dots-move'
 import SvgSpinnersPulseRing from '~icons/svg-spinners/pulse-ring'
-import { settingsStore } from '~/logic'
+import { useSettingsStore } from '~/logic'
 import styles from './CardDetail.module.scss'
 import 'uno.css'
 
@@ -72,6 +72,7 @@ interface Props {
   onRender?: () => Promise<void>
 }
 export const CardDetail: Component<Props> = (props) => {
+  const settingsStore = useSettingsStore()
   const [isMakingFavorite, setMakingFavorite] = createSignal<boolean>(false)
   const [isFavorite, setFavorite] = createSignal<boolean>(false)
   const [softFavoriteAdditionCount, setSoftFavoriteAdditionCount] = createSignal(0)

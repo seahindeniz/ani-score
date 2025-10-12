@@ -1,13 +1,16 @@
 import type { Component } from 'solid-js'
 import { Show } from 'solid-js'
 import browser from 'webextension-polyfill'
-import { tokenStore } from '~/logic/storage'
+import { useTokenStore } from '~/logic'
 import { GenreColor } from './GenreColor'
 
 export const SidePanel: Component = () => {
+  const tokenStore = useTokenStore()
+
   function toggleAnilistAuthorization() {
     if (tokenStore.data().anilist) {
-      tokenStore.setData({ anilist: '' })
+      tokenStore.setData({ ...tokenStore.data(), anilist: '' })
+
       return
     }
 

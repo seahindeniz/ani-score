@@ -1,12 +1,14 @@
 import browser from 'webextension-polyfill'
 import Logo from '~/components/Logo'
-import { storageDemo } from '~/logic/storage'
+import { useStorageComposable } from '~/logic/storage'
 
 function openOptionsPage() {
   browser.runtime.openOptionsPage()
 }
 
 export default function Popup() {
+  const storageComposable = useStorageComposable()
+
   return (
     <main class="w-[300px] px-4 py-5 text-center text-gray-700">
       <Logo />
@@ -18,7 +20,7 @@ export default function Popup() {
       <div class="mt-2">
         <span class="opacity-50">Storage:</span>
         {' '}
-        {storageDemo()}
+        {storageComposable.data()}
       </div>
     </main>
   )

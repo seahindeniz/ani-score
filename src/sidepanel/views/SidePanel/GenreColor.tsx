@@ -2,10 +2,11 @@ import type { Component } from 'solid-js'
 import { debounce } from '@solid-primitives/scheduled'
 import { createMemo, createResource, For, Show } from 'solid-js'
 import { fetchGenres } from '~/background/logic/fetchGenres'
-import { settingsStore } from '~/logic'
+import { useSettingsStore } from '~/logic'
 import style from './GenreColor.module.scss'
 
 export const GenreColor: Component = () => {
+  const settingsStore = useSettingsStore()
   const [data] = createResource(fetchGenres)
   const genres = createMemo(() => data()?.data?.GenreCollection?.filter(genre => genre != null))
 

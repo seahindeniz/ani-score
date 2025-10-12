@@ -4,7 +4,10 @@
   "dictionaryDefinitions": [],
   "dictionaries": [],
   "words": [
-    "Anilist"
+    "Anilist",
+    "SolidJS",
+    "webext",
+    "webextension"
   ],
   "ignoreWords": [],
   "import": []
