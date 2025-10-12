@@ -40,8 +40,8 @@ export const sharedConfig: UserConfig = {
     }),
   ],
   build: {
-    cssMinify: !isDev,
-    minify: !isDev,
+    cssMinify: false,
+    minify: false,
     sourcemap: isDev && 'inline',
   },
   optimizeDeps: {

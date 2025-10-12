@@ -1,6 +1,4 @@
 import { logger } from '~/utils/logger'
-import { checkAnilistAuthorization } from './logic/checkAnilistAuthorization'
-import { loadDatabase } from './logic/loadDatabase'
 import { listenMessages } from './logic/message'
 
 // only on dev mode
@@ -18,12 +16,6 @@ if (chrome.sidePanel) {
     .catch((error: unknown) => logger.error(error))
 }
 
-checkAnilistAuthorization().then(() => {
-  setTimeout(() => {
-    void loadDatabase()
-  }, 400)
-})
-
-browser.runtime.onInstalled.addListener((): void => {
+browser.runtime.onInstalled.addListener(async (): Promise<void> => {
   logger.log('Extension installed')
 })

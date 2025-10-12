@@ -9,6 +9,6 @@ window.engageWithSite = (site, scope) => {
 
   void initSiteLogic({ ...site, scope })
   setInterval(() => {
-    window.messageGateway.sendMessage('get-time', null)
+    void window.messageGateway.sendMessage('engage-with-time', null)
   }, 10000)
 }

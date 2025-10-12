@@ -93,9 +93,11 @@ export async function getManifest() {
     }
   }
   else {
-    ((manifest as any).side_panel as chrome.sidePanel.SidePanel) = {
-      default_path: 'dist/sidepanel/index.html',
-    }
+    Object.assign(manifest, {
+      side_panel: {
+        default_path: 'dist/sidepanel/index.html',
+      } as chrome.sidePanel.SidePanel,
+    })
   }
 
   // FIXME: not work in MV3
