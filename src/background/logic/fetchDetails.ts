@@ -193,7 +193,7 @@ export async function fetchDetails(props: Props) {
       if (result.status === 'rejected' && result.reason.error) {
         logger.error('GraphQL query error:', result.reason.error)
 
-        if (result.reason.error.message.includes('Invalid token')) {
+        if (result.reason?.error?.message?.includes('Invalid token')) {
           const tokenStore = useTokenStore()
 
           tokenStore.setData({ ...tokenStore.data(), anilist: '' })
