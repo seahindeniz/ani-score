@@ -2,16 +2,23 @@ import { createPersistedStore } from './createPersistedStore'
 
 export const useStorageComposable = createPersistedStore('webext-demo', 'Storage Demo')
 
+export const useThemeStore = createPersistedStore<'light' | 'dark' | 'system'>('theme', 'system', { target: 'sync' })
+
 export const useTokenStore = createPersistedStore('token', { anilist: '' })
 
 export const useCacheStore = createPersistedStore('cache', {
   fetchDetails: true,
 })
 
+export interface ColorEntry {
+  name: string
+  color: string
+}
+
 export const useSettingsStore = createPersistedStore('settings', {
-  genreColor: {} as Record<string, string>,
-  tagColor: {} as Record<string, string>,
-}, { target: 'sync' })
+  genreColor: {} as Record<string, ColorEntry>,
+  tagColor: {} as Record<string, ColorEntry>,
+})
 
 interface AnimeSeason {
   season: 'SPRING' | 'SUMMER' | 'FALL' | 'WINTER' | 'UNDEFINED'
@@ -96,3 +103,11 @@ export const useAnimeDatabaseStore = createPersistedStore('animeDatabase', {
   lastUpdate: '',
   data: [] as AnimeData[],
 })
+
+export const useAnimeDatabaseSearchCacheStore = createPersistedStore('animeDatabaseResult', {} as Record<string, {
+  id: string
+  title: AnimeData['title']
+  type: AnimeData['type']
+  sources: AnimeData['sources']
+  synonyms: AnimeData['synonyms']
+}>)

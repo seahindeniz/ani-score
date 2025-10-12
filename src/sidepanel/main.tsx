@@ -1,5 +1,6 @@
 import { Route, Router } from '@solidjs/router'
 import { render } from 'solid-js/web'
+import { setTheme } from '~/logic/setTheme'
 import { SidePanel } from './views/SidePanel/SidePanel'
 import { TokenReceived } from './views/TokenReceived'
 import '../styles'
@@ -42,10 +43,14 @@ function transformUrl() {
 const root = document.getElementById('app')
 
 if (root) {
-  render(() => (
-    <Router transformUrl={() => transformUrl()}>
-      <Route path="/" component={SidePanel} />
-      <Route path="/auth/*" component={TokenReceived} />
-    </Router>
-  ), root)
+  render(() => {
+    void setTheme()
+
+    return (
+      <Router transformUrl={() => transformUrl()}>
+        <Route path="/" component={SidePanel} />
+        <Route path="/auth/*" component={TokenReceived} />
+      </Router>
+    )
+  }, root)
 }

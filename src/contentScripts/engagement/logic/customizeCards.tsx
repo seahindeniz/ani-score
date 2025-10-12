@@ -29,7 +29,9 @@ export function customizeCards(page: ListingPage, config: InternalSiteBaseConfig
 
     logger.log('Starting to fetch details for episode cards')
 
-    const res = await window.messageGateway.sendMessage(
+    await window.messageGateway.sendMessage('initialize', null)
+
+    const animeMap = await window.messageGateway.sendMessage(
       'fetch-details',
       {
         cards: episodeCards.map(card => ({
@@ -39,16 +41,16 @@ export function customizeCards(page: ListingPage, config: InternalSiteBaseConfig
       },
     )
 
-    logger.log('the response from background:', res)
+    logger.log('the response from background:', animeMap)
 
-    if (!res?.anime) {
+    if (!animeMap) {
       logger.log('No details fetched from background')
       return
     }
 
-    logger.log('Fetched details from background:', res.anime)
+    logger.log('Fetched details from background:', animeMap)
 
-    store.anime = res.anime
+    store.anime = animeMap
   }
 
   logger.log('Customizing cards for site:', config)

@@ -1,8 +1,12 @@
 import type { Component } from 'solid-js'
+import clsx from 'clsx'
 import { Show } from 'solid-js'
 import browser from 'webextension-polyfill'
+import SimpleIconsAnilist from '~icons/simple-icons/anilist'
+import { Button } from '~/components/ui/button'
 import { useTokenStore } from '~/logic'
-import { GenreColor } from './GenreColor'
+import { GenreColors } from './TagColors/GenreColors'
+import { TagColor } from './TagColors/TagColors'
 
 export const SidePanel: Component = () => {
   const tokenStore = useTokenStore()
@@ -20,25 +24,19 @@ export const SidePanel: Component = () => {
   }
 
   return (
-    <main class="w-full flex flex-col items-center gap-4 px-4 py-5 text-center text-gray-700">
+    <main class="w-full flex flex-wrap items-start justify-center gap-6 px-4 py-5 text-center text-gray-700">
       <Show when={!tokenStore.data().anilist}>
-        <button
-          class="ml-2 h-10 w-[200px] rounded px-2 py-1 text-sm text-white"
-          classList={{
-            'bg-blue-500 hover:bg-blue-600': !tokenStore.data().anilist,
-            'bg-red-500 hover:bg-red-600': Boolean(tokenStore.data().anilist),
-          }}
+        <Button
+          size="lg"
+          class={clsx('flex items-center justify-center')}
           onClick={toggleAnilistAuthorization}
         >
-          <Show when={!tokenStore.data().anilist}>
-            <span>Authorize Anilist</span>
-          </Show>
-          <Show when={Boolean(tokenStore.data().anilist)}>
-            <span>Revoke Anilist</span>
-          </Show>
-        </button>
+          <SimpleIconsAnilist />
+          Authorize Anilist
+        </Button>
       </Show>
-      <GenreColor />
+      <GenreColors />
+      <TagColor />
     </main>
   )
 }
