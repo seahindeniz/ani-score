@@ -1,3 +1,5 @@
+import type { FuzzyResult } from '@nozbe/microfuzz'
+import type { SearchResult } from 'minisearch'
 import type { AnimeData } from '~/logic'
 import createFuzzySearch from '@nozbe/microfuzz'
 import MiniSearch from 'minisearch'
@@ -111,6 +113,23 @@ export async function loadDatabase() {
   }
 }
 
+function mapResults(result: SearchResult) {
+  return ({
+    id: result.id as string,
+    title: result.title as AnimeData['title'],
+    type: result.type as AnimeData['type'],
+    sources: result.sources as AnimeData['sources'],
+    synonyms: result.synonyms as AnimeData['synonyms'],
+  })
+}
+
+function sortSearchResults(a: FuzzyResult<ReturnType<typeof mapResults>>, b: FuzzyResult<ReturnType<typeof mapResults>>) {
+  if (a.score === b.score) {
+    return a.item.type === 'TV' ? -1 : 1
+  }
+  return a.score - b.score
+}
+
 export function searchAnimeByTitle(title: string) {
   const anime = animeDatabaseSearchCacheStore.data()[title]
 
@@ -118,13 +137,7 @@ export function searchAnimeByTitle(title: string) {
     return anime
   }
 
-  const narrowedDb = deepSearch.search(title).map(result => ({
-    id: result.id as string,
-    title: result.title as AnimeData['title'],
-    type: result.type as AnimeData['type'],
-    sources: result.sources as AnimeData['sources'],
-    synonyms: result.synonyms as AnimeData['synonyms'],
-  }))
+  const narrowedDb = deepSearch.search(title).map(mapResults)
 
   if (!narrowedDb.length) {
     return undefined
@@ -138,9 +151,7 @@ export function searchAnimeByTitle(title: string) {
     getText: (item: typeof narrowedDb[number]) => [item.title, ...(item.synonyms ?? [])],
   })
 
-  const [result] = fuzzySearch(title).toSorted(
-    (a, b) => (a.score === b.score ? (a.item.type === 'TV' ? -1 : 1) : a.score - b.score),
-  ) || []
+  const [result] = fuzzySearch(title).toSorted(sortSearchResults) || []
 
   if (!result) {
     return undefined

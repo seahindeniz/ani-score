@@ -11,6 +11,7 @@ interface Props {
 }
 
 const maxAnimePerQuery = 14
+const maxAliasCharacters = 70
 const fields = [
   'id',
   'episodes',
@@ -64,7 +65,7 @@ const mediaFields = `${fields.join('\n  ')}\n${Object.entries(fieldGroups).map((
 
 function createAlias(title: string, index: number): string {
   const cleanTitle = title
-    .slice(0, 70)
+    .slice(0, maxAliasCharacters)
     .replace(/[^a-z0-9\s]/gi, '')
     .replace(/\s+/g, '_')
     .toLowerCase()
