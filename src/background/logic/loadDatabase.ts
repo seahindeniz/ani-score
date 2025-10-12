@@ -135,7 +135,7 @@ export function searchAnimeByTitle(title: string) {
   }
 
   const fuzzySearch = createFuzzySearch(narrowedDb, {
-    getText: (item: typeof narrowedDb[number]) => [item.title, ...item.synonyms],
+    getText: (item: typeof narrowedDb[number]) => [item.title, ...(item.synonyms ?? [])],
   })
 
   const [result] = fuzzySearch(title).toSorted(
