@@ -29,6 +29,11 @@ jobs:
           ref: ${{ github.head_ref }}
           persist-credentials: false
 
+      - name: Set up Git user
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
       - name: Install PNPM
         uses: pnpm/action-setup@v2
         with:
