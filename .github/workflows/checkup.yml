@@ -1,0 +1,54 @@
+name: Checkup
+
+on:
+  workflow_dispatch:
+  push:
+
+concurrency:
+  group: checkup-${{ github.event.pull_request.number || github.ref }}
+
+jobs:
+  checkup:
+    if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
+    timeout-minutes: 8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.head_ref }}
+          persist-credentials: false
+
+      - name: Install PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          run_install: false
+
+      - name: Use NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # - name: Install OS Dependencies for Playwright
+      #   run: pnpm dlx playwright install --with-deps
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint files
+        run: pnpm lint
+
+      - name: Run tests
+        run: pnpm test
