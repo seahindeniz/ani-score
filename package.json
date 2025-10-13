@@ -21,7 +21,7 @@
     "build:background": "vite build --config vite.config.background.mts",
     "build:web": "vite build",
     "build:js": "tsx vite.config.content.mts",
-    "pack": "cross-env NODE_ENV=production run-p pack:*",
+    "pack": "run-s build && cross-env NODE_ENV=production run-p pack:*",
     "pack:zip": "rimraf extension/release/extension.zip && jszip-cli add extension/* -o ./extension/release/extension.zip",
     "pack:crx": "crx pack extension -p ./extension/release/extension.pem -o ./extension/release/extension.crx",
     "pack:xpi": "cross-env WEB_EXT_ARTIFACTS_DIR=./extension/release/ web-ext build --source-dir ./extension --filename extension.xpi --overwrite-dest",
@@ -59,6 +59,7 @@
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^24.6.2",
     "@types/webextension-polyfill": "^0.12.0",
+    "@types/yargs-parser": "21.0.3",
     "@typescript-eslint/eslint-plugin": "^8.2.0",
     "@unocss/eslint-plugin": "^66.5.2",
     "@unocss/reset": "^66.5.2",
@@ -93,6 +94,7 @@
     "vitest": "^3.0.0",
     "web-ext": "^8.9.0",
     "webext-bridge": "^6.0.1",
-    "webextension-polyfill": "^0.12.0"
+    "webextension-polyfill": "^0.12.0",
+    "yargs-parser": "22.0.0"
   }
 }
