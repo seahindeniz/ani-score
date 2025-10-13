@@ -38,8 +38,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - name: Install OS Dependencies for Playwright
-        run: pnpm dlx playwright install --with-deps
+      # - name: Install OS Dependencies for Playwright
+      #   run: pnpm dlx playwright install --with-deps
 
       - name: Install dependencies
         run: pnpm install
