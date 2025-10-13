@@ -2,12 +2,7 @@
 .idea/
 .vite-ssg-dist
 .vite-ssg-temp
-*.crx
-*.local
-*.log
-*.pem
-*.xpi
-*.zip
+extension/release/*.*
 dist
 dist-ssr
 extension/manifest.json
@@ -16,3 +11,4 @@ src/auto-imports.d.ts
 .eslintcache
 *.timestamp-*.*js
 test-results/
+!.gitkeep
