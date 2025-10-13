@@ -2,7 +2,7 @@ import type { Config } from 'release-it'
 
 export default {
   hooks: {
-    'after:bump': 'pnpm pack-it',
+    'after:bump': 'pnpm run pack',
   },
   npm: {
     publish: false,
