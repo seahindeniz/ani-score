@@ -8,7 +8,7 @@ import Icons from 'unplugin-icons/vite'
 import { defineConfig, mergeConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
-import { isDev, port, r } from './scripts/utils'
+import { isDev, mode, port, r } from './scripts/utils'
 
 export const sharedConfig: UserConfig = {
   root: r('src'),
@@ -23,7 +23,7 @@ export const sharedConfig: UserConfig = {
     '__NAME__': JSON.stringify(packageJson.name),
     // https://github.com/vitejs/vite/issues/9320
     // https://github.com/vitejs/vite/issues/9186
-    'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'production'),
+    'process.env.NODE_ENV': JSON.stringify(mode),
 
   },
   plugins: [
@@ -40,9 +40,14 @@ export const sharedConfig: UserConfig = {
     }),
   ],
   build: {
-    cssMinify: false,
-    minify: false,
+    cssMinify: !isDev,
+    minify: !isDev,
     sourcemap: isDev && 'inline',
+  },
+  esbuild: {
+    minifyIdentifiers: false,
+    minifySyntax: true,
+    minifyWhitespace: true,
   },
   optimizeDeps: {
     include: [
@@ -104,9 +109,6 @@ export default defineConfig(({ command }) => mergeConfig(sharedDOMConfig(), {
     emptyOutDir: false,
     sourcemap: isDev ? 'inline' : false,
     target: 'esnext',
-    terserOptions: {
-      mangle: false,
-    },
     rollupOptions: {
       input: {
         options: r('src/options/index.html'),

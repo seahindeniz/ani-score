@@ -1,7 +1,7 @@
 import type { UserConfig } from 'vite'
 import { build, mergeConfig } from 'vite'
 import { contentScripts } from '~/utils/contentScripts'
-import { isDev, r } from './scripts/utils'
+import { isDev, mode, r } from './scripts/utils'
 import { injectEngageWithSite } from './scripts/vite-plugin-inject-engage'
 import { sharedDOMConfig } from './vite.config.mjs'
 
@@ -10,6 +10,7 @@ await Promise.all(contentScripts.map(async (entry) => {
   return build(mergeConfig(sharedDOMConfig({
     unoCSS: !entry.directory.includes('site/') && !entry.directory.includes('root/'),
   }), {
+    mode,
     // base: '/__dynamic_base__/',
     plugins: [
       injectEngageWithSite(['**/contentScripts/site/*/main.{ts,tsx}']),

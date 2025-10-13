@@ -2,11 +2,17 @@ import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { bgCyan, black } from 'kolorist'
+import parser from 'yargs-parser'
+
+const argv = parser(process.argv.slice(2)) as Record<string, string | boolean>
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+export const mode = argv.mode || 'production'
+
 export const port = Number(process.env.PORT || '') || 3303
 export const r = (...args: string[]) => resolve(__dirname, '..', ...args)
-export const isDev = process.env.NODE_ENV !== 'production'
+export const isDev = mode === 'development'
 export const isFirefox = process.env.EXTENSION === 'firefox'
 
 export function log(name: string, message: string) {
