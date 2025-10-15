@@ -3,7 +3,6 @@ export function animateIcon() {
     const canvas = new OffscreenCanvas(16, 16)
     const context = canvas.getContext('2d')!
 
-    // Color sequences from the animated SVG (20-second cycle)
     const gradientStart = [
       '#f857a6',
       '#667eea',
@@ -35,38 +34,32 @@ export function animateIcon() {
     ]
 
     let animationFrame = 0
-    const totalFrames = gradientStart.length * 60 // ~1 second per color at 60fps
+    const totalFrames = gradientStart.length * 60
 
     function animate() {
       context.clearRect(0, 0, 16, 16)
 
-      // Calculate current color indices and interpolation factor
       const colorIndex = Math.floor(animationFrame / 60) % gradientStart.length
       const nextColorIndex = (colorIndex + 1) % gradientStart.length
       const t = (animationFrame % 60) / 60
 
-      // Interpolate colors
       const startColor = interpolateColor(gradientStart[colorIndex], gradientStart[nextColorIndex], t)
       const endColor = interpolateColor(gradientEnd[colorIndex], gradientEnd[nextColorIndex], t)
 
-      // Create gradient
       const gradient = context.createLinearGradient(0, 0, 16, 16)
       gradient.addColorStop(0, startColor)
       gradient.addColorStop(1, endColor)
 
-      // Draw rounded rectangle background (scaled down from 64x64 to 16x16)
       context.fillStyle = gradient
       roundRect(context, 0, 0, 16, 16, 3)
       context.fill()
 
-      // Draw outer circle (scaled down)
       context.strokeStyle = 'rgba(255, 255, 255, 0.3)'
       context.lineWidth = 0.75
       context.beginPath()
       context.arc(8, 8, 5.25, 0, Math.PI * 2)
       context.stroke()
 
-      // Draw progress circle
       context.strokeStyle = 'rgba(255, 255, 255, 0.9)'
       context.lineWidth = 0.75
       context.lineCap = 'round'
@@ -74,14 +67,12 @@ export function animateIcon() {
       context.arc(8, 8, 5.25, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 1.67), false)
       context.stroke()
 
-      // Draw inner circle
       context.strokeStyle = 'rgba(255, 215, 0, 0.4)'
       context.lineWidth = 0.6
       context.beginPath()
       context.arc(8, 8, 4, 0, Math.PI * 2)
       context.stroke()
 
-      // Draw inner progress circle
       context.strokeStyle = 'rgba(255, 215, 0, 0.95)'
       context.lineWidth = 0.6
       context.lineCap = 'round'
@@ -89,11 +80,9 @@ export function animateIcon() {
       context.arc(8, 8, 4, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 1.5), false)
       context.stroke()
 
-      // Draw star (scaled down)
       context.fillStyle = 'rgba(255, 255, 255, 0.95)'
       drawStar(context, 8, 8, 2.5)
 
-      // Update icon
       const imageData = context.getImageData(0, 0, 16, 16)
       chrome.action.setIcon({ imageData })
 
@@ -104,7 +93,6 @@ export function animateIcon() {
     animate()
   }
 
-  // Helper function to create rounded rectangle
   function roundRect(ctx: OffscreenCanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
     ctx.beginPath()
     ctx.moveTo(x + radius, y)
@@ -119,7 +107,6 @@ export function animateIcon() {
     ctx.closePath()
   }
 
-  // Helper function to draw star
   function drawStar(ctx: OffscreenCanvasRenderingContext2D, cx: number, cy: number, radius: number) {
     const spikes = 5
     const outerRadius = radius
@@ -142,7 +129,6 @@ export function animateIcon() {
     ctx.fill()
   }
 
-  // Helper function to interpolate between two hex colors
   function interpolateColor(color1: string, color2: string, t: number): string {
     const hex1 = color1.replace('#', '')
     const hex2 = color2.replace('#', '')
