@@ -9,7 +9,6 @@ export default {
   },
   github: {
     release: true,
-    web: true,
     assets: [
       'extension/release/extension.zip',
       'extension/release/extension.crx',
