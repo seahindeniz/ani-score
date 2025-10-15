@@ -1,8 +1,18 @@
 {
   "typescript.tsdk": "node_modules/typescript/lib",
   "vite.autoStart": false,
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+  "[json]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "editor.formatOnSave": true,
+  "eslint.format.enable": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
+    "source.fixAll.eslint": "explicit",
+    "source.fixAll": "never"
   },
   "files.associations": {
     "*.css": "postcss"
