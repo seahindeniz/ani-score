@@ -27,5 +27,6 @@ export default {
   git: {
     // eslint-disable-next-line no-template-curly-in-string
     commitMessage: 'chore(release): v${version} [skip ci]',
+    requireCleanWorkingDir: false,
   },
 } satisfies Config
