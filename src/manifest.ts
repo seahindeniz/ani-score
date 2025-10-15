@@ -86,7 +86,6 @@ export async function getManifest() {
     },
   }
 
-  // add sidepanel
   if (isFirefox) {
     manifest.sidebar_action = {
       default_panel: 'dist/sidepanel/index.html',
