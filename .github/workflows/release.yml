@@ -39,12 +39,6 @@ jobs:
           git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
           git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
 
-      - name: Enable web-based signing
-        run: |
-          git config commit.gpgsign false
-          git config tag.gpgsign false
-          git config user.signingkey ""
-
       - name: Install PNPM
         uses: pnpm/action-setup@v2
         with:
@@ -61,12 +55,6 @@ jobs:
 
       - name: Release
         if: github.ref == 'refs/heads/main'
-        run: |
-          # Configure GitHub CLI to use web-based signing
-          gh auth setup-git --hostname github.com
-
-          # Run release-it
-          pnpm release-it
+        run: pnpm release-it
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
