@@ -61,6 +61,12 @@ jobs:
 
       - name: Release
         if: github.ref == 'refs/heads/main'
-        run: pnpm release-it
+        run: |
+          # Configure GitHub CLI to use web-based signing
+          gh auth setup-git --hostname github.com
+
+          # Run release-it
+          pnpm release-it
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
