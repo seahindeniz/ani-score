@@ -5,6 +5,7 @@ import createFuzzySearch from '@nozbe/microfuzz'
 import MiniSearch from 'minisearch'
 import { useAnimeDatabaseSearchCacheStore, useAnimeDatabaseStore } from '~/logic'
 import { logger } from '~/utils/logger'
+import { wait } from '~/utils/wait'
 
 const DATABASE_URL = 'https://github.com/manami-project/anime-offline-database/releases/download/latest/anime-offline-database-minified.json'
 const metaURL = 'https://github.com/manami-project/anime-offline-database/releases/download/latest/animenewsnetwork-minified.json'
@@ -16,24 +17,38 @@ const deepSearch = new MiniSearch<AnimeData>({
   storeFields: ['title', 'type', 'sources', 'synonyms'],
 })
 
-async function isDatabaseOutdated() {
-  if (!animeDatabaseStore.data().lastUpdate) {
-    logger.log('No previous database found.')
+async function isDatabaseOutdated(retryCount = 0) {
+  try {
+    if (!animeDatabaseStore.data().lastUpdate) {
+      logger.log('No previous database found.')
 
-    return true
+      return true
+    }
+
+    logger.log('Fetching metadata to check for updates...')
+
+    const response = await fetch(metaURL)
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch metadata: ${response.status} ${response.statusText}`)
+    }
+
+    const meta = await response.json() as { lastUpdate: string }
+
+    return new Date(meta.lastUpdate) > new Date(animeDatabaseStore.data().lastUpdate)
   }
+  catch (error) {
+    if (retryCount < 3) {
+      logger.warn(`Retrying database update check... (${retryCount + 1}/3)`)
+      await wait(1000)
 
-  logger.log('Fetching metadata to check for updates...')
+      return isDatabaseOutdated(retryCount + 1)
+    }
 
-  const response = await fetch(metaURL)
+    logger.error('Error checking database update:', error)
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch metadata: ${response.status} ${response.statusText}`)
+    return false
   }
-
-  const meta = await response.json() as { lastUpdate: string }
-
-  return new Date(meta.lastUpdate) > new Date(animeDatabaseStore.data().lastUpdate)
 }
 
 async function fetchDatabase() {
