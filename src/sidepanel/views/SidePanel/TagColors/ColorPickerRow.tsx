@@ -59,7 +59,7 @@ export const ColorPickerRow: Component<Props> = (props) => {
           <datalist id="presetColors">
             <option>#fe4848</option>
             <option>#00ff00</option>
-            <option>#0000ff</option>
+            <option>#ffdd00</option>
           </datalist>
         </AvatarFallback>
       </Avatar>
