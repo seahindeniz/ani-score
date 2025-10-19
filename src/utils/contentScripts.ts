@@ -24,7 +24,7 @@ export function getContentScriptScope(entry: glob.Entry) {
 
 const messageGatewayPath = 'src/contentScripts/messageGateway.ts'
 
-export const contentScripts = [
+export const contentScriptPaths = [
   ...glob.sync(messageGatewayPath, { absolute: true, stats: true }),
   ...glob.sync('src/contentScripts/*/main.{ts,tsx}', { ignore: ['**/widget'], absolute: true, stats: true }),
   ...glob.sync('src/contentScripts/site/*/main.{ts,tsx}', { absolute: true, stats: true }),
