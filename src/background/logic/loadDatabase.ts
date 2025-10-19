@@ -40,7 +40,7 @@ async function isDatabaseOutdated(retryCount = 0) {
   catch (error) {
     if (retryCount < 3) {
       logger.warn(`Retrying database update check... (${retryCount + 1}/3)`)
-      await wait(1000)
+      await wait(1000 * (2 ** retryCount))
 
       return isDatabaseOutdated(retryCount + 1)
     }
