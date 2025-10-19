@@ -2,7 +2,7 @@
 import { execSync } from 'node:child_process'
 import chokidar from 'chokidar'
 import fs from 'fs-extra'
-import { isDev, log, port, r } from './utils'
+import { isDev, log, mode, port, r } from './utils'
 
 /**
  * Stub index.html to use Vite in development
@@ -21,7 +21,7 @@ async function stubIndexHtml() {
 }
 
 function writeManifest() {
-  execSync('npx tsx ./scripts/manifest.ts', { stdio: 'inherit' })
+  execSync(`npx tsx ./scripts/manifest.ts --mode ${mode}`, { stdio: 'inherit' })
 }
 
 writeManifest()

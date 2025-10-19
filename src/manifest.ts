@@ -4,10 +4,40 @@ import type { Meta } from './contentScripts/site/base'
 import { join } from 'node:path'
 import fs from 'fs-extra'
 import { isDev, isFirefox, port, r } from '../scripts/utils'
-import { contentScripts } from './utils/contentScripts'
+import { contentScriptPaths } from './utils/contentScripts'
 
 export async function getManifest() {
   const pkg = await fs.readJSON(r('package.json')) as typeof PkgType
+
+  const contentScripts = [
+    ...await Promise.all(contentScriptPaths.map(async (entry) => {
+      let config = {
+        urlPatterns: ['<all_urls>'] as unknown as `*://${string}`[],
+      } as Meta
+      const filePath = join(entry.relativeDir, 'meta').replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/')
+
+      try {
+        const moduleContent = (await import(filePath)) as typeof import('./contentScripts/site/anizm/meta')
+
+        if (moduleContent?.meta) {
+          config = moduleContent.meta
+        }
+      }
+      catch {
+        //
+      }
+      return ({
+        matches: config.urlPatterns,
+        js: [`dist/contentScripts/${entry.directory}/${entry.name}`],
+      })
+    })),
+  ]
+  const contentScriptsByScope = Object.groupBy(contentScripts, item => item.matches.includes('<all_urls>' as `*://${string}`) ? 'broad' : 'other')
+  const websitePatterns = Array.from(new Set(contentScriptsByScope.other?.flatMap(item => item.matches) || []))
+
+  contentScriptsByScope.broad?.forEach((item) => {
+    item.matches = websitePatterns
+  })
 
   const manifest: Manifest.WebExtensionManifest = {
     manifest_version: 3,
@@ -37,45 +67,29 @@ export async function getManifest() {
       128: 'assets/icon128.png',
     },
     permissions: [
-      // 'tabs',
-      'activeTab',
       'storage',
       'sidePanel',
       'notifications',
       'unlimitedStorage',
     ],
-    host_permissions: ['*://*/*'],
-    content_scripts: [
-      ...await Promise.all(contentScripts.map(async (entry) => {
-        let config = {
-          urlPatterns: ['<all_urls>'] as unknown as `*://${string}`[],
-        } as Meta
-        const filePath = join(entry.relativeDir, 'meta').replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/')
-
-        try {
-          const moduleContent = (await import(filePath)) as typeof import('./contentScripts/site/anizm/meta')
-
-          if (moduleContent?.meta) {
-            config = moduleContent.meta
-          }
-        }
-        catch {
-          //
-        }
-
-        return ({
-          matches: config.urlPatterns,
-          js: [`dist/contentScripts/${entry.directory}/${entry.name}`],
-        })
-      })),
+    host_permissions: [
+      ...isDev ? [`http://localhost:${port}/*`] : [],
+      'https://github.com/manami-project/anime-offline-database/*',
+      'https://release-assets.githubusercontent.com/*',
+      'https://graphql.anilist.co/*',
+      ...websitePatterns,
     ],
+    content_scripts: contentScripts,
     web_accessible_resources: [
       {
         resources: [
           'dist/contentScripts/**/*.css',
           'dist/sidepanel/index.html',
         ],
-        matches: ['<all_urls>'],
+        matches: [
+          'https://anilist.co/*',
+          ...websitePatterns.filter(item => item.endsWith('/*')),
+        ],
       },
     ],
     content_security_policy: {

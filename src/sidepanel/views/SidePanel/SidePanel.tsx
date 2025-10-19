@@ -25,18 +25,22 @@ export const SidePanel: Component = () => {
 
   return (
     <main class="w-full flex flex-wrap items-start justify-center gap-6 px-4 py-5 text-center text-gray-700">
-      <Show when={!tokenStore.data().anilist}>
-        <Button
-          size="lg"
-          class={clsx('flex items-center justify-center')}
-          onClick={toggleAnilistAuthorization}
-        >
-          <SimpleIconsAnilist />
-          Authorize Anilist
-        </Button>
+      <Show
+        when={tokenStore.data().anilist}
+        fallback={(
+          <Button
+            size="lg"
+            class={clsx('flex items-center justify-center')}
+            onClick={toggleAnilistAuthorization}
+          >
+            <SimpleIconsAnilist />
+            Authorize Anilist
+          </Button>
+        )}
+      >
+        <GenreColors />
+        <TagColor />
       </Show>
-      <GenreColors />
-      <TagColor />
     </main>
   )
 }

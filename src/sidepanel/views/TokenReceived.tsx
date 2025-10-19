@@ -1,4 +1,6 @@
 import type { Component } from 'solid-js'
+import clsx from 'clsx'
+import { Button } from '~/components/ui/button'
 import { useTokenStore } from '~/logic'
 
 export const TokenReceived: Component = () => {
@@ -13,10 +15,18 @@ export const TokenReceived: Component = () => {
   }
 
   return (
-    <main class="w-full px-4 py-5 text-center text-xl text-gray-700">
-      <h2>Token Received</h2>
-      <p>You can now close this tab.</p>
-      <button onClick={() => window.close()} class="mt-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">Close Tab</button>
+    <main class="flex flex-col items-center gap-6 py-5 text-center text-xl text-gray-700">
+      <div class="flex flex-col items-center">
+        <h2>Token Received</h2>
+        <p>You can now close this tab.</p>
+      </div>
+      <Button
+        size="lg"
+        class={clsx('flex items-center justify-center')}
+        onClick={() => window.close()}
+      >
+        Close Tab
+      </Button>
     </main>
   )
 }
