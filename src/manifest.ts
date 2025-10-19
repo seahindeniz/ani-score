@@ -42,7 +42,6 @@ export async function getManifest() {
       'storage',
       'sidePanel',
       'notifications',
-      'identity',
       'unlimitedStorage',
     ],
     host_permissions: ['*://*/*'],
