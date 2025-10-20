@@ -14,8 +14,6 @@ import { isDev, mode, port, r } from './scripts/utils'
 
 loadEnv()
 
-console.log('process.env.ANILIST_TOKEN_URL)', process.env.ANILIST_TOKEN_URL)
-
 export const sharedConfig: UserConfig = {
   root: r('src'),
   resolve: {
