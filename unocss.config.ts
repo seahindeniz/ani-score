@@ -25,6 +25,7 @@ export default defineConfig({
       getCSS: () => `
         *, ::before, ::after {
           border-color: hsl(var(--border));
+          color: hsl(var(--foreground));
         }
       `,
     },

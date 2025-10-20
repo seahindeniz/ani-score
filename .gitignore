@@ -11,3 +11,4 @@ node_modules
 *.timestamp-*.*js
 test-results/
 !.gitkeep
+.env

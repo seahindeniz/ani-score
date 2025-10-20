@@ -2,6 +2,8 @@
 
 import type { UserConfig } from 'vite'
 import { dirname, relative } from 'node:path'
+import process from 'node:process'
+import { config as loadEnv } from 'dotenv'
 import UnoCSS from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import Icons from 'unplugin-icons/vite'
@@ -9,6 +11,8 @@ import { defineConfig, mergeConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
 import { isDev, mode, port, r } from './scripts/utils'
+
+loadEnv()
 
 export const sharedConfig: UserConfig = {
   root: r('src'),
@@ -24,6 +28,7 @@ export const sharedConfig: UserConfig = {
     // https://github.com/vitejs/vite/issues/9320
     // https://github.com/vitejs/vite/issues/9186
     'process.env.NODE_ENV': JSON.stringify(mode),
+    'ANILIST_TOKEN_URL': JSON.stringify(process.env.ANILIST_TOKEN_URL ?? ''),
 
   },
   plugins: [

@@ -18,9 +18,7 @@ export const SidePanel: Component = () => {
       return
     }
 
-    browser.tabs.create({
-      url: 'https://anilist.co/api/v2/oauth/authorize?client_id=30282&response_type=token',
-    })
+    browser.tabs.create({ url: ANILIST_TOKEN_URL })
   }
 
   return (
