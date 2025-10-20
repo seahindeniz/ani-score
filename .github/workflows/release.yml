@@ -10,8 +10,14 @@ concurrency:
   group: release-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
+  checkup:
+    if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
+    uses: ./.github/workflows/checkup.yml
+    secrets: inherit
+
   release:
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
+    needs: checkup
     timeout-minutes: 8
     runs-on: ubuntu-latest
     environment: Production

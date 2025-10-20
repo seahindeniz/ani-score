@@ -2,7 +2,10 @@ name: Checkup
 
 on:
   workflow_dispatch:
+  workflow_call:
   push:
+    branches-ignore:
+      - main
 
 concurrency:
   group: checkup-${{ github.event.pull_request.number || github.ref }}
