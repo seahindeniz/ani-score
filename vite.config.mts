@@ -28,7 +28,7 @@ export const sharedConfig: UserConfig = {
     // https://github.com/vitejs/vite/issues/9320
     // https://github.com/vitejs/vite/issues/9186
     'process.env.NODE_ENV': JSON.stringify(mode),
-    'ANILIST_TOKEN_URL': JSON.stringify(process.env.ANILIST_TOKEN_URL),
+    'ANILIST_TOKEN_URL': JSON.stringify(process.env.ANILIST_TOKEN_URL ?? ''),
 
   },
   plugins: [
