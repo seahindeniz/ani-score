@@ -18,7 +18,7 @@ export const TokenReceived: Component = () => {
     <main class="flex flex-col items-center gap-6 py-12 text-center">
       <div class="flex flex-col items-center">
         <h1 class="text-2xl font-semibold tracking-tight">Token Received</h1>
-        <p class="text-size-base text-muted-foreground">You can now close this tab</p>
+        <p class="text-size-base text-muted-foreground">You can now close this tab.</p>
       </div>
       <Button
         size="lg"
