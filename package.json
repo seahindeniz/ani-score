@@ -69,6 +69,7 @@
     "clsx": "2.1.1",
     "cross-env": "^10.1.0",
     "crx": "^5.0.1",
+    "dotenv": "17.2.3",
     "eslint": "^9.35.0",
     "eslint-plugin-solid": "^0.14.5",
     "fast-glob": "3.3.3",

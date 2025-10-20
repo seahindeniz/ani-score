@@ -12,6 +12,7 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
     timeout-minutes: 8
     runs-on: ubuntu-latest
+    environment: Production
     steps:
       - uses: actions/create-github-app-token@v2
         id: app-token
@@ -52,3 +53,5 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+        env:
+          ANILIST_TOKEN_URL: ${{ vars.ANILIST_TOKEN_URL }}

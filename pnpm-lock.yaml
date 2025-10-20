@@ -102,6 +102,9 @@ importers:
       crx:
         specifier: ^5.0.1
         version: 5.0.1
+      dotenv:
+        specifier: 17.2.3
+        version: 17.2.3
       eslint:
         specifier: ^9.35.0
         version: 9.35.0(jiti@2.5.1)
