@@ -1,5 +1,5 @@
 import type { FuzzyResult } from '@nozbe/microfuzz'
-import type { SearchResult } from 'minisearch'
+import type { Options, SearchResult } from 'minisearch'
 import type { AnimeData } from '~/logic'
 import createFuzzySearch from '@nozbe/microfuzz'
 import MiniSearch from 'minisearch'
@@ -12,10 +12,36 @@ const metaURL = 'https://github.com/manami-project/anime-offline-database/releas
 const animeDatabaseStore = useAnimeDatabaseStore()
 const animeDatabaseSearchCacheStore = useAnimeDatabaseSearchCacheStore()
 
-const deepSearch = new MiniSearch<AnimeData>({
-  fields: ['title', 'synonyms'],
-  storeFields: ['title', 'type', 'sources', 'synonyms'],
-})
+let deepSearch: MiniSearch<AnimeData>
+
+const getBadgeText = async () => (await browser.action.getBadgeText({ tabId: undefined })).trim()
+
+async function setDeepSearchInstance(props: { data: AnimeData[], lastUpdate: string } | { index: string }) {
+  const options = {
+    fields: ['title', 'synonyms'],
+    storeFields: ['title', 'type', 'sources', 'synonyms'],
+  } as Options<AnimeData>
+
+  deepSearch = new MiniSearch<AnimeData>(options)
+
+  if ('data' in props) {
+    await deepSearch.addAllAsync(props.data)
+    animeDatabaseStore.setData({
+      lastUpdate: props.lastUpdate,
+      data: JSON.stringify(deepSearch),
+    })
+  }
+  else {
+    deepSearch = await MiniSearch.loadJSONAsync<AnimeData>(props.index, options)
+  }
+
+  if (!await getBadgeText()) {
+    browser.action.setBadgeBackgroundColor({ color: '#00ff00' })
+    setTimeout(() => {
+      browser.action.setBadgeText({ text: '' })
+    }, 2000)
+  }
+}
 
 async function isDatabaseOutdated(retryCount = 0) {
   try {
@@ -64,38 +90,20 @@ async function fetchDatabase() {
   }
 }
 
-function storeDatabase(data: Awaited<ReturnType<typeof fetchDatabase>>) {
+async function storeDatabase(data: Awaited<ReturnType<typeof fetchDatabase>>) {
   const startTime = performance.now()
 
-  const filteredData = data.data.filter((item) => {
-    return item.sources.some(source => source.includes('anilist.co') || source.includes('myanimelist.net'))
-  })
-    .map((item) => {
-    // @ts-expect-error assign temporary id for search index
-      item.id = crypto.randomUUID()
-      return item
-    })
+  const filteredData = data.data
+    .filter(item => item.sources.some(source => source.includes('anilist.co') || source.includes('myanimelist.net')))
+    .map(item => ({ ...item, id: crypto.randomUUID() }))
 
   const newDatabase = {
     data: filteredData,
     lastUpdate: data.lastUpdate,
   }
-  animeDatabaseStore.setData(newDatabase)
-  setSearcher(newDatabase)
+
+  await setDeepSearchInstance(newDatabase)
   logger.log(`Database stored. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`)
-}
-
-const getBadgeText = async () => (await browser.action.getBadgeText({ tabId: undefined })).trim()
-
-async function setSearcher(data: Awaited<ReturnType<typeof fetchDatabase>>) {
-  deepSearch.addAll(data.data)
-
-  if (!await getBadgeText()) {
-    browser.action.setBadgeBackgroundColor({ color: '#00ff00' })
-    setTimeout(() => {
-      browser.action.setBadgeText({ text: '' })
-    }, 2000)
-  }
 }
 
 export async function loadDatabase() {
@@ -106,6 +114,7 @@ export async function loadDatabase() {
       await browser.action.setBadgeText({ text: ' ' })
       await browser.action.setBadgeBackgroundColor({ color: '#ffd000ff' })
     }
+
     await animeDatabaseStore.dataReady
 
     if (await isDatabaseOutdated()) {
@@ -114,13 +123,13 @@ export async function loadDatabase() {
       const data = await fetchDatabase()
 
       logger.log(`Database fetched, ${data.data.length} items. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`)
-      storeDatabase(data)
+      await storeDatabase(data)
 
       return
     }
 
     logger.log('Database is up-to-date. Loading from storage...')
-    setSearcher(animeDatabaseStore.data())
+    await setDeepSearchInstance({ index: animeDatabaseStore.data().data })
     logger.log(`Database loaded. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`)
   }
   catch (error) {
@@ -142,6 +151,7 @@ function sortSearchResults(a: FuzzyResult<ReturnType<typeof mapResults>>, b: Fuz
   if (a.score === b.score) {
     return a.item.type === 'TV' ? -1 : 1
   }
+
   return a.score - b.score
 }
 
