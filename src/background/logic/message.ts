@@ -22,4 +22,11 @@ export function listenMessages() {
   onMessage('get-stamp', () => {
     return Date.now()
   })
+  browser.runtime.onMessage.addListener((message, _, sendResponse) => {
+    if (message === 'get-stamp-2') {
+      sendResponse(Date.now())
+    }
+
+    return true
+  })
 }
