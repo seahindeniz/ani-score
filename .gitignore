@@ -2,7 +2,7 @@
 .idea/
 .vite-ssg-dist
 .vite-ssg-temp
-release/*.*
+release/
 dist
 dist-ssr
 extension/manifest.json

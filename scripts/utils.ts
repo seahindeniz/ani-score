@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { bgCyan, black } from 'kolorist'
 import parser from 'yargs-parser'
 
-const argv = parser(process.argv.slice(2)) as Record<string, string | boolean>
+export const argv = parser(process.argv.slice(2)) as Record<string, string | boolean>
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
