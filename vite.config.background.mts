@@ -1,3 +1,4 @@
+import type { UserConfig } from 'vite'
 import { defineConfig, mergeConfig } from 'vite'
 import packageJson from './package.json'
 import { r } from './scripts/utils'
@@ -5,6 +6,7 @@ import { sharedConfig } from './vite.config.mjs'
 
 // bundling the content script using Vite
 export default defineConfig(({ mode }) => mergeConfig(sharedConfig, {
+  base: '/dist/background',
   build: {
     watch: mode !== 'production'
       ? {}
@@ -25,4 +27,4 @@ export default defineConfig(({ mode }) => mergeConfig(sharedConfig, {
       },
     },
   },
-}))
+} as UserConfig))

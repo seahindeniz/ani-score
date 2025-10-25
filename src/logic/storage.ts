@@ -101,7 +101,7 @@ export interface AnimeData {
 
 export const useAnimeDatabaseStore = createPersistedStore('animeDatabase', {
   lastUpdate: '',
-  data: [] as AnimeData[],
+  data: '',
 })
 
 export const useAnimeDatabaseSearchCacheStore = createPersistedStore('animeDatabaseResult', {} as Record<string, {
