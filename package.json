@@ -6,6 +6,14 @@
   "private": true,
   "packageManager": "pnpm@9.7.1",
   "description": "Instantly see anime ratings from AniList on your favorite streaming sites",
+  "author": {
+    "name": "seahindeniz",
+    "url": "https://github.com/seahindeniz"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seahindeniz/ani-score.git"
+  },
   "engines": {
     "node": ">=22"
   },
