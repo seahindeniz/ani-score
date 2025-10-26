@@ -13,7 +13,8 @@ export const mode = argv.mode || 'production'
 export const port = Number(process.env.PORT || '') || 3303
 export const r = (...args: string[]) => resolve(__dirname, '..', ...args)
 export const isDev = mode === 'development'
-export const isFirefox = process.env.EXTENSION === 'firefox'
+export const targetBrowser = process.env.EXTENSION || 'chrome'
+export const isFirefox = targetBrowser === 'firefox'
 
 export function log(name: string, message: string) {
   console.log(black(bgCyan(` ${name} `)), message)

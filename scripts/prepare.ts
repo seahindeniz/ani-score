@@ -1,6 +1,5 @@
 import chokidar from 'chokidar'
 import fs from 'fs-extra'
-import { getManifest } from './manifest'
 import { isDev, log, port, r } from './utils'
 
 async function stubIndexHtml() {
@@ -17,6 +16,8 @@ async function stubIndexHtml() {
 }
 
 async function writeManifest() {
+  const { getManifest } = await import('./manifest')
+
   await fs.writeJSON(r('extension/manifest.json'), await getManifest(), { spaces: 2 })
   log('PRE', 'write manifest.json')
 }
@@ -29,7 +30,7 @@ if (isDev) {
     .on('change', () => {
       stubIndexHtml()
     })
-  chokidar.watch([r('src/manifest.ts'), r('package.json')])
+  chokidar.watch([r('scripts/manifest.ts'), r('package.json')])
     .on('change', () => {
       writeManifest()
     })

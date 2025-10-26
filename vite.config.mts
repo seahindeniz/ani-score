@@ -10,9 +10,13 @@ import Icons from 'unplugin-icons/vite'
 import { defineConfig, mergeConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
-import { isDev, mode, port, r } from './scripts/utils'
+import { isDev, isFirefox, mode, port, r, targetBrowser } from './scripts/utils'
 
 loadEnv()
+
+const ANILIST_TOKEN_URL = isFirefox
+  ? process.env.ANILIST_TOKEN_URL_FIREFOX
+  : process.env.ANILIST_TOKEN_URL
 
 export const sharedConfig: UserConfig = {
   root: r('src'),
@@ -28,7 +32,8 @@ export const sharedConfig: UserConfig = {
     // https://github.com/vitejs/vite/issues/9320
     // https://github.com/vitejs/vite/issues/9186
     'process.env.NODE_ENV': JSON.stringify(mode),
-    'ANILIST_TOKEN_URL': JSON.stringify(process.env.ANILIST_TOKEN_URL ?? ''),
+    'ANILIST_TOKEN_URL': JSON.stringify(ANILIST_TOKEN_URL ?? ''),
+    '__TARGET_BROWSER__': JSON.stringify(targetBrowser),
 
   },
   plugins: [
@@ -98,7 +103,7 @@ export function sharedDOMConfig(props: { icons?: boolean, unoCSS?: boolean } = {
 }
 
 export default defineConfig(({ command }) => mergeConfig(sharedDOMConfig(), {
-  base: command === 'serve' ? `http://localhost:${port}/` : '/dist/',
+  base: command === 'serve' && !isFirefox ? `http://localhost:${port}/` : '/dist/',
   server: {
     port,
     hmr: {
