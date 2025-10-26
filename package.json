@@ -2,7 +2,7 @@
   "name": "ani-score",
   "displayName": "AniScore",
   "type": "module",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "private": true,
   "packageManager": "pnpm@9.7.1",
   "description": "Instantly see anime ratings from AniList on your favorite streaming sites",
