@@ -13,7 +13,7 @@ if (import.meta.hot) {
 listenMessages()
 fetchCSS()
 
-if (chrome.sidePanel) {
+if (__TARGET_BROWSER__ === 'chrome') {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
     .catch((error: unknown) => logger.error(error))
 }

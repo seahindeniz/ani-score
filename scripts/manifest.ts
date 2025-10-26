@@ -43,10 +43,10 @@ export async function getManifest() {
     name: pkg.displayName || pkg.name,
     version: pkg.version,
     description: pkg.description,
-    action: {
-      default_icon: 'assets/icon-512.png',
-      default_popup: 'dist/popup/index.html',
-    },
+    // action: {
+    //   default_icon: 'assets/icon-512.png',
+    //   default_popup: 'dist/popup/index.html',
+    // },
     // options_ui: {
     //   page: 'dist/options/index.html',
     //   open_in_tab: true,
@@ -67,7 +67,7 @@ export async function getManifest() {
     },
     permissions: [
       'storage',
-      'sidePanel',
+      ...isFirefox ? [] : ['sidePanel'],
       'notifications',
       'unlimitedStorage',
     ],
@@ -92,17 +92,25 @@ export async function getManifest() {
       },
     ],
     content_security_policy: {
-      extension_pages: isDev
+      extension_pages: isDev && !isFirefox
         // this is required on dev for Vite script to load
-        ? `script-src \'self\' http://localhost:${port}; object-src \'self\'`
-        : 'script-src \'self\'; object-src \'self\'',
+        ? `script-src 'self' http://localhost:${port}; object-src 'self'`
+        : `script-src 'self'; object-src 'self'`,
     },
   }
 
   if (isFirefox) {
-    manifest.sidebar_action = {
-      default_panel: 'dist/sidepanel/index.html',
-    }
+    Object.assign(manifest, {
+      sidebar_action: {
+        default_panel: 'dist/sidepanel/index.html',
+      },
+      browser_specific_settings: {
+        gecko: {
+          id: `@${pkg.name}.${pkg.author.name}`,
+          strict_min_version: '112.0',
+        },
+      },
+    })
   }
   else {
     Object.assign(manifest, {
