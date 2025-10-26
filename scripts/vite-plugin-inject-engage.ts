@@ -1,7 +1,7 @@
 import type { Plugin } from 'vite'
 import glob from 'fast-glob'
 import { minimatch } from 'minimatch'
-import { getContentScriptScope } from '~/utils/contentScripts'
+import { getContentScriptScope } from '../src/utils/contentScripts'
 
 export function injectEngageWithSite(include: string[]): Plugin {
   return {

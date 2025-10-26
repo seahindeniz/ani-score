@@ -32,7 +32,7 @@
     "test": "vitest test",
     "test:e2e": "playwright test",
     "postinstall": "simple-git-hooks",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --project tsconfig.node.json && tsc --noEmit --project tsconfig.app.json",
     "codegen": "graphql-codegen"
   },
   "dependencies": {

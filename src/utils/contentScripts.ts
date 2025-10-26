@@ -22,7 +22,7 @@ export function getContentScriptScope(entry: glob.Entry) {
   }
 }
 
-const messageGatewayPath = 'src/contentScripts/messageGateway.ts'
+const messageGatewayPath = './src/contentScripts/messageGateway.ts'
 
 export const contentScriptPaths = [
   ...glob.sync(messageGatewayPath, { absolute: true, stats: true }),

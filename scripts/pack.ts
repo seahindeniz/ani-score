@@ -2,13 +2,13 @@ import { execSync } from 'node:child_process'
 import path from 'node:path'
 import process from 'node:process'
 import fs from 'fs-extra'
+import { outputDirectory } from './constants'
 import { argv, log, r } from './utils'
 
 const wantAll = Boolean(argv.pack) || (!argv.zip && !argv.crx && !argv.xpi)
 const wantZip = wantAll || Boolean(argv.zip)
 const wantCrx = wantAll || Boolean(argv.crx)
 const wantXpi = wantAll || Boolean(argv.xpi)
-const outputDirectory = './release'
 const version = process.env.npm_package_version
 
 if (!version) {

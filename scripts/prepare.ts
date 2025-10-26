@@ -1,7 +1,7 @@
-import { execSync } from 'node:child_process'
 import chokidar from 'chokidar'
 import fs from 'fs-extra'
-import { isDev, log, mode, port, r } from './utils'
+import { getManifest } from './manifest'
+import { isDev, log, port, r } from './utils'
 
 async function stubIndexHtml() {
   const views = ['options', 'popup', 'sidepanel']
@@ -16,8 +16,9 @@ async function stubIndexHtml() {
   }
 }
 
-function writeManifest() {
-  execSync(`npx tsx ./scripts/manifest.ts --mode ${mode}`, { stdio: 'inherit' })
+async function writeManifest() {
+  await fs.writeJSON(r('extension/manifest.json'), await getManifest(), { spaces: 2 })
+  log('PRE', 'write manifest.json')
 }
 
 writeManifest()
