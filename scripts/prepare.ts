@@ -1,3 +1,5 @@
+import { execSync } from 'node:child_process'
+import process from 'node:process'
 import chokidar from 'chokidar'
 import fs from 'fs-extra'
 import { isDev, log, port, r } from './utils'
@@ -16,10 +18,7 @@ async function stubIndexHtml() {
 }
 
 async function writeManifest() {
-  const { getManifest } = await import('./manifest')
-
-  await fs.writeJSON(r('extension/manifest.json'), await getManifest(), { spaces: 2 })
-  log('PRE', 'write manifest.json')
+  execSync(`npx tsx scripts/manifest --writeManifest`, { stdio: 'inherit', env: process.env })
 }
 
 writeManifest()
