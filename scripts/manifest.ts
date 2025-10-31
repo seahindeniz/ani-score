@@ -2,7 +2,7 @@ import type { Manifest } from 'webextension-polyfill'
 import type PkgType from '../package.json'
 import { join } from 'node:path'
 import fs from 'fs-extra'
-import { isDev, isFirefox, port, r } from '../scripts/utils'
+import { argv, isDev, isFirefox, log, port, r } from '../scripts/utils'
 import { contentScriptPaths } from '../src/utils/contentScripts'
 
 export async function getManifest() {
@@ -43,10 +43,10 @@ export async function getManifest() {
     name: pkg.displayName || pkg.name,
     version: pkg.version,
     description: pkg.description,
-    // action: {
-    //   default_icon: 'assets/icon-512.png',
-    //   default_popup: 'dist/popup/index.html',
-    // },
+    action: {
+      default_icon: 'assets/icon-512.png',
+      // default_popup: 'dist/popup/index.html',
+    },
     // options_ui: {
     //   page: 'dist/options/index.html',
     //   open_in_tab: true,
@@ -130,4 +130,11 @@ export async function getManifest() {
   }
 
   return manifest
+}
+
+if (argv.writeManifest) {
+  getManifest().then(async (manifest) => {
+    await fs.writeJSON(r('extension/manifest.json'), manifest, { spaces: 2 })
+    log('PRE', 'Manifest written to extension/manifest.json')
+  })
 }

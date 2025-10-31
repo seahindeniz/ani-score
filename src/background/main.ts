@@ -1,4 +1,5 @@
 import { logger } from '~/utils/logger'
+import { connectToWS } from './logic/connectToWS'
 import { fetchCSS } from './logic/fetchCSS'
 import { listenMessages } from './logic/message'
 
@@ -12,6 +13,7 @@ if (import.meta.hot) {
 
 listenMessages()
 fetchCSS()
+connectToWS()
 
 if (__TARGET_BROWSER__ === 'chrome') {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
