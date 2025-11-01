@@ -26,7 +26,7 @@ export const ColorPickerRow: Component<Props> = (props) => {
               value={props.name}
               type="text"
               placeholder="Enter tag name"
-              onInput={e => (props.updateColor({ name: e.currentTarget.value }))}
+              onInput={e => (props.updateColor({ name: e.currentTarget.value.toLowerCase() }))}
             />
           </TextField>
         )}
