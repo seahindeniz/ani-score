@@ -216,7 +216,7 @@ export const CardDetail: Component<Props> = (props) => {
               <AntDesignTagsFilled />
               <For each={details()!.tags!.slice(0, 5)}>
                 {({ name }) => (
-                  <div style={{ color: tags()[name] }}>
+                  <div style={{ color: tags()[name.toLowerCase()] }}>
                     {name}
                   </div>
                 )}

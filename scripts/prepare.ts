@@ -2,7 +2,7 @@ import { execSync } from 'node:child_process'
 import process from 'node:process'
 import chokidar from 'chokidar'
 import fs from 'fs-extra'
-import { isDev, log, port, r } from './utils'
+import { isDev, log, mode, port, r } from './utils'
 
 async function stubIndexHtml() {
   const views = ['options', 'popup', 'sidepanel']
@@ -18,7 +18,7 @@ async function stubIndexHtml() {
 }
 
 async function writeManifest() {
-  execSync(`npx tsx scripts/manifest --writeManifest`, { stdio: 'inherit', env: process.env })
+  execSync(`npx tsx scripts/manifest --writeManifest --mode ${mode}`, { stdio: 'inherit', env: process.env })
 }
 
 writeManifest()
