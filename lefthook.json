@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/evilmartians/lefthook/master/schema.json",
+  "assert_lefthook_installed": true,
+  "commit-msg": {
+    "commands": {
+      "lint commit message": {
+        "run": "pnpm commitlint --edit {1}"
+      }
+    }
+  },
+  "pre-commit": {
+    "parallel": true,
+    "commands": {
+      "typecheck": {
+        "run": "pnpm typecheck"
+      },
+      "lint": {
+        "run": "pnpm lint"
+      },
+      "test": {
+        "skip": true,
+        "run": "pnpm test"
+      }
+    }
+  }
+}
