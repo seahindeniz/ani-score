@@ -28,4 +28,11 @@ export default {
     commitMessage: 'chore(release): v${version} [skip ci]',
     requireCleanWorkingDir: false,
   },
+  plugins: {
+    '@release-it/conventional-changelog': {
+      preset: {
+        name: 'conventionalcommits',
+      },
+    },
+  },
 } satisfies Config
