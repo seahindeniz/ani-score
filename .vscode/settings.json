@@ -17,5 +17,7 @@
   "files.associations": {
     "*.css": "postcss"
   },
-  "svg.preview.background": "custom"
+  "svg.preview.background": "custom",
+  "typescript.preferences.quoteStyle": "single",
+  "javascript.preferences.quoteStyle": "single"
 }

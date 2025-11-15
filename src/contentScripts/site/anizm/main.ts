@@ -5,6 +5,7 @@ import './global.scss'
 const logger = createLogger('Anizm')
 
 export const config: SiteBaseConfig = {
+  theme: 'dark',
   listingPages: [
     {
       isValidPage: () => {

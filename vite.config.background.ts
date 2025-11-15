@@ -2,7 +2,7 @@ import type { UserConfig } from 'vite'
 import { defineConfig, mergeConfig } from 'vite'
 import packageJson from './package.json'
 import { r } from './scripts/utils'
-import { sharedConfig } from './vite.config.mjs'
+import { sharedConfig } from './vite.config.js'
 
 // bundling the content script using Vite
 export default defineConfig(({ mode }) => mergeConfig(sharedConfig, {
