@@ -8,4 +8,10 @@ export default antfu(
     unocss: true,
     solid: true,
   },
+  {
+    files: ['src/components/ui/*'],
+    rules: {
+      'ts/no-use-before-define': 'off',
+    },
+  },
 )

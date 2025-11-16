@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process'
 import process from 'node:process'
-import chokidar from 'chokidar'
+import { watch } from 'chokidar'
 import fs from 'fs-extra'
 import { isDev, log, mode, port, r } from './utils'
 
@@ -21,16 +21,20 @@ async function writeManifest() {
   execSync(`npx tsx scripts/manifest --writeManifest --mode ${mode}`, { stdio: 'inherit', env: process.env })
 }
 
+async function generateGraphQLTypes() {
+  log('PRE', `Generating GraphQL types`)
+
+  execSync(`pnpm run codegen`, { stdio: 'inherit', env: process.env })
+}
+
+generateGraphQLTypes()
 writeManifest()
+
+console.log('isDev', isDev)
 
 if (isDev) {
   stubIndexHtml()
-  chokidar.watch(r('src/**/*.html'))
-    .on('change', () => {
-      stubIndexHtml()
-    })
-  chokidar.watch([r('scripts/manifest.ts'), r('package.json')])
-    .on('change', () => {
-      writeManifest()
-    })
+  watch(r('src/**/*.html')).on('change', stubIndexHtml)
+  watch([r('scripts/manifest.ts'), r('package.json')]).on('change', writeManifest)
+  watch(r('src/background/gql-queries/**/*.ts'), { persistent: true }).on('change', generateGraphQLTypes)
 }

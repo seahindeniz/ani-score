@@ -6,30 +6,42 @@ const isDarkQuery = () => window.matchMedia('(prefers-color-scheme: dark)')
 const determineTheme = (matches: boolean) => matches ? 'dark' : 'light'
 const getSystemTheme = () => determineTheme(isDarkQuery().matches)
 
-function applyTheme(themeValue: ReturnType<ReturnType<typeof useThemeStore>['data']>) {
-  document.documentElement.setAttribute(
-    'data-kb-theme',
-    themeValue === 'system' ? getSystemTheme() : themeValue,
-  )
-}
+export async function setTheme(
+  root = document.documentElement,
+  /**
+   * @default 'system'
+   */
+  theme?: 'system' | 'light' | 'dark',
+) {
+  const themeStore = useThemeStore()
 
-export async function setTheme() {
-  const theme = useThemeStore()
+  await themeStore.dataReady
 
-  await theme.dataReady
-
-  const storedTheme = theme.data()
+  const storedTheme = themeStore.data()
 
   if (!storedTheme) {
-    theme.setData('system')
+    themeStore.setData('system')
   }
 
-  createEffect(on(theme.data, (currentTheme) => {
+  const applyTheme = (themeValue: ReturnType<ReturnType<typeof useThemeStore>['data']>) => {
+    root.setAttribute(
+      'data-kb-theme',
+      themeValue === 'system' ? getSystemTheme() : themeValue,
+    )
+  }
+
+  if (theme && theme !== 'system') {
+    applyTheme(theme)
+
+    return
+  }
+
+  createEffect(on(themeStore.data, (currentTheme) => {
     applyTheme(currentTheme)
   }))
 
   isDarkQuery().addEventListener('change', debounce((event) => {
-    const currentTheme = theme.data()
+    const currentTheme = themeStore.data()
 
     if (currentTheme === 'system') {
       applyTheme(determineTheme(event.matches))

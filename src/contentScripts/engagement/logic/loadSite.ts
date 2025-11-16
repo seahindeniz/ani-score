@@ -1,17 +1,28 @@
 import type { InternalSiteBaseConfig } from '~/contentScripts/site/base'
 import { debounce, leading } from '@solid-primitives/scheduled'
-import { createStyleLink, customizeCards } from './customizeCards'
+import { useRefStore } from '../store/refStore'
+import { createEncapsulatedContainer } from './createEncapsulatedContainer'
+import { createStyleLink } from './createStyleLink'
+import { customizeCards } from './customizeCards'
 
 export async function initSiteLogic(config: InternalSiteBaseConfig) {
-  let injectGlobalStyle = () => {
-    injectGlobalStyle = () => {}
+  let injectGlobals = () => {
+    injectGlobals = () => {}
 
-    document.body.appendChild(createStyleLink(config.scope))
+    const refStore = useRefStore()
+    const siteSpecificGlobalStyle = createStyleLink(config.scope)
+
+    refStore.portalRoot = createEncapsulatedContainer(config)
+
+    document.body.append(
+      siteSpecificGlobalStyle,
+      refStore.portalRoot.container,
+    )
   }
 
   config.listingPages.forEach((page) => {
     if (page.isValidPage()) {
-      injectGlobalStyle()
+      injectGlobals()
 
       const disposables = [] as (() => void)[]
       const runListingPageLogic = leading(debounce, () => {

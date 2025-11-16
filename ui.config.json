@@ -6,6 +6,7 @@
     "config": "tailwind.config.cjs",
     "prefix": ""
   },
+  "componentDir": "src/components/ui",
   "aliases": {
     "components": "~/components/ui",
     "utils": "~/utils"
