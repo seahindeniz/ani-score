@@ -169,7 +169,7 @@ export const Popover: ParentComponent<Props> = (props) => {
         <Portal mount={propsWithDefaults.portTo}>
           <div
             ref={element => setPopoverRef(element)}
-            class={clsx('absolute left-0 top-0 z-50 w-max')}
+            class={clsx('absolute left-[-100vw] top-[-100vh] z-50 w-max')}
             style={style()}
           >
             {propsWithDefaults.children}

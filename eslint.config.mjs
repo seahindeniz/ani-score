@@ -4,6 +4,7 @@ export default antfu(
   {
     ignores: [
       'src/gql',
+      'src/components/ui/*',
     ],
     unocss: true,
     solid: true,

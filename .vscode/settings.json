@@ -19,5 +19,8 @@
   },
   "svg.preview.background": "custom",
   "typescript.preferences.quoteStyle": "single",
-  "javascript.preferences.quoteStyle": "single"
+  "javascript.preferences.quoteStyle": "single",
+  "[html]": {
+    "editor.defaultFormatter": "vscode.html-language-features"
+  }
 }

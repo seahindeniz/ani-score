@@ -105,3 +105,53 @@ query BatchAnimeTemplate {
   }
 }
 `)
+
+export const makeMediaFavoriteQuery = graphql(/* GraphQL */ `
+mutation MakeMediaFavorite (
+  $animeId: Int
+  $mangaId: Int
+  $characterId: Int
+  $staffId: Int
+  $studioId: Int
+) {
+  ToggleFavourite(
+    animeId: $animeId
+    mangaId: $mangaId
+    characterId: $characterId
+    staffId: $staffId
+    studioId: $studioId
+  ) {
+    anime {
+      pageInfo {
+        total
+      }
+    }
+    manga {
+      pageInfo {
+        total
+      }
+    }
+    characters {
+      pageInfo {
+        total
+      }
+    }
+    staff {
+      pageInfo {
+        total
+      }
+    }
+    studios {
+      pageInfo {
+        total
+      }
+    }
+  }
+}
+`)
+
+export const genreCollectionQuery = graphql(/* GraphQL */ `
+  query GenreCollection {
+    GenreCollection
+  }
+`)

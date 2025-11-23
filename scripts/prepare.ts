@@ -30,8 +30,6 @@ async function generateGraphQLTypes() {
 generateGraphQLTypes()
 writeManifest()
 
-console.log('isDev', isDev)
-
 if (isDev) {
   stubIndexHtml()
   watch(r('src/**/*.html')).on('change', stubIndexHtml)

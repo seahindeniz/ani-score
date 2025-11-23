@@ -3,7 +3,7 @@ import type { FieldNode } from 'graphql'
 import type { EpisodeCard } from '~/contentScripts/site/base'
 import type { BatchAnimeTemplateQuery, Exact } from '~/gql/graphql'
 import { Kind } from 'graphql'
-import { useCacheStore, useTokenStore } from '~/logic'
+import { useTokenStore } from '~/logic'
 import { logger } from '~/utils/logger'
 import { wait } from '~/utils/wait'
 import { anilistClient } from '../client/anilist'
@@ -57,10 +57,14 @@ function generateBatchQuery(animeList: ReturnType<typeof findAnimeListInDatabase
         const [resultsField] = query.selectionSet.selections
 
         if (resultsField.kind === Kind.FIELD) {
-          if (resultsField.arguments && resultsField.arguments[1].value.kind === Kind.INT) {
-            Object.assign(resultsField.arguments[1].value, {
-              value: source === 'withId' ? anilist! : source === 'withIdMal' ? mal! : escapeGraphQLString(title),
-            })
+          if (resultsField.arguments) {
+            const [, idOrSearchArgument] = resultsField.arguments
+
+            if (idOrSearchArgument.value.kind === Kind.INT || idOrSearchArgument.value.kind === Kind.STRING) {
+              Object.assign(idOrSearchArgument.value, {
+                value: source === 'withId' ? anilist! : source === 'withIdMal' ? mal! : escapeGraphQLString(title),
+              })
+            }
           }
 
           if (resultsField.selectionSet) {
@@ -156,7 +160,6 @@ export async function fetchDetails(props: Props) {
   logger.log('Fetching details for titles:', uniqueTitles)
 
   try {
-    const cacheStore = useCacheStore()
     const dbResult = findAnimeListInDatabase(uniqueTitles)
     const queries = generateBatchQuery(dbResult)
     const queryPromises = []
@@ -164,7 +167,7 @@ export async function fetchDetails(props: Props) {
     for (const query of queries) {
       queryPromises.push(
         anilistClient.query<FetchResult>(query, {}, {
-          requestPolicy: cacheStore.data().fetchDetails ? 'cache-first' : 'network-only',
+          requestPolicy: 'network-only',
         }).toPromise(),
       )
 
@@ -172,10 +175,6 @@ export async function fetchDetails(props: Props) {
     }
 
     const results = await Promise.allSettled(queryPromises)
-
-    if (!cacheStore.data().fetchDetails) {
-      cacheStore.setData({ fetchDetails: true })
-    }
 
     for (const result of results) {
       if (result.status === 'rejected' && result.reason.error) {

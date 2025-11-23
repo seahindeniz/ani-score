@@ -180,9 +180,6 @@ importers:
       vite:
         specifier: ^7.1.9
         version: 7.1.9(@types/node@24.6.2)(jiti@2.6.1)(less@4.4.1)(sass@1.93.0)(stylus@0.62.0)(tsx@4.17.0)(yaml@2.8.1)
-      vite-bundle-analyzer:
-        specifier: 1.2.3
-        version: 1.2.3
       vite-plugin-solid:
         specifier: ^2.1.8
         version: 2.11.8(@testing-library/jest-dom@6.8.0)(solid-js@1.9.9)(vite@7.1.9(@types/node@24.6.2)(jiti@2.6.1)(less@4.4.1)(sass@1.93.0)(stylus@0.62.0)(tsx@4.17.0)(yaml@2.8.1))
@@ -6303,10 +6300,6 @@ packages:
 
   validate-npm-package-license@3.0.4:
     resolution: {integrity: sha512-DpKm2Ui/xN7/HQKCtpZxoRWBhZ9Z0kqtygG8XCgNQ8ZlDnxuQmWhj566j8fN4Cu3/JmbhsDo7fcAJq4s9h27Ew==}
-
-  vite-bundle-analyzer@1.2.3:
-    resolution: {integrity: sha512-8nhwDGHWMKKgg6oegAOpDgTT7/yzTVzeYzLF4y8WBJoYu9gO7h29UpHiQnXD2rAvfQzDy5Wqe/Za5cgqhnxi5g==}
-    hasBin: true
 
   vite-node@3.2.4:
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
@@ -13648,8 +13641,6 @@ snapshots:
     dependencies:
       spdx-correct: 3.2.0
       spdx-expression-parse: 3.0.1
-
-  vite-bundle-analyzer@1.2.3: {}
 
   vite-node@3.2.4(@types/node@24.6.2)(jiti@2.6.1)(less@4.4.1)(sass@1.93.0)(stylus@0.62.0)(tsx@4.17.0)(yaml@2.8.1):
     dependencies:

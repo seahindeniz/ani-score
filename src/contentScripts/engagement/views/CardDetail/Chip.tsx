@@ -31,14 +31,21 @@ export function Chip<TagName extends keyof JSX.IntrinsicElements>(props: ParentP
       {...props.attributes}
     >
       <Show when={props.emoji}>
-        <Show when={typeof props.emoji === 'string'} fallback={<>{props.emoji}</>}>
-          <div class="relative inset-0">
-            <Show when={props.loading}>
-              <SvgSpinnersPulseRing class="pointer-events-none absolute left-[-7px] top-[-4px] h-[32px] w-[32px]" />
+        <div classList={{
+          'relative inset-0': !props.loading && typeof props.emoji === 'string',
+        }}
+        >
+          <Show
+            when={!props.loading}
+            fallback={
+              <SvgSpinnersPulseRing class="pointer-events-none relative left-0 top-0 h-[32px] w-[32px]" />
+            }
+          >
+            <Show when={typeof props.emoji === 'string'} fallback={<>{props.emoji}</>}>
+              <span>{props.emoji}</span>
             </Show>
-            <span>{props.emoji}</span>
-          </div>
-        </Show>
+          </Show>
+        </div>
       </Show>
       {props.text}
       {props.children}

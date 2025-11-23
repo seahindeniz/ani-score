@@ -1,4 +1,5 @@
 import type { createEncapsulatedContainer } from '../logic/createEncapsulatedContainer'
+import type { ComponentRef } from '~/@types/utilities'
 import type { Popover } from '~/components/Popover'
 
 const store = {

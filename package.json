@@ -104,7 +104,6 @@
     "unplugin-auto-import": "^20.2.0",
     "unplugin-icons": "^22.4.2",
     "vite": "^7.1.9",
-    "vite-bundle-analyzer": "1.2.3",
     "vite-plugin-solid": "^2.1.8",
     "vitest": "^3.0.0",
     "web-ext": "^8.9.0",

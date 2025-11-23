@@ -2,11 +2,12 @@ import type { Component, FlowComponent, ParentComponent } from 'solid-js'
 import type { EpisodeCard } from '../../../site/base'
 import type { fetchDetails } from '~/background/logic/fetchDetails'
 import clsx from 'clsx'
-import { createMemo, createSignal, For, Match, onMount, Show, Switch } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, Match, on, onMount, Show, Switch } from 'solid-js'
 import AntDesignTagsFilled from '~icons/ant-design/tags-filled'
 import DeviconPlainPlaywright from '~icons/devicon-plain/playwright'
-import LineMdHeartFilled from '~icons/line-md/heart-filled'
 import MdiHeart from '~icons/mdi/heart'
+import MdiHeartMinus from '~icons/mdi/heart-minus'
+import MdiHeartPlusOutline from '~icons/mdi/heart-plus-outline'
 import StreamlineFreehandServerError404NotFound from '~icons/streamline-freehand/server-error-404-not-found'
 import SvgSpinners3DotsMove from '~icons/svg-spinners/3-dots-move'
 import { useSettingsStore } from '~/logic'
@@ -54,6 +55,7 @@ export const CardDetail: Component<Props> = (props) => {
     }
     return acc
   }, {} as Record<string, string>))
+  const [heartHovered, setHeartHovered] = createSignal(false)
   const genreSettings = createMemo(() => Object.values(settingsStore.data().genreColor).reduce((acc, entry) => {
     if (entry.name && entry.color) {
       acc[entry.name] = entry.color
@@ -89,33 +91,46 @@ export const CardDetail: Component<Props> = (props) => {
 
   onMount(() => {
     void props.onRender?.()
-    setFavorite(Boolean(props.store.anime[props.card.title]?.isFavourite))
   })
+
+  createEffect(on(details, (anime) => {
+    if (!anime)
+      return
+
+    setFavorite(Boolean(anime?.isFavourite))
+  }))
 
   return (
     <div
       ref={containerRef}
       class={styles.container}
       classList={{
-        'items-center': details() == null,
+        'items-center': !details(),
       }}
     >
       <Switch fallback={<SvgSpinners3DotsMove />}>
-        <Match when={details() === null}>
+        <Match when={!details()}>
           <div class="flex items-center gap-1">
             <StreamlineFreehandServerError404NotFound class="size-[16px]" />
             Not Found
           </div>
         </Match>
         <Match when={details()}>
-          <div class={clsx(styles.row, 'justify-between')}>
+          <div
+            class={clsx(styles.row, 'justify-between')}
+            onMouseEnter={() => setHeartHovered(true)}
+            onMouseLeave={() => setHeartHovered(false)}
+          >
             <Show when={details()?.favourites != null}>
               <Chip
                 emoji={
                   isFavorite()
-                    ? <LineMdHeartFilled class="text-red-500" />
-                    : <MdiHeart class="text-red-500" />
-
+                    ? (
+                        heartHovered()
+                          ? <MdiHeartMinus class="text-red-500" />
+                          : <MdiHeart class="text-red-500" />
+                      )
+                    : <MdiHeartPlusOutline class="text-red-500" />
                 }
                 class="text-white decoration-none hover:decoration-underline"
                 loading={isMakingFavorite()}

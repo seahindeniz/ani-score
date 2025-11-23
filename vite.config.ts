@@ -8,7 +8,6 @@ import UnoCSS from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import Icons from 'unplugin-icons/vite'
 import { defineConfig, mergeConfig } from 'vite'
-import { analyzer, isCI } from 'vite-bundle-analyzer'
 import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
 import { isDev, isFirefox, mode, port, r, targetBrowser } from './scripts/utils'
@@ -38,12 +37,6 @@ export const sharedConfig: UserConfig = {
 
   },
   plugins: [
-    isCI
-      ? []
-      : [analyzer({
-          analyzerMode: 'static',
-          fileName: `bundle-report-${targetBrowser}-${Date.now()}`,
-        })],
     solid(),
     AutoImport({
       imports: [
