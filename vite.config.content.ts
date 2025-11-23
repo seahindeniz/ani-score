@@ -3,7 +3,7 @@ import { build, mergeConfig } from 'vite'
 import { isDev, mode, r } from './scripts/utils'
 import { injectEngageWithSite } from './scripts/vite-plugin-inject-engage'
 import { contentScriptPaths } from './src/utils/contentScripts'
-import { sharedDOMConfig } from './vite.config.mjs'
+import { sharedDOMConfig } from './vite.config.js'
 
 await Promise.all(contentScriptPaths.map(async (entry) => {
   const base = `dist/contentScripts/${entry.directory}`

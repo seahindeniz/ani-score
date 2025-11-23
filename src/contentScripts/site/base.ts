@@ -1,3 +1,5 @@
+import type { setTheme } from '~/logic/setTheme'
+
 export interface Meta {
   urlPatterns: `*://${string}`[]
 }
@@ -16,6 +18,13 @@ export interface ListingPage {
 
 export interface SiteBaseConfig {
   listingPages: ListingPage[]
+  /**
+   * Normally, AniScore adapts to the system theme by default.
+   * You can override this behavior by specifying a theme here.
+   *
+   * @default 'system'
+   */
+  theme?: Parameters<typeof setTheme>[1]
 }
 
 export interface InternalSiteBaseConfig extends SiteBaseConfig {

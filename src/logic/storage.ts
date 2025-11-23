@@ -6,10 +6,6 @@ export const useThemeStore = createPersistedStore<'light' | 'dark' | 'system'>('
 
 export const useTokenStore = createPersistedStore('token', { anilist: '' })
 
-export const useCacheStore = createPersistedStore('cache', {
-  fetchDetails: true,
-})
-
 export interface ColorEntry {
   name: string
   color: string

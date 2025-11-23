@@ -1,23 +1,8 @@
-import { graphql } from '~/gql'
-import { useCacheStore } from '~/logic'
 import { anilistClient } from '../client/anilist'
-
-const query = graphql(/* GraphQL */ `
-  mutation MakeAnimeFavorite($animeId: Int!) {
-    ToggleFavourite(animeId: $animeId) {
-      anime {
-        pageInfo {
-          total
-        }
-      }
-    }
-  }
-`)
+import { makeMediaFavoriteQuery } from '../gql-queries/anilist'
 
 export function makeAnimeFavorite(animeId: number) {
-  const promise = anilistClient.mutation(query, { animeId }).toPromise()
-
-  useCacheStore().setData({ fetchDetails: false })
+  const promise = anilistClient.mutation(makeMediaFavoriteQuery, { animeId }).toPromise()
 
   return promise
 }

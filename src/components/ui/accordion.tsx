@@ -69,7 +69,7 @@ function AccordionContent<T extends ValidComponent = 'div'>(props: PolymorphicPr
       )}
       {...others}
     >
-      <div class="pb-4 pt-0">{local.children}</div>
+      <div>{local.children}</div>
     </AccordionPrimitive.Content>
   )
 }

@@ -1,12 +1,6 @@
-import { graphql } from '~/gql'
 import { anilistClient } from '../client/anilist'
-
-const query = graphql(/* GraphQL */ `
-  query GenreCollection {
-    GenreCollection
-  }
-`)
+import { genreCollectionQuery } from '../gql-queries/anilist'
 
 export function fetchGenres() {
-  return anilistClient.query(query, {}).toPromise()
+  return anilistClient.query(genreCollectionQuery, {}).toPromise()
 }

@@ -1,67 +1,25 @@
+import type { TypedDocumentNode } from '@urql/core'
+import type { FieldNode } from 'graphql'
 import type { EpisodeCard } from '~/contentScripts/site/base'
-import type { Media } from '~/gql/graphql'
-import { useCacheStore, useTokenStore } from '~/logic'
+import type { BatchAnimeTemplateQuery, Exact } from '~/gql/graphql'
+import { Kind } from 'graphql'
+import { useTokenStore } from '~/logic'
 import { logger } from '~/utils/logger'
 import { wait } from '~/utils/wait'
 import { anilistClient } from '../client/anilist'
+import { batchTemplate, singleAnimeQuery } from '../gql-queries/anilist'
 import { searchAnimeByTitle } from './loadDatabase'
 
 interface Props {
   cards: Pick<EpisodeCard, 'title' | 'episodeNumber'>[]
 }
 
-const maxAnimePerQuery = 14
+const maxAnimePerQuery = 5
 const maxAliasCharacters = 70
-const fields = [
-  'id',
-  'episodes',
-  'favourites',
-  'popularity',
-  'genres',
-  'isFavourite',
-  'description',
-] as const satisfies (keyof Media)[]
 
-const fieldGroups = {
-  title: [
-    'romaji',
-  ],
-  mediaListEntry: [
-    'progress',
-  ],
-  nextAiringEpisode: [
-    'episode',
-  ],
-  tags: [
-    'name',
-    'rank',
-  ],
-  startDate: [
-    'day',
-    'month',
-    'year',
-  ],
-} as const satisfies {
-  [key in keyof Media]?: (NonNullable<Media[key]> extends (infer ArrayItem)[] ? (keyof NonNullable<ArrayItem>)[] : (keyof NonNullable<Media[key]>)[])
-}
+const _inheritType = anilistClient.query(singleAnimeQuery, {})
 
-export type AnimeDetails = Pick<Media, (typeof fields)[number]> & {
-  [Key in keyof typeof fieldGroups]?: NonNullable<Media[Key]> extends (infer ArrayItem)[] ? (
-    (Pick<
-      NonNullable<ArrayItem>,
-      (typeof fieldGroups[Key][number]) extends keyof NonNullable<ArrayItem> ? (typeof fieldGroups[Key][number]) : never
-    >)[]
-  ) : (
-    Pick<
-      NonNullable<Media[Key]>,
-      (typeof fieldGroups[Key][number]) extends keyof NonNullable<Media[Key]> ? (typeof fieldGroups[Key][number]) : never
-    >
-) | null
-}
-
-const mediaFields = `${fields.join('\n  ')}\n${Object.entries(fieldGroups).map(([groupName, groupFields]) => {
-  return `${groupName} {\n    ${groupFields.join('\n    ')}\n  }`
-}).join('\n  ')}`
+export type AnimeDetails = NonNullable<NonNullable<NonNullable<NonNullable<Awaited<typeof _inheritType>['data']>['one_piece']>['results']>[0]>
 
 function createAlias(title: string, index: number): string {
   const cleanTitle = title
@@ -77,47 +35,80 @@ function escapeGraphQLString(str: string): string {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')
 }
 
-function generateBatchQuery(animeList: ReturnType<typeof findAnimeListInDatabase>): string[] {
-  let currentChunk: string[] = []
+function generateBatchQuery(animeList: ReturnType<typeof findAnimeListInDatabase>) {
+  let currentChunk: FieldNode[] = []
   let chunkIndex = 0
-  const chunkLimit = Math.min(Math.ceil(animeList.length / 2), maxAnimePerQuery)
 
   return animeList.reduce((acc, { title, anilist, mal }, index) => {
     const alias = createAlias(title, index)
-    let sourceFilter = ''
+    const source = anilist ? 'withId' : mal ? `withIdMal` : `withSearch`
+    const [batchQueryKeyDefinition] = batchTemplate.definitions
 
-    if (anilist) {
-      sourceFilter += `id: ${anilist}`
-    }
-    else if (mal) {
-      sourceFilter += `idMal: ${mal}`
-    }
+    if (batchQueryKeyDefinition.kind === Kind.OPERATION_DEFINITION) {
+      const template = batchQueryKeyDefinition.selectionSet.selections.find((selection) => {
+        return selection.kind === Kind.FIELD && selection.alias?.value === source
+      }) as FieldNode | undefined
 
-    if (!sourceFilter) {
-      sourceFilter = `search: "${escapeGraphQLString(title).trim()}"`
-    }
+      const query = structuredClone(template)
 
-    const queryPart = `${alias}: Page (perPage: 1) {
-      results: media(type: ANIME, ${sourceFilter}) {
-        ${mediaFields}
-      }
-    }`
+      if (query?.selectionSet) {
+        Object.assign(query.alias!, { value: alias })
 
-    currentChunk.push(queryPart)
+        const [resultsField] = query.selectionSet.selections
 
-    if (currentChunk.length === chunkLimit || index === animeList.length - 1) {
-      const query = `
-        query BatchAnimeSearch${chunkIndex > 0 ? `_${chunkIndex}` : ''} {
-          ${currentChunk.join('\n    ')}
+        if (resultsField.kind === Kind.FIELD) {
+          if (resultsField.arguments) {
+            const [, idOrSearchArgument] = resultsField.arguments
+
+            if (idOrSearchArgument.value.kind === Kind.INT || idOrSearchArgument.value.kind === Kind.STRING) {
+              Object.assign(idOrSearchArgument.value, {
+                value: source === 'withId' ? anilist! : source === 'withIdMal' ? mal! : escapeGraphQLString(title),
+              })
+            }
+          }
+
+          if (resultsField.selectionSet) {
+            const [singleQueryKeyDefinition] = singleAnimeQuery.definitions
+
+            if (singleQueryKeyDefinition.kind === Kind.OPERATION_DEFINITION) {
+              const [singleAnimeAliasKeyField] = singleQueryKeyDefinition.selectionSet.selections
+
+              if (singleAnimeAliasKeyField.kind === Kind.FIELD && singleAnimeAliasKeyField.selectionSet) {
+                const [singleResultsField] = singleAnimeAliasKeyField.selectionSet.selections
+
+                if (singleResultsField.kind === Kind.FIELD)
+                  Object.assign(resultsField.selectionSet, { selections: singleResultsField.selectionSet?.selections })
+              }
+            }
+          }
         }
-      `
-      acc.push(query)
-      currentChunk = []
-      chunkIndex++
+
+        currentChunk.push(query)
+
+        if (currentChunk.length === maxAnimePerQuery || index === animeList.length - 1) {
+          const compiledQuery = structuredClone(batchTemplate)
+          const [batchQueryKeyDefinition] = compiledQuery.definitions
+
+          if (batchQueryKeyDefinition.kind === Kind.OPERATION_DEFINITION) {
+            if (batchQueryKeyDefinition.name) {
+              Object.assign(batchQueryKeyDefinition.name!, { value: `BatchAnimeSearch${chunkIndex}` })
+            }
+
+            batchQueryKeyDefinition.selectionSet.selections = currentChunk
+          }
+
+          acc.push(compiledQuery)
+
+          currentChunk = []
+          chunkIndex++
+        }
+      }
     }
 
     return acc
-  }, [] as string[])
+  }, [] as (TypedDocumentNode<BatchAnimeTemplateQuery, Exact<{
+    [key: string]: never
+  }>>)[])
 }
 
 function removeAllBeforeSlash(url: string): string {
@@ -169,7 +160,6 @@ export async function fetchDetails(props: Props) {
   logger.log('Fetching details for titles:', uniqueTitles)
 
   try {
-    const cacheStore = useCacheStore()
     const dbResult = findAnimeListInDatabase(uniqueTitles)
     const queries = generateBatchQuery(dbResult)
     const queryPromises = []
@@ -177,7 +167,7 @@ export async function fetchDetails(props: Props) {
     for (const query of queries) {
       queryPromises.push(
         anilistClient.query<FetchResult>(query, {}, {
-          requestPolicy: cacheStore.data().fetchDetails ? 'cache-first' : 'network-only',
+          requestPolicy: 'network-only',
         }).toPromise(),
       )
 
@@ -185,10 +175,6 @@ export async function fetchDetails(props: Props) {
     }
 
     const results = await Promise.allSettled(queryPromises)
-
-    if (!cacheStore.data().fetchDetails) {
-      cacheStore.setData({ fetchDetails: true })
-    }
 
     for (const result of results) {
       if (result.status === 'rejected' && result.reason.error) {

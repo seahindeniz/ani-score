@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@floating-ui/dom':
+        specifier: 1.7.4
+        version: 1.7.4
       '@kobalte/core':
         specifier: ^0.13.11
         version: 0.13.11(solid-js@1.9.9)
