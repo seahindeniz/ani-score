@@ -105,11 +105,11 @@ export const CardDetail: Component<Props> = (props) => {
       ref={containerRef}
       class={styles.container}
       classList={{
-        'items-center': !details(),
+        'items-center': details() == null,
       }}
     >
       <Switch fallback={<SvgSpinners3DotsMove />}>
-        <Match when={!details()}>
+        <Match when={details() === null}>
           <div class="flex items-center gap-1">
             <StreamlineFreehandServerError404NotFound class="size-[16px]" />
             Not Found
