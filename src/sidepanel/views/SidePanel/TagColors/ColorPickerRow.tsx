@@ -1,6 +1,6 @@
 import type { Component } from 'solid-js'
 import type { ColorEntry } from '~/logic'
-import { Show } from 'solid-js'
+import { For, Show } from 'solid-js'
 import AntDesignCloseOutlined from '~icons/ant-design/close-outlined'
 import { Avatar, AvatarFallback } from '~/components/ui/avatar'
 import { Button } from '~/components/ui/button'
@@ -31,21 +31,25 @@ export const ColorPickerRow: Component<Props> = (props) => {
           </TextField>
         )}
       >
-        <Select
-          options={props.names!}
-          class="flex-grow-1"
-          placeholder="Select"
-          value={props.name}
-          onChange={value => (props.updateColor({ name: value! }))}
-          itemComponent={props => (
-            <SelectItem item={props.item}>{props.item.rawValue}</SelectItem>
+        <For each={[props.name]}>
+          {name => (
+            <Select
+              options={props.names!}
+              class="flex-grow-1"
+              placeholder="Select"
+              value={name}
+              onChange={value => props.updateColor({ name: value! })}
+              itemComponent={props => (
+                <SelectItem item={props.item}>{props.item.rawValue}</SelectItem>
+              )}
+            >
+              <SelectTrigger>
+                <SelectValue<string>>{state => state.selectedOption()}</SelectValue>
+              </SelectTrigger>
+              <SelectContent />
+            </Select>
           )}
-        >
-          <SelectTrigger>
-            <SelectValue<string>>{state => state.selectedOption()}</SelectValue>
-          </SelectTrigger>
-          <SelectContent />
-        </Select>
+        </For>
       </Show>
       <Avatar>
         <AvatarFallback>

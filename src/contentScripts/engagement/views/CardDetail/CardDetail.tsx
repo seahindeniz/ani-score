@@ -1,5 +1,5 @@
 import type { Component, FlowComponent, ParentComponent } from 'solid-js'
-import type { EpisodeCard } from '../../../site/base'
+import type { EpisodeCard, ListingPage } from '../../../site/base'
 import type { fetchDetails } from '~/background/logic/fetchDetails'
 import clsx from 'clsx'
 import { createEffect, createMemo, createSignal, For, Match, on, onMount, Show, Switch } from 'solid-js'
@@ -37,6 +37,7 @@ const TagContainer: ParentComponent<{
 
 interface Props {
   card: EpisodeCard
+  page: ListingPage
   store: { anime: NonNullable<Awaited<ReturnType<typeof fetchDetails>>> }
   index: number
   onRender?: () => Promise<void>
@@ -65,6 +66,7 @@ export const CardDetail: Component<Props> = (props) => {
 
   const handleFavoriteClick = async (event: MouseEvent) => {
     event.preventDefault()
+    event.stopPropagation()
 
     const id = details()?.id
 
@@ -98,6 +100,12 @@ export const CardDetail: Component<Props> = (props) => {
       return
 
     setFavorite(Boolean(anime?.isFavourite))
+  }))
+
+  createEffect(on(details, (anime) => {
+    const isWatching = Boolean(anime?.mediaListEntry)
+
+    props.page.getShimmeringElement?.(props.card)?.classList.toggle('ani-score-watching', isWatching)
   }))
 
   return (

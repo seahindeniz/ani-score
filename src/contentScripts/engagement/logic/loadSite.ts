@@ -1,5 +1,6 @@
 import type { InternalSiteBaseConfig } from '~/contentScripts/site/base'
 import { debounce, leading } from '@solid-primitives/scheduled'
+import { rootContainerClass } from '~/constants/main'
 import { useRefStore } from '../store/refStore'
 import { createEncapsulatedContainer } from './createEncapsulatedContainer'
 import { createStyleLink } from './createStyleLink'
@@ -13,6 +14,8 @@ export async function initSiteLogic(config: InternalSiteBaseConfig) {
     const siteSpecificGlobalStyle = createStyleLink(config.scope)
 
     refStore.portalRoot = createEncapsulatedContainer(config)
+
+    refStore.portalRoot.container.classList.add(rootContainerClass)
 
     document.body.append(
       siteSpecificGlobalStyle,

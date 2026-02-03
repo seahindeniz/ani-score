@@ -1,5 +1,5 @@
 import type { Component } from 'solid-js'
-import { createMemo, createResource, Index, Show } from 'solid-js'
+import { createMemo, createResource, For, Show } from 'solid-js'
 import LineMdLoadingLoop from '~icons/line-md/loading-loop'
 import { fetchGenres } from '~/background/logic/fetchGenres'
 import { Button } from '~/components/ui/button'
@@ -40,41 +40,45 @@ export const GenreColors: Component = () => {
           )}
         >
           <div class="flex flex-col gap-4">
-            <Index each={Object.entries(settingsStore.data().genreColor)}>
-              {item => (
-                <ColorPickerRow
-                  names={[item()[1].name, ...genres() ?? []]}
-                  name={item()[1].name}
-                  color={item()[1].color}
-                  updateColor={(data) => {
-                    if (Object.keys(data).length === 1 && data.name && data.name === item()[1].name) {
-                      return
-                    }
+            <For each={Object.keys(settingsStore.data().genreColor)}>
+              {(key) => {
+                const entry = () => settingsStore.data().genreColor[key]
 
-                    settingsStore.setData({
-                      ...settingsStore.data(),
-                      genreColor: structuredClone({
-                        ...settingsStore.data().genreColor,
-                        [item()[0]]: {
-                          ...item()[1],
-                          ...data,
-                        },
-                      }),
-                    })
-                  }}
-                  resetColor={() => {
-                    const newGenreColor = { ...settingsStore.data().genreColor }
+                return (
+                  <ColorPickerRow
+                    names={[entry().name, ...genres() ?? []]}
+                    name={entry().name}
+                    color={entry().color}
+                    updateColor={(data) => {
+                      if (Object.keys(data).length === 1 && data.name && data.name === entry().name) {
+                        return
+                      }
 
-                    delete newGenreColor[item()[0]]
+                      settingsStore.setData({
+                        ...settingsStore.data(),
+                        genreColor: structuredClone({
+                          ...settingsStore.data().genreColor,
+                          [key]: {
+                            ...entry(),
+                            ...data,
+                          },
+                        }),
+                      })
+                    }}
+                    resetColor={() => {
+                      const newGenreColor = { ...settingsStore.data().genreColor }
 
-                    settingsStore.setData({
-                      ...settingsStore.data(),
-                      genreColor: newGenreColor,
-                    })
-                  }}
-                />
-              )}
-            </Index>
+                      delete newGenreColor[key]
+
+                      settingsStore.setData({
+                        ...settingsStore.data(),
+                        genreColor: newGenreColor,
+                      })
+                    }}
+                  />
+                )
+              }}
+            </For>
           </div>
           <Button
             onClick={() => {
