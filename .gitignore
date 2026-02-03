@@ -13,3 +13,4 @@ node_modules
 test-results/
 !.gitkeep
 .env
+.claude/settings.local.json

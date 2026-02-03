@@ -44,6 +44,7 @@ export const config: SiteBaseConfig = {
 
         observer.observe(container, { childList: true })
       },
+      getShimmeringElement: card => card.element.querySelector('div.poster'),
     },
   ],
 }

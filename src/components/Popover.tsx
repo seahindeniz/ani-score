@@ -1,12 +1,11 @@
 import type { JSX, ParentComponent } from 'solid-js'
 import { autoUpdate, computePosition, flip, offset, shift } from '@floating-ui/dom'
-import {
-  createGlobalListeners,
-} from '@kobalte/utils'
+import { makeEventListener } from '@solid-primitives/event-listener'
 import { debounce } from '@solid-primitives/scheduled'
 import clsx from 'clsx'
 import { createEffect, createMemo, createSignal, mergeProps, on, onCleanup, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
+import { rootContainerClass } from '~/constants/main'
 import { createExpose } from '~/primitives/createExpose'
 
 interface PopoverRef {
@@ -34,10 +33,10 @@ export const Popover: ParentComponent<Props> = (props) => {
   let openTimeout: number | undefined
   let closeTimeout: number | undefined
   const [popoverRef, setPopoverRef] = createSignal(null as HTMLDivElement | null)
-  const { addGlobalListener, removeGlobalListener } = createGlobalListeners()
   const [style, setStyle] = createSignal<Partial<JSX.CSSProperties>>({})
   let cleanupAutoUpdate: (() => void) | null = null
   const closeEvent = createMemo(() => propsWithDefaults.closeMode === 'click' ? 'click' : 'mousemove')
+  let removeGlobalEventListener: ReturnType<typeof makeEventListener> | null = null
 
   // eslint-disable-next-line solid/reactivity
   const calculatePosition = debounce(async () => {
@@ -90,15 +89,10 @@ export const Popover: ParentComponent<Props> = (props) => {
     closeTimeout = undefined
   }
 
-  function removeGlobalEventListener() {
-    removeGlobalListener(document, 'click', handleGlobalEvent, true)
-    removeGlobalListener(document, 'mousemove', handleGlobalEvent, true)
-  }
-
   function handleGlobalEvent(event: MouseEvent) {
     const target = event.composed ? event.composedPath()[0] as Element : event.target as Element
 
-    if (containerRef.contains(target) || popoverRef()?.contains(target)) {
+    if (containerRef.contains(target) || popoverRef()?.contains(target) || target.classList.contains(rootContainerClass)) {
       return
     }
 
@@ -108,7 +102,7 @@ export const Popover: ParentComponent<Props> = (props) => {
       closeWithDelay()
     }
 
-    removeGlobalEventListener()
+    removeGlobalEventListener?.()
   }
 
   function handleMouseMove() {
@@ -116,7 +110,12 @@ export const Popover: ParentComponent<Props> = (props) => {
       return
     }
 
-    addGlobalListener(document, closeEvent(), handleGlobalEvent, true)
+    removeGlobalEventListener = makeEventListener(
+      document,
+      closeEvent(),
+      handleGlobalEvent,
+      { passive: true, capture: false },
+    )
     cancelClose()
     openWithDelay()
   }
@@ -152,7 +151,7 @@ export const Popover: ParentComponent<Props> = (props) => {
   }))
 
   onCleanup(() => {
-    removeGlobalEventListener()
+    removeGlobalEventListener?.()
     cleanupAutoUpdate?.()
   })
 
@@ -162,7 +161,7 @@ export const Popover: ParentComponent<Props> = (props) => {
 
   return (
     <>
-      <div ref={containerRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+      <div ref={containerRef} on:mousemove={handleMouseMove} on:mouseleave={handleMouseLeave}>
         {propsWithDefaults.trigger}
       </div>
       <Show when={open()}>

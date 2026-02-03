@@ -27,17 +27,21 @@ export const sharedConfig: UserConfig = {
     conditions: ['development', 'browser'],
   },
   define: {
-    '__DEV__': isDev,
-    '__NAME__': JSON.stringify(packageJson.name),
+    __DEV__: isDev,
+    __NAME__: JSON.stringify(packageJson.name),
     // https://github.com/vitejs/vite/issues/9320
     // https://github.com/vitejs/vite/issues/9186
     'process.env.NODE_ENV': JSON.stringify(mode),
-    'ANILIST_TOKEN_URL': JSON.stringify(ANILIST_TOKEN_URL ?? ''),
-    '__TARGET_BROWSER__': JSON.stringify(targetBrowser),
+    ANILIST_TOKEN_URL: JSON.stringify(ANILIST_TOKEN_URL ?? ''),
+    __TARGET_BROWSER__: JSON.stringify(targetBrowser),
 
   },
   plugins: [
-    solid(),
+    solid({
+      solid: {
+        delegateEvents: false,
+      },
+    }),
     AutoImport({
       imports: [
         {

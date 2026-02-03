@@ -5,7 +5,7 @@ import { createStyleLink } from './createStyleLink'
 export function createEncapsulatedContainer(siteConfig: SiteBaseConfig) {
   const container = document.createElement('div')
   const root = document.createElement('div')
-  const shadowDOM = container.attachShadow?.({ mode: __DEV__ ? 'open' : 'closed' }) || container
+  const shadowDOM = container.attachShadow?.({ mode: 'closed' }) || container
 
   container.className = __NAME__
 

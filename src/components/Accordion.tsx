@@ -147,7 +147,7 @@ export const AccordionItem: Component<AccordionItemProps> = (props) => {
         role="region"
         style={{
           '--kb-accordion-content-height': `${height()}px`,
-          'height': isExpanded() ? 'var(--kb-accordion-content-height)' : '0',
+          height: isExpanded() ? 'var(--kb-accordion-content-height)' : '0',
         }}
         class="overflow-hidden text-sm transition-all data-[expanded]:animate-accordion-down data-[closed]:animate-accordion-up"
       >

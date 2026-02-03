@@ -13,8 +13,8 @@ export const anilistClient = new Client({
     return fetch(input, {
       ...init,
       headers: {
-        'Authorization': `Bearer ${tokenStore.data().anilist}`,
-        'Accept': 'application/json',
+        Authorization: `Bearer ${tokenStore.data().anilist}`,
+        Accept: 'application/json',
         'Content-Type': 'application/json',
         ...init?.headers,
       },

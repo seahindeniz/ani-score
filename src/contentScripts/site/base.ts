@@ -14,6 +14,10 @@ export interface ListingPage {
   isValidPage: () => boolean
   episodeCards: () => EpisodeCard[]
   reInit?: (next: () => void) => void
+  /**
+   * Element within the episode card to apply "watching" state styles to.
+   */
+  getShimmeringElement?: (card: EpisodeCard) => HTMLElement | null
 }
 
 export interface SiteBaseConfig {

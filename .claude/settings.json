@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "Read(//c/Users/Sahin/.claude/**)",
+      "WebFetch(domain:api.github.com)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "ccstatusline",
+    "padding": 0
+  }
+}
