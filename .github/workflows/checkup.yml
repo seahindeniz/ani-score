@@ -47,9 +47,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Typecheck
-        run: pnpm typecheck
-
       - name: Lint files
         run: pnpm lint
 

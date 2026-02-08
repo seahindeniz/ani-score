@@ -62,7 +62,7 @@ jobs:
 
       - name: Release
         if: github.ref == 'refs/heads/main'
-        run: pnpm release-it
+        run: pnpm run release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           ANILIST_TOKEN_URL: ${{ vars.ANILIST_TOKEN_URL }}

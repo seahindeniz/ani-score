@@ -1,0 +1,24 @@
+/* Load Figtree on-demand (not preloaded) for code blocks */
+@import "@fontsource-variable/figtree";
+
+:root {
+	--sb-active-link-color: hsl(200, 98%, 35%);
+	--sb-font-mono: "Figtree Variable", Menlo, Consolas, monospace;
+}
+
+/* Header logo sizing */
+header a:first-child > img {
+	width: 28px;
+	height: 28px;
+}
+
+/* Footer logo sizing */
+footer > div:first-child > img {
+	width: 36px;
+	height: 36px;
+}
+
+/* Hero image: set explicit aspect-ratio to prevent layout shift (CLS) */
+main article img[src="/logo.svg"] {
+	aspect-ratio: 1 / 1;
+}
