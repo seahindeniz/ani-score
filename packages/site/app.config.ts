@@ -46,7 +46,7 @@ export default defineConfig(
 			lang: "en",
 			editPath:
 				"https://github.com/seahindeniz/ani-score/edit/main/:path",
-			lastUpdated: false,
+			lastUpdated: { dateStyle: "medium" },
 			themeConfig: {
 				fonts: {
 					jetbrainsMono: false,

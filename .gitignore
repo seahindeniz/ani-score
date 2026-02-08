@@ -15,5 +15,5 @@ node_modules
 test-results/
 !.gitkeep
 .env
-.claude/settings.local.json
+**/.claude/settings.local.json
 *.timestamp_*.js
