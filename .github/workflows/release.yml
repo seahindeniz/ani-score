@@ -6,6 +6,11 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 concurrency:
   group: release-${{ github.event.pull_request.number || github.ref }}
 
@@ -14,6 +19,20 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
     uses: ./.github/workflows/checkup.yml
     secrets: inherit
+
+  changes:
+    if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    outputs:
+      site: ${{ steps.filter.outputs.site }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            site:
+              - 'packages/site/**'
 
   release:
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
@@ -68,3 +87,47 @@ jobs:
           ANILIST_TOKEN_URL: ${{ vars.ANILIST_TOKEN_URL }}
           WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
           WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
+
+  build-site:
+    if: ${{ needs.changes.outputs.site == 'true' }}
+    needs: [checkup, changes]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Use NodeJS
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build site
+        run: pnpm --filter @ani-score/site build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/site/.output/public
+
+  deploy-site:
+    needs: build-site
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-site
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
