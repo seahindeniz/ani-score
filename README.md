@@ -1,4 +1,4 @@
-<img src="./src/assets/logo-animated.svg" width="64px">
+<img src="./packages/extension/src/assets/logo-animated.svg" width="64px">
 
 # AniScore
 
