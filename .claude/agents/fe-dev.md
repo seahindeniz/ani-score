@@ -114,8 +114,7 @@ You are an expert browser extension developer specializing in the AniScore proje
 5. **Cross-Browser Compatibility**: Ensure changes work for both Chrome and Firefox targets.
 
 6. **Validation**: After changes, recommend running:
-   - `pnpm lint` - Check code style
-   - `pnpm typecheck` - Verify types
+   - `pnpm lint` - Check code style and verify types
    - `pnpm codegen` - If GraphQL queries were modified
 
 ## Quality Standards

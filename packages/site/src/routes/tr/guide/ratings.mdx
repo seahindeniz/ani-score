@@ -1,0 +1,27 @@
+---
+title: Puanlama ve Detaylar
+---
+
+# {frontmatter.title}
+
+AniScore, AniList'ten zengin anime meta verilerini doğrudan izleme sitesi kartlarında gösterir.
+
+## Neler Görüntülenir?
+
+### Puanlar ve Popülerlik
+
+Her anime kartında AniList topluluk puanı ve popülerlik verileri gösterilir. Trend animeler, bu sezon neyin popüler olduğunu hızlıca fark edebilmeniz için özel bir göstergeyle vurgulanır.
+
+### Türler
+
+Tür etiketleri puanın altında görünür ve animenin kategorileri hakkında anında bir genel bakış sunar. Yan panel ayarlarından her tür etiketinin rengini özelleştirebilirsiniz.
+
+### Etiketler
+
+AniList'in detaylı içerik etiketleri (anime başına 5'e kadar) de görüntülenir. Türler gibi etiket renkleri de tamamen özelleştirilebilir.
+
+## Veri Kaynağı
+
+Tüm veriler [AniList GraphQL API](https://anilist.gitbook.io/anilist-apiv2-docs/)'sinden gelir. AniScore, bulanık başlık eşleştirmesi için [manami-project](https://github.com/manami-project/anime-offline-database)'ten çevrimdışı bir anime veritabanı kullanır, ardından AniList'ten detaylı bilgileri çeker.
+
+Bu iki adımlı yaklaşım, izleme siteleri farklı başlık formatları veya yazım biçimleri kullansa bile doğru eşleştirme yapılmasını sağlar.

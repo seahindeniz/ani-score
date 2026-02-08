@@ -1,0 +1,27 @@
+---
+title: Ratings & Details
+---
+
+# {frontmatter.title}
+
+AniScore displays rich anime metadata from AniList directly on streaming site cards.
+
+## What's Displayed
+
+### Scores & Popularity
+
+Each anime card shows the AniList community score and popularity data. Trending anime are highlighted with a special indicator so you can quickly spot what's hot this season.
+
+### Genres
+
+Genre labels appear below the score, giving you an instant overview of the anime's categories. You can customize the color of each genre label through the side panel settings.
+
+### Tags
+
+AniList's detailed content tags (up to 5 per anime) are also displayed. Like genres, tag colors are fully customizable.
+
+## Data Source
+
+All data comes from the [AniList GraphQL API](https://anilist.gitbook.io/anilist-apiv2-docs/). AniScore uses an offline anime database from the [manami-project](https://github.com/manami-project/anime-offline-database) for fuzzy title matching, then fetches detailed information from AniList.
+
+This two-step approach ensures accurate matching even when streaming sites use different title formats or romanizations.

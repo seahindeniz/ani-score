@@ -8,12 +8,9 @@
       }
     }
   },
-  "pre-commit": {
+  "pre-push": {
     "parallel": true,
     "commands": {
-      "typecheck": {
-        "run": "pnpm typecheck"
-      },
       "lint": {
         "run": "pnpm lint"
       },

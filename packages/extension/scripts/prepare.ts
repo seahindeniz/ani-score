@@ -18,6 +18,8 @@ async function stubIndexHtml() {
 }
 
 async function writeManifest() {
+  log('PRE', `Writing manifest for ${mode} mode`)
+
   execSync(`npx tsx scripts/manifest --writeManifest --mode ${mode}`, { stdio: 'inherit', env: process.env })
 }
 
