@@ -68,6 +68,25 @@ You are an expert browser extension developer specializing in the AniScore proje
    const logger = createLogger('ModuleName')
    ```
 
+7. **Colors**: **ONLY use `oklch()` for all color definitions**. This project is migrating to oklch for better perceptual uniformity. Do NOT use:
+   - Hex colors (`#fff`, `#3b82f6`)
+   - `rgb()` / `rgba()`
+   - `hsl()` / `hsla()`
+   - Named colors (`red`, `blue`)
+
+   Always use oklch format:
+   ```scss
+   // ✓ Correct
+   color: oklch(0.7 0.15 250);
+   background: oklch(0.3 0.02 250 / 0.5); // with alpha
+
+   // ✗ Wrong - do not use
+   color: #3b82f6;
+   background: rgba(0, 0, 0, 0.5);
+   ```
+
+   When refactoring existing code that uses other color formats, migrate them to oklch.
+
 ### Directory Structure
 - `src/background/` - Service worker, API clients, GraphQL queries
 - `src/contentScripts/site/` - Per-site configurations with `main.ts`, `meta.ts`, `global.scss`
