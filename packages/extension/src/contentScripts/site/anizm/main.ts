@@ -1,50 +1,50 @@
 import type { SiteBaseConfig } from '../base'
-import { createLogger } from '~/utils/logger'
 import './global.scss'
-
-const logger = createLogger('Anizm')
 
 export const config: SiteBaseConfig = {
   theme: 'dark',
   listingPages: [
     {
-      isValidPage: () => {
-        return window.location.pathname === '/' || window.location.pathname === '/anime-izle'
-      },
+      isValidPage: () => window.location.pathname === '/yeniler',
       episodeCards: () => {
-        const elements = document.querySelectorAll<HTMLDivElement>('#episodesContent > #episodesMiddle')
+        const elements = document.querySelectorAll<HTMLElement>('.v3-latest-grid > article.v3-episode-card')
 
         return Array.from(elements)
           .map((element) => {
-            const title = element.querySelector('.titleShortened')?.textContent.trim()
-            const episodeNumberText = element.querySelector('.posterAlt')?.textContent.trim()
-            const episodeNumber = episodeNumberText ? Number.parseInt(episodeNumberText.replace('Episode ', '')) : Number.NaN
+            const infoContainer = element.querySelector<HTMLDivElement>('.v3-card-copy')
+            const title = infoContainer?.querySelector('h3')?.textContent.trim()
+            const episodeNumberText = infoContainer?.querySelector('span')?.textContent.trim()
+            const episodeNumber = episodeNumberText ? Number.parseInt(episodeNumberText.replace('. Bölüm ', '')) : Number.NaN
 
             if (!title || episodeNumber == null || Number.isNaN(episodeNumber))
               return undefined
 
-            return { element, title, episodeNumber }
+            return { element, infoContainer, title, episodeNumber }
           })
           .filter(card => card != null)
       },
-      reInit: (next) => {
-        const container = document.querySelector<HTMLDivElement>('#episodesContent')
+      getShimmeringElement: card => card.element.querySelector<HTMLDivElement>('div.v3-poster-frame'),
+    },
+    {
+      isValidPage: () => window.location.pathname === '/',
+      episodeCards: () => {
+        const elements = document.querySelectorAll<HTMLElement>('.v3-poster-rail > :is(article.v3-episode-card, article.v3-series-card)')
 
-        if (!container) {
-          return
-        }
+        return Array.from(elements)
+          .map((element) => {
+            const infoContainer = element.querySelector<HTMLDivElement>('.v3-card-copy')
+            const title = infoContainer?.querySelector('h3')?.textContent.trim()
+            const episodeNumberText = infoContainer?.querySelector('span')?.textContent.trim()
+            const episodeNumber = episodeNumberText ? Number.parseInt(episodeNumberText.replace('. Bölüm ', '')) : Number.NaN
 
-        const observer = new MutationObserver(([mutation]) => {
-          logger.log('Detected DOM changes, re-initializing...')
+            if (!title || episodeNumber == null || Number.isNaN(episodeNumber))
+              return undefined
 
-          if (mutation.addedNodes.length > 0) {
-            next()
-          }
-        })
-
-        observer.observe(container, { childList: true })
+            return { element, infoContainer, title, episodeNumber }
+          })
+          .filter(card => card != null)
       },
-      getShimmeringElement: card => card.element.querySelector('div.poster'),
+      getShimmeringElement: card => card.element.querySelector<HTMLDivElement>('div.v3-poster-frame'),
     },
   ],
 }

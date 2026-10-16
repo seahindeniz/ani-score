@@ -7,13 +7,24 @@ export const useThemeStore = createPersistedStore<'light' | 'dark' | 'system'>('
 export const useTokenStore = createPersistedStore('token', { anilist: '' })
 
 export interface ColorEntry {
+  id: string
   name: string
   color: string
 }
 
+/**
+ * Color settings used to be a record keyed by random UUIDs, but `chrome.storage` returns object keys sorted,
+ * which shuffled the entries. Arrays keep their order, so the record shape is only read for migration.
+ */
+type ColorSettings = ColorEntry[] | Record<string, Omit<ColorEntry, 'id'>>
+
+export function toColorEntries(settings: ColorSettings): ColorEntry[] {
+  return Array.isArray(settings) ? settings : Object.entries(settings).map(([id, entry]) => ({ ...entry, id }))
+}
+
 export const useSettingsStore = createPersistedStore('settings', {
-  genreColor: {} as Record<string, ColorEntry>,
-  tagColor: {} as Record<string, ColorEntry>,
+  genreColor: [] as ColorSettings,
+  tagColor: [] as ColorSettings,
 })
 
 interface AnimeSeason {
@@ -97,6 +108,10 @@ export interface AnimeData {
 
 export const useAnimeDatabaseStore = createPersistedStore('animeDatabase', {
   lastUpdate: '',
+  /**
+   * Name of the database source the stored data came from.
+   */
+  source: '',
   data: '',
 })
 

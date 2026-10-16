@@ -10,7 +10,7 @@ import MdiHeartMinus from '~icons/mdi/heart-minus'
 import MdiHeartPlusOutline from '~icons/mdi/heart-plus-outline'
 import StreamlineFreehandServerError404NotFound from '~icons/streamline-freehand/server-error-404-not-found'
 import SvgSpinners3DotsMove from '~icons/svg-spinners/3-dots-move'
-import { useSettingsStore } from '~/logic'
+import { toColorEntries, useSettingsStore } from '~/logic'
 import { isTrending } from '~/utils/isTrending'
 import { AnimeInfoCard } from './AnimeInfo'
 import styles from './CardDetail.module.scss'
@@ -50,14 +50,14 @@ export const CardDetail: Component<Props> = (props) => {
   const [isFavorite, setFavorite] = createSignal<boolean>(false)
   const [softFavoriteAdditionCount, setSoftFavoriteAdditionCount] = createSignal(0)
   const details = createMemo(() => props.store.anime[props.card.title]!)
-  const tags = createMemo(() => Object.values(settingsStore.data().tagColor).reduce((acc, entry) => {
+  const tags = createMemo(() => toColorEntries(settingsStore.data().tagColor).reduce((acc, entry) => {
     if (entry.name && entry.color) {
       acc[entry.name] = entry.color
     }
     return acc
   }, {} as Record<string, string>))
   const [heartHovered, setHeartHovered] = createSignal(false)
-  const genreSettings = createMemo(() => Object.values(settingsStore.data().genreColor).reduce((acc, entry) => {
+  const genreSettings = createMemo(() => toColorEntries(settingsStore.data().genreColor).reduce((acc, entry) => {
     if (entry.name && entry.color) {
       acc[entry.name] = entry.color
     }

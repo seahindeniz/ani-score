@@ -54,9 +54,9 @@ export const sharedConfig: UserConfig = {
     }),
   ],
   build: {
-    cssMinify: !isDev,
-    minify: !isDev,
-    sourcemap: isDev && 'inline',
+    cssMinify: false,
+    minify: false,
+    sourcemap: 'inline',
   },
   esbuild: {
     minifyIdentifiers: false,

@@ -39,7 +39,7 @@ pnpm build:site       # Production build for the site
 - **Popup/Sidepanel** (`packages/extension/src/popup/`, `packages/extension/src/sidepanel/`): Extension UI components
 
 ### Data Flow
-1. Background script loads anime database from [manami-project/anime-offline-database](https://github.com/manami-project/anime-offline-database) into MiniSearch for fuzzy title matching
+1. Background script loads anime database from [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database), falling back to [athanasso/anime-offline-database](https://github.com/athanasso/anime-offline-database) (both continue the archived manami-project dataset), into MiniSearch for fuzzy title matching
 2. Content scripts detect anime cards on supported sites using site-specific selectors
 3. Title is matched against the database to get AniList ID
 4. Background script queries AniList GraphQL API for ratings/details

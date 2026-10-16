@@ -1,13 +1,14 @@
-#episodesContent {
-  gap: 24px 14px;
+.v3-poster-rail {
+  gap: 30px;
+
+  & > :is(.v3-episode-card, .v3-series-card) {
+    flex-basis: 220px;
+  }
 }
 
-#episodesMiddle {
-  padding: unset;
-
-  .title.titleShortened {
-    padding-top: 4px;
-  }
+.v3-latest-grid  {
+  gap: 30px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
 }
 
 @keyframes ani-score-shimmer {
@@ -27,6 +28,19 @@
       0 0 60px 20px oklch(55% 0.24 294 / 0.25);
     transform: scale(1.012);
   }
+}
+
+// Transparent full-page popunder click-catcher injected by an ad script; it swallows hover events meant for the cards
+#dontfoid {
+  pointer-events: none !important;
+}
+
+// Keep popovers above the fixed `.v3-sidebar` (z-index: 80)
+.ani-score-portal-root {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2147483646;
 }
 
 .ani-score-watching {

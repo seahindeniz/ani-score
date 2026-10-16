@@ -6,6 +6,7 @@ export interface Meta {
 
 export interface EpisodeCard {
   element: HTMLElement
+  infoContainer: HTMLDivElement | null
   title: string
   episodeNumber: number
 }

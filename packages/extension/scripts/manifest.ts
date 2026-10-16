@@ -73,7 +73,8 @@ export async function getManifest() {
     ],
     host_permissions: [
       ...isDev ? [`http://localhost:${port}/*`] : [],
-      'https://github.com/manami-project/anime-offline-database/*',
+      'https://github.com/cedya77/anime-offline-database/*',
+      'https://github.com/athanasso/anime-offline-database/*',
       'https://release-assets.githubusercontent.com/*',
       'https://graphql.anilist.co/*',
       ...websitePatterns,

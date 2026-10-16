@@ -7,8 +7,33 @@ import { useAnimeDatabaseSearchCacheStore, useAnimeDatabaseStore } from '~/logic
 import { logger } from '~/utils/logger'
 import { wait } from '~/utils/wait'
 
-const DATABASE_URL = 'https://github.com/manami-project/anime-offline-database/releases/download/latest/anime-offline-database-minified.json'
-const metaURL = 'https://github.com/manami-project/anime-offline-database/releases/download/latest/animenewsnetwork-minified.json'
+interface DatabaseSource {
+  name: string
+  databaseURL: string
+  /**
+   * Resolves the source's last update date as `YYYY-MM-DD`.
+   */
+  fetchLastUpdate: () => Promise<string>
+}
+
+/**
+ * Continuations of the archived manami-project/anime-offline-database, in order of preference.
+ */
+const databaseSources: DatabaseSource[] = [
+  {
+    name: 'cedya77/anime-offline-database',
+    databaseURL: 'https://github.com/cedya77/anime-offline-database/releases/download/latest/anime-offline-database-minified.json',
+    // A small file from the same release, so the update check doesn't download the whole database
+    fetchLastUpdate: async () => (await fetchJSON<{ lastUpdate: string }>('https://github.com/cedya77/anime-offline-database/releases/download/latest/animenewsnetwork-minified.json')).lastUpdate,
+  },
+  {
+    name: 'athanasso/anime-offline-database',
+    databaseURL: 'https://github.com/athanasso/anime-offline-database/releases/latest/download/anime-offline-database-minified.json',
+    // No small metadata file is published and its `lastUpdate` is a Unix timestamp, so the release date is used instead
+    fetchLastUpdate: async () => (await fetchJSON<{ published_at: string }>('https://api.github.com/repos/athanasso/anime-offline-database/releases/latest')).published_at.slice(0, 10),
+  },
+]
+
 const animeDatabaseStore = useAnimeDatabaseStore()
 const animeDatabaseSearchCacheStore = useAnimeDatabaseSearchCacheStore()
 
@@ -16,7 +41,7 @@ let deepSearch: MiniSearch<AnimeData>
 
 const getBadgeText = async () => (await browser.action.getBadgeText({ tabId: undefined })).trim()
 
-async function setDeepSearchInstance(props: { data: AnimeData[], lastUpdate: string } | { index: string }) {
+async function setDeepSearchInstance(props: { data: AnimeData[], lastUpdate: string, source: string } | { index: string }) {
   const options = {
     fields: ['title', 'synonyms'],
     storeFields: ['title', 'type', 'sources', 'synonyms'],
@@ -28,8 +53,11 @@ async function setDeepSearchInstance(props: { data: AnimeData[], lastUpdate: str
     await deepSearch.addAllAsync(props.data)
     animeDatabaseStore.setData({
       lastUpdate: props.lastUpdate,
+      source: props.source,
       data: JSON.stringify(deepSearch),
     })
+    // Cached matches point at entries of the replaced database
+    animeDatabaseSearchCacheStore.setData({})
   }
   else {
     deepSearch = await MiniSearch.loadJSONAsync<AnimeData>(props.index, options)
@@ -43,54 +71,75 @@ async function setDeepSearchInstance(props: { data: AnimeData[], lastUpdate: str
   }
 }
 
-async function isDatabaseOutdated(retryCount = 0) {
+class FetchError extends Error {
+  constructor(url: string, readonly response: Response) {
+    super(`Failed to fetch ${url}: ${response.status} ${response.statusText}`)
+  }
+}
+
+async function fetchJSON<T>(url: string) {
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new FetchError(url, response)
+  }
+
+  return await response.json() as T
+}
+
+async function fetchLastUpdate(source: DatabaseSource, retryCount = 0): Promise<string> {
+  let lastUpdate: string
+
   try {
-    if (!animeDatabaseStore.data().lastUpdate) {
-      logger.log('No previous database found.')
+    logger.log(`Fetching metadata from ${source.name} to check for updates...`)
 
-      return true
-    }
-
-    logger.log('Fetching metadata to check for updates...')
-
-    const response = await fetch(metaURL)
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch metadata: ${response.status} ${response.statusText}`)
-    }
-
-    const meta = await response.json() as { lastUpdate: string }
-
-    return new Date(meta.lastUpdate) > new Date(animeDatabaseStore.data().lastUpdate)
+    lastUpdate = await source.fetchLastUpdate()
   }
   catch (error) {
-    if (retryCount < 3) {
+    // 4xx responses (missing file, rate limit) won't recover by retrying
+    const isClientError = error instanceof FetchError && error.response.status >= 400 && error.response.status < 500
+
+    if (retryCount < 3 && !isClientError) {
       logger.warn(`Retrying database update check... (${retryCount + 1}/3)`)
       await wait(1000 * (2 ** retryCount))
 
-      return isDatabaseOutdated(retryCount + 1)
+      return fetchLastUpdate(source, retryCount + 1)
     }
 
-    logger.error('Error checking database update:', error)
-
-    return false
+    throw error
   }
+
+  // An unparsable date would make every comparison false and silently keep the stored database forever
+  if (Number.isNaN(Date.parse(lastUpdate))) {
+    throw new TypeError(`Invalid last update date from ${source.name}: ${lastUpdate}`)
+  }
+
+  return lastUpdate
 }
 
-async function fetchDatabase() {
-  const response = await fetch(DATABASE_URL)
+function isDatabaseOutdated(source: DatabaseSource, lastUpdate: string) {
+  const { lastUpdate: currentLastUpdate, source: currentSource } = animeDatabaseStore.data()
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch database: ${response.status} ${response.statusText}`)
+  if (!currentLastUpdate) {
+    logger.log('No previous database found.')
+
+    return true
   }
 
-  return await response.json() as {
-    lastUpdate: string
-    data: AnimeData[]
+  const currentSourceIndex = databaseSources.findIndex(({ name }) => name === currentSource)
+
+  // Replace data from an unknown source, or from a fallback once a preferred source answers again, regardless of dates.
+  // A fallback answering for the stored source (e.g. a temporary outage) only replaces it when it has newer data.
+  if (currentSourceIndex === -1 || databaseSources.indexOf(source) < currentSourceIndex) {
+    logger.log(`Stored database comes from ${currentSource || 'an unknown source'}.`)
+
+    return true
   }
+
+  return new Date(lastUpdate) > new Date(currentLastUpdate)
 }
 
-async function storeDatabase(data: Awaited<ReturnType<typeof fetchDatabase>>) {
+async function storeDatabase(data: { data: AnimeData[], lastUpdate: string, source: string }) {
   const startTime = performance.now()
 
   const filteredData = data.data
@@ -100,6 +149,7 @@ async function storeDatabase(data: Awaited<ReturnType<typeof fetchDatabase>>) {
   const newDatabase = {
     data: filteredData,
     lastUpdate: data.lastUpdate,
+    source: data.source,
   }
 
   await setDeepSearchInstance(newDatabase)
@@ -117,18 +167,32 @@ export async function loadDatabase() {
 
     await animeDatabaseStore.dataReady
 
-    if (await isDatabaseOutdated()) {
-      logger.log('Database is outdated or not present. Fetching new data...')
+    // The first source that answers decides whether an update is needed; later sources are only tried when it fails
+    for (const source of databaseSources) {
+      try {
+        const lastUpdate = await fetchLastUpdate(source)
 
-      const data = await fetchDatabase()
+        if (!isDatabaseOutdated(source, lastUpdate)) {
+          logger.log('Database is up-to-date.')
+          break
+        }
 
-      logger.log(`Database fetched, ${data.data.length} items. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`)
-      await storeDatabase(data)
+        logger.log(`Database is outdated or not present. Fetching new data from ${source.name}...`)
 
-      return
+        const { data } = await fetchJSON<{ data: AnimeData[] }>(source.databaseURL)
+
+        logger.log(`Database fetched, ${data.length} items. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`)
+        // The checked date is stored rather than the file's own `lastUpdate`, so the next check compares like with like
+        await storeDatabase({ data, lastUpdate, source: source.name })
+
+        return
+      }
+      catch (error) {
+        logger.error(`Error updating database from ${source.name}:`, error)
+      }
     }
 
-    logger.log('Database is up-to-date. Loading from storage...')
+    logger.log('Loading database from storage...')
     await setDeepSearchInstance({ index: animeDatabaseStore.data().data })
     logger.log(`Database loaded. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`)
   }
