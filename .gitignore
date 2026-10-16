@@ -17,3 +17,4 @@ test-results/
 .env
 **/.claude/settings.local.json
 *.timestamp_*.js
+.playwright-mcp/
