@@ -1,5 +1,6 @@
 import type { Component } from 'solid-js'
-import { For } from 'solid-js'
+import type { ColorEntry } from '~/logic'
+import { createMemo, For } from 'solid-js'
 import { Button } from '~/components/ui/button'
 import {
   Card,
@@ -8,11 +9,19 @@ import {
   CardHeader,
   CardTitle,
 } from '~/components/ui/card'
-import { useSettingsStore } from '~/logic'
+import { toColorEntries, useSettingsStore } from '~/logic'
 import { ColorPickerRow } from './ColorPickerRow'
 
 export const TagColor: Component = () => {
   const settingsStore = useSettingsStore()
+  const entries = createMemo(() => toColorEntries(settingsStore.data().tagColor))
+
+  const setEntries = (tagColor: ColorEntry[]) => {
+    settingsStore.setData({
+      ...settingsStore.data(),
+      tagColor,
+    })
+  }
 
   return (
     <Card class="w-xs">
@@ -22,9 +31,10 @@ export const TagColor: Component = () => {
       </CardHeader>
       <CardContent class="flex flex-col gap-7">
         <div class="flex flex-col gap-4">
-          <For each={Object.keys(settingsStore.data().tagColor)}>
-            {(key) => {
-              const entry = () => settingsStore.data().tagColor[key]
+          {/* Iterating ids keeps rows mounted while entries are replaced on every change; iterating the entry objects would recreate the inputs mid-edit */}
+          <For each={entries().map(entry => entry.id)}>
+            {(id) => {
+              const entry = () => entries().find(item => item.id === id)!
 
               return (
                 <ColorPickerRow
@@ -35,26 +45,10 @@ export const TagColor: Component = () => {
                       return
                     }
 
-                    settingsStore.setData({
-                      ...settingsStore.data(),
-                      tagColor: {
-                        ...settingsStore.data().tagColor,
-                        [key]: {
-                          ...entry(),
-                          ...data,
-                        },
-                      },
-                    })
+                    setEntries(entries().map(item => item.id === id ? { ...item, ...data } : item))
                   }}
                   resetColor={() => {
-                    const newTagColor = { ...settingsStore.data().tagColor }
-
-                    delete newTagColor[key]
-
-                    settingsStore.setData({
-                      ...settingsStore.data(),
-                      tagColor: newTagColor,
-                    })
+                    setEntries(entries().filter(item => item.id !== id))
                   }}
                 />
               )
@@ -63,16 +57,14 @@ export const TagColor: Component = () => {
         </div>
         <Button
           onClick={() => {
-            settingsStore.setData({
-              ...settingsStore.data(),
-              tagColor: {
-                ...settingsStore.data().tagColor,
-                [crypto.randomUUID()]: {
-                  name: '',
-                  color: '#ffffff',
-                },
+            setEntries([
+              ...entries(),
+              {
+                id: crypto.randomUUID(),
+                name: '',
+                color: '#ffffff',
               },
-            })
+            ])
           }}
         >
           Add Tag

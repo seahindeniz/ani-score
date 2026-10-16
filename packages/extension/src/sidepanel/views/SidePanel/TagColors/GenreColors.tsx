@@ -1,4 +1,5 @@
 import type { Component } from 'solid-js'
+import type { ColorEntry } from '~/logic'
 import { createMemo, createResource, For, Show } from 'solid-js'
 import LineMdLoadingLoop from '~icons/line-md/loading-loop'
 import { fetchGenres } from '~/background/logic/fetchGenres'
@@ -10,19 +11,27 @@ import {
   CardHeader,
   CardTitle,
 } from '~/components/ui/card'
-import { useSettingsStore } from '~/logic'
+import { toColorEntries, useSettingsStore } from '~/logic'
 import { ColorPickerRow } from './ColorPickerRow'
 
 export const GenreColors: Component = () => {
   const settingsStore = useSettingsStore()
   const [data] = createResource(fetchGenres)
-  const storedGenres = createMemo(() => Object.values(settingsStore.data().genreColor).map(entry => entry.name))
+  const entries = createMemo(() => toColorEntries(settingsStore.data().genreColor))
+  const storedGenres = createMemo(() => entries().map(entry => entry.name))
   const genres = createMemo(
     () => data()?.data?.GenreCollection?.filter(
       genre => genre != null
         && !storedGenres().includes(genre),
     ) as string[] | undefined,
   )
+
+  const setEntries = (genreColor: ColorEntry[]) => {
+    settingsStore.setData({
+      ...settingsStore.data(),
+      genreColor,
+    })
+  }
 
   return (
     <Card class="w-xs">
@@ -40,9 +49,10 @@ export const GenreColors: Component = () => {
           )}
         >
           <div class="flex flex-col gap-4">
-            <For each={Object.keys(settingsStore.data().genreColor)}>
-              {(key) => {
-                const entry = () => settingsStore.data().genreColor[key]
+            {/* Iterating ids keeps rows mounted while entries are replaced on every change; iterating the entry objects would recreate the color input mid-drag */}
+            <For each={entries().map(entry => entry.id)}>
+              {(id) => {
+                const entry = () => entries().find(item => item.id === id)!
 
                 return (
                   <ColorPickerRow
@@ -54,26 +64,10 @@ export const GenreColors: Component = () => {
                         return
                       }
 
-                      settingsStore.setData({
-                        ...settingsStore.data(),
-                        genreColor: structuredClone({
-                          ...settingsStore.data().genreColor,
-                          [key]: {
-                            ...entry(),
-                            ...data,
-                          },
-                        }),
-                      })
+                      setEntries(entries().map(item => item.id === id ? { ...item, ...data } : item))
                     }}
                     resetColor={() => {
-                      const newGenreColor = { ...settingsStore.data().genreColor }
-
-                      delete newGenreColor[key]
-
-                      settingsStore.setData({
-                        ...settingsStore.data(),
-                        genreColor: newGenreColor,
-                      })
+                      setEntries(entries().filter(item => item.id !== id))
                     }}
                   />
                 )
@@ -82,16 +76,14 @@ export const GenreColors: Component = () => {
           </div>
           <Button
             onClick={() => {
-              settingsStore.setData({
-                ...settingsStore.data(),
-                genreColor: {
-                  ...settingsStore.data().genreColor,
-                  [crypto.randomUUID()]: {
-                    name: genres()?.[0] ?? '',
-                    color: '#ffffff',
-                  },
+              setEntries([
+                ...entries(),
+                {
+                  id: crypto.randomUUID(),
+                  name: genres()?.[0] ?? '',
+                  color: '#ffffff',
                 },
-              })
+              ])
             }}
           >
             Add Genre
