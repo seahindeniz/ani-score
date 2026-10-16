@@ -497,6 +497,25 @@ export type CharacterSubmissionEdge = {
   voiceActors?: Maybe<Array<Maybe<Staff>>>;
 };
 
+/** Notification for when a character submission is accepted, partially accepted, or rejected */
+export type CharacterSubmissionUpdateNotification = {
+  __typename?: 'CharacterSubmissionUpdateNotification';
+  /** The character that was modified. */
+  character?: Maybe<Character>;
+  /** The notification context text */
+  contexts?: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  /** The time the notification was created at */
+  createdAt?: Maybe<Scalars['Int']['output']>;
+  /** The id of the Notification */
+  id: Scalars['Int']['output'];
+  /** The notes of the submission */
+  notes?: Maybe<Scalars['String']['output']>;
+  /** The status of the submission */
+  status?: Maybe<Scalars['String']['output']>;
+  /** The type of notification */
+  type?: Maybe<NotificationType>;
+};
+
 /** Deleted data type */
 export type Deleted = {
   __typename?: 'Deleted';
@@ -621,7 +640,7 @@ export type GenreStats = {
   timeWatched?: Maybe<Scalars['Int']['output']>;
 };
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPage = {
   __typename?: 'InternalPage';
   activities?: Maybe<Array<Maybe<ActivityUnion>>>;
@@ -654,7 +673,7 @@ export type InternalPage = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageActivitiesArgs = {
   createdAt?: InputMaybe<Scalars['Int']['input']>;
   createdAt_greater?: InputMaybe<Scalars['Int']['input']>;
@@ -686,14 +705,14 @@ export type InternalPageActivitiesArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageActivityRepliesArgs = {
   activityId?: InputMaybe<Scalars['Int']['input']>;
   id?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageAiringSchedulesArgs = {
   airingAt?: InputMaybe<Scalars['Int']['input']>;
   airingAt_greater?: InputMaybe<Scalars['Int']['input']>;
@@ -717,7 +736,7 @@ export type InternalPageAiringSchedulesArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageCharacterSubmissionsArgs = {
   assigneeId?: InputMaybe<Scalars['Int']['input']>;
   characterId?: InputMaybe<Scalars['Int']['input']>;
@@ -727,7 +746,7 @@ export type InternalPageCharacterSubmissionsArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageCharactersArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   id_in?: InputMaybe<Array<InputMaybe<Scalars['Int']['input']>>>;
@@ -739,28 +758,28 @@ export type InternalPageCharactersArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageFollowersArgs = {
   sort?: InputMaybe<Array<InputMaybe<UserSort>>>;
   userId: Scalars['Int']['input'];
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageFollowingArgs = {
   sort?: InputMaybe<Array<InputMaybe<UserSort>>>;
   userId: Scalars['Int']['input'];
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageLikesArgs = {
   likeableId?: InputMaybe<Scalars['Int']['input']>;
   type?: InputMaybe<LikeableType>;
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageMediaArgs = {
   averageScore?: InputMaybe<Scalars['Int']['input']>;
   averageScore_greater?: InputMaybe<Scalars['Int']['input']>;
@@ -770,6 +789,8 @@ export type InternalPageMediaArgs = {
   chapters_greater?: InputMaybe<Scalars['Int']['input']>;
   chapters_lesser?: InputMaybe<Scalars['Int']['input']>;
   countryOfOrigin?: InputMaybe<Scalars['CountryCode']['input']>;
+  countryOfOrigin_in?: InputMaybe<Array<InputMaybe<Scalars['CountryCode']['input']>>>;
+  countryOfOrigin_not_in?: InputMaybe<Array<InputMaybe<Scalars['CountryCode']['input']>>>;
   duration?: InputMaybe<Scalars['Int']['input']>;
   duration_greater?: InputMaybe<Scalars['Int']['input']>;
   duration_lesser?: InputMaybe<Scalars['Int']['input']>;
@@ -834,7 +855,7 @@ export type InternalPageMediaArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageMediaListArgs = {
   compareWithAuthList?: InputMaybe<Scalars['Boolean']['input']>;
   completedAt?: InputMaybe<Scalars['FuzzyDateInt']['input']>;
@@ -864,7 +885,7 @@ export type InternalPageMediaListArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageMediaSubmissionsArgs = {
   assigneeId?: InputMaybe<Scalars['Int']['input']>;
   mediaId?: InputMaybe<Scalars['Int']['input']>;
@@ -876,7 +897,7 @@ export type InternalPageMediaSubmissionsArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageMediaTrendsArgs = {
   averageScore?: InputMaybe<Scalars['Int']['input']>;
   averageScore_greater?: InputMaybe<Scalars['Int']['input']>;
@@ -906,14 +927,17 @@ export type InternalPageMediaTrendsArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageModActionsArgs = {
   modId?: InputMaybe<Scalars['Int']['input']>;
+  modId_in?: InputMaybe<Array<InputMaybe<Scalars['Int']['input']>>>;
+  modId_not?: InputMaybe<Scalars['Int']['input']>;
+  modId_not_in?: InputMaybe<Array<InputMaybe<Scalars['Int']['input']>>>;
   userId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageNotificationsArgs = {
   resetNotificationCount?: InputMaybe<Scalars['Boolean']['input']>;
   type?: InputMaybe<NotificationType>;
@@ -921,7 +945,7 @@ export type InternalPageNotificationsArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageRecommendationsArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   mediaId?: InputMaybe<Scalars['Int']['input']>;
@@ -935,14 +959,14 @@ export type InternalPageRecommendationsArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageReportsArgs = {
   reportedId?: InputMaybe<Scalars['Int']['input']>;
   reporterId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageReviewsArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   mediaId?: InputMaybe<Scalars['Int']['input']>;
@@ -952,7 +976,7 @@ export type InternalPageReviewsArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageRevisionHistoryArgs = {
   characterId?: InputMaybe<Scalars['Int']['input']>;
   mediaId?: InputMaybe<Scalars['Int']['input']>;
@@ -962,7 +986,7 @@ export type InternalPageRevisionHistoryArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageStaffArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   id_in?: InputMaybe<Array<InputMaybe<Scalars['Int']['input']>>>;
@@ -974,7 +998,7 @@ export type InternalPageStaffArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageStaffSubmissionsArgs = {
   assigneeId?: InputMaybe<Scalars['Int']['input']>;
   sort?: InputMaybe<Array<InputMaybe<SubmissionSort>>>;
@@ -984,7 +1008,7 @@ export type InternalPageStaffSubmissionsArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageStudiosArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   id_in?: InputMaybe<Array<InputMaybe<Scalars['Int']['input']>>>;
@@ -995,7 +1019,7 @@ export type InternalPageStudiosArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageThreadCommentsArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   sort?: InputMaybe<Array<InputMaybe<ThreadCommentSort>>>;
@@ -1004,7 +1028,7 @@ export type InternalPageThreadCommentsArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageThreadsArgs = {
   categoryId?: InputMaybe<Scalars['Int']['input']>;
   id?: InputMaybe<Scalars['Int']['input']>;
@@ -1018,13 +1042,13 @@ export type InternalPageThreadsArgs = {
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageUserBlockSearchArgs = {
   search?: InputMaybe<Scalars['String']['input']>;
 };
 
 
-/** Page of data (Used for internal use only) */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type InternalPageUsersArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   isModerator?: InputMaybe<Scalars['Boolean']['input']>;
@@ -1750,6 +1774,8 @@ export enum MediaRelation {
   Parent = 'PARENT',
   /** Released before the relation */
   Prequel = 'PREQUEL',
+  /** Version 3 only. The media is set in the same universe as another media */
+  SameUniverse = 'SAME_UNIVERSE',
   /** Released after the relation */
   Sequel = 'SEQUEL',
   /** A side story of the parent media */
@@ -1763,13 +1789,13 @@ export enum MediaRelation {
 }
 
 export enum MediaSeason {
-  /** Months September to November */
+  /** Predominantly started airing between October and November */
   Fall = 'FALL',
-  /** Months March to May */
+  /** Predominantly started airing between April and June */
   Spring = 'SPRING',
-  /** Months June to August */
+  /** Predominantly started airing between July and September */
   Summer = 'SUMMER',
-  /** Months December to February */
+  /** Predominantly started airing between January and March */
   Winter = 'WINTER'
 }
 
@@ -1942,6 +1968,27 @@ export type MediaSubmissionEdge = {
   voiceActorSubmission?: Maybe<Staff>;
 };
 
+/** Notification for when a media submission is accepted, partially accepted, or rejected */
+export type MediaSubmissionUpdateNotification = {
+  __typename?: 'MediaSubmissionUpdateNotification';
+  /** The notification context text */
+  contexts?: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  /** The time the notification was created at */
+  createdAt?: Maybe<Scalars['Int']['output']>;
+  /** The id of the Notification */
+  id: Scalars['Int']['output'];
+  /** The media that was created or modified. If this submission was to create a new media and it was rejected, this will be null. */
+  media?: Maybe<Media>;
+  /** The notes of the submission */
+  notes?: Maybe<Scalars['String']['output']>;
+  /** The status of the submission */
+  status?: Maybe<Scalars['String']['output']>;
+  /** The title of the media that was submitted. If this submission was to edit an existing media, this will be null. */
+  submittedTitle?: Maybe<Scalars['String']['output']>;
+  /** The type of notification */
+  type?: Maybe<NotificationType>;
+};
+
 /** A tag that describes a theme or element of the media */
 export type MediaTag = {
   __typename?: 'MediaTag';
@@ -2091,6 +2138,8 @@ export type MessageActivity = {
   isLiked?: Maybe<Scalars['Boolean']['output']>;
   /** If the activity is locked and can receive replies */
   isLocked?: Maybe<Scalars['Boolean']['output']>;
+  /** If the activity is pinned to the top of the users activity feed */
+  isPinned?: Maybe<Scalars['Boolean']['output']>;
   /** If the message is private and only viewable to the sender and recipients */
   isPrivate?: Maybe<Scalars['Boolean']['output']>;
   /** If the currently authenticated user is subscribed to the activity */
@@ -2517,6 +2566,8 @@ export enum NotificationType {
   ActivityReplySubscribed = 'ACTIVITY_REPLY_SUBSCRIBED',
   /** An anime you are currently watching has aired */
   Airing = 'AIRING',
+  /** A user's character submission has been accepted, partially accepted, or rejected */
+  CharacterSubmissionUpdate = 'CHARACTER_SUBMISSION_UPDATE',
   /** A user has followed you */
   Following = 'FOLLOWING',
   /** An anime or manga has had a data change that affects how a user may track it in their lists */
@@ -2525,8 +2576,12 @@ export enum NotificationType {
   MediaDeletion = 'MEDIA_DELETION',
   /** Anime or manga entries on the user's list have been merged into a single entry */
   MediaMerge = 'MEDIA_MERGE',
+  /** A user's submission has been accepted, partially accepted, or rejected */
+  MediaSubmissionUpdate = 'MEDIA_SUBMISSION_UPDATE',
   /** A new anime or manga has been added to the site where its related media is on the user's list */
   RelatedMediaAddition = 'RELATED_MEDIA_ADDITION',
+  /** A user's staff submission has been accepted, partially accepted, or rejected */
+  StaffSubmissionUpdate = 'STAFF_SUBMISSION_UPDATE',
   /** A user has liked your forum comment */
   ThreadCommentLike = 'THREAD_COMMENT_LIKE',
   /** A user has mentioned you in a forum comment */
@@ -2540,9 +2595,9 @@ export enum NotificationType {
 }
 
 /** Notification union type */
-export type NotificationUnion = ActivityLikeNotification | ActivityMentionNotification | ActivityMessageNotification | ActivityReplyLikeNotification | ActivityReplyNotification | ActivityReplySubscribedNotification | AiringNotification | FollowingNotification | MediaDataChangeNotification | MediaDeletionNotification | MediaMergeNotification | RelatedMediaAdditionNotification | ThreadCommentLikeNotification | ThreadCommentMentionNotification | ThreadCommentReplyNotification | ThreadCommentSubscribedNotification | ThreadLikeNotification;
+export type NotificationUnion = ActivityLikeNotification | ActivityMentionNotification | ActivityMessageNotification | ActivityReplyLikeNotification | ActivityReplyNotification | ActivityReplySubscribedNotification | AiringNotification | CharacterSubmissionUpdateNotification | FollowingNotification | MediaDataChangeNotification | MediaDeletionNotification | MediaMergeNotification | MediaSubmissionUpdateNotification | RelatedMediaAdditionNotification | StaffSubmissionUpdateNotification | ThreadCommentLikeNotification | ThreadCommentMentionNotification | ThreadCommentReplyNotification | ThreadCommentSubscribedNotification | ThreadLikeNotification;
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type Page = {
   __typename?: 'Page';
   activities?: Maybe<Array<Maybe<ActivityUnion>>>;
@@ -2568,7 +2623,7 @@ export type Page = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageActivitiesArgs = {
   createdAt?: InputMaybe<Scalars['Int']['input']>;
   createdAt_greater?: InputMaybe<Scalars['Int']['input']>;
@@ -2600,14 +2655,14 @@ export type PageActivitiesArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageActivityRepliesArgs = {
   activityId?: InputMaybe<Scalars['Int']['input']>;
   id?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageAiringSchedulesArgs = {
   airingAt?: InputMaybe<Scalars['Int']['input']>;
   airingAt_greater?: InputMaybe<Scalars['Int']['input']>;
@@ -2631,7 +2686,7 @@ export type PageAiringSchedulesArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageCharactersArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   id_in?: InputMaybe<Array<InputMaybe<Scalars['Int']['input']>>>;
@@ -2643,28 +2698,28 @@ export type PageCharactersArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageFollowersArgs = {
   sort?: InputMaybe<Array<InputMaybe<UserSort>>>;
   userId: Scalars['Int']['input'];
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageFollowingArgs = {
   sort?: InputMaybe<Array<InputMaybe<UserSort>>>;
   userId: Scalars['Int']['input'];
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageLikesArgs = {
   likeableId?: InputMaybe<Scalars['Int']['input']>;
   type?: InputMaybe<LikeableType>;
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageMediaArgs = {
   averageScore?: InputMaybe<Scalars['Int']['input']>;
   averageScore_greater?: InputMaybe<Scalars['Int']['input']>;
@@ -2674,6 +2729,8 @@ export type PageMediaArgs = {
   chapters_greater?: InputMaybe<Scalars['Int']['input']>;
   chapters_lesser?: InputMaybe<Scalars['Int']['input']>;
   countryOfOrigin?: InputMaybe<Scalars['CountryCode']['input']>;
+  countryOfOrigin_in?: InputMaybe<Array<InputMaybe<Scalars['CountryCode']['input']>>>;
+  countryOfOrigin_not_in?: InputMaybe<Array<InputMaybe<Scalars['CountryCode']['input']>>>;
   duration?: InputMaybe<Scalars['Int']['input']>;
   duration_greater?: InputMaybe<Scalars['Int']['input']>;
   duration_lesser?: InputMaybe<Scalars['Int']['input']>;
@@ -2738,7 +2795,7 @@ export type PageMediaArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageMediaListArgs = {
   compareWithAuthList?: InputMaybe<Scalars['Boolean']['input']>;
   completedAt?: InputMaybe<Scalars['FuzzyDateInt']['input']>;
@@ -2768,7 +2825,7 @@ export type PageMediaListArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageMediaTrendsArgs = {
   averageScore?: InputMaybe<Scalars['Int']['input']>;
   averageScore_greater?: InputMaybe<Scalars['Int']['input']>;
@@ -2798,7 +2855,7 @@ export type PageMediaTrendsArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageNotificationsArgs = {
   resetNotificationCount?: InputMaybe<Scalars['Boolean']['input']>;
   type?: InputMaybe<NotificationType>;
@@ -2806,7 +2863,7 @@ export type PageNotificationsArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageRecommendationsArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   mediaId?: InputMaybe<Scalars['Int']['input']>;
@@ -2820,7 +2877,7 @@ export type PageRecommendationsArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageReviewsArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   mediaId?: InputMaybe<Scalars['Int']['input']>;
@@ -2830,7 +2887,7 @@ export type PageReviewsArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageStaffArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   id_in?: InputMaybe<Array<InputMaybe<Scalars['Int']['input']>>>;
@@ -2842,7 +2899,7 @@ export type PageStaffArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageStudiosArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   id_in?: InputMaybe<Array<InputMaybe<Scalars['Int']['input']>>>;
@@ -2853,7 +2910,7 @@ export type PageStudiosArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageThreadCommentsArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   sort?: InputMaybe<Array<InputMaybe<ThreadCommentSort>>>;
@@ -2862,7 +2919,7 @@ export type PageThreadCommentsArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageThreadsArgs = {
   categoryId?: InputMaybe<Scalars['Int']['input']>;
   id?: InputMaybe<Scalars['Int']['input']>;
@@ -2876,7 +2933,7 @@ export type PageThreadsArgs = {
 };
 
 
-/** Page of data */
+/** Page of data. Limited to a max depth of 5000 entries. This is calculated as the page parameter multiplied by the perPage parameter. */
 export type PageUsersArgs = {
   id?: InputMaybe<Scalars['Int']['input']>;
   isModerator?: InputMaybe<Scalars['Boolean']['input']>;
@@ -2919,9 +2976,9 @@ export type Query = {
   Character?: Maybe<Character>;
   /** ExternalLinkSource collection query */
   ExternalLinkSourceCollection?: Maybe<Array<Maybe<MediaExternalLink>>>;
-  /** Follow query */
+  /** Follower query */
   Follower?: Maybe<User>;
-  /** Follow query */
+  /** Following query */
   Following?: Maybe<User>;
   /** Collection of all the possible media genres */
   GenreCollection?: Maybe<Array<Maybe<Scalars['String']['output']>>>;
@@ -3073,6 +3130,8 @@ export type QueryMediaArgs = {
   chapters_greater?: InputMaybe<Scalars['Int']['input']>;
   chapters_lesser?: InputMaybe<Scalars['Int']['input']>;
   countryOfOrigin?: InputMaybe<Scalars['CountryCode']['input']>;
+  countryOfOrigin_in?: InputMaybe<Array<InputMaybe<Scalars['CountryCode']['input']>>>;
+  countryOfOrigin_not_in?: InputMaybe<Array<InputMaybe<Scalars['CountryCode']['input']>>>;
   duration?: InputMaybe<Scalars['Int']['input']>;
   duration_greater?: InputMaybe<Scalars['Int']['input']>;
   duration_lesser?: InputMaybe<Scalars['Int']['input']>;
@@ -3450,7 +3509,9 @@ export enum ReviewRating {
 
 /** Review sort enums */
 export enum ReviewSort {
+  /** @deprecated Use ID instead */
   CreatedAt = 'CREATED_AT',
+  /** @deprecated Use ID_DESC instead */
   CreatedAtDesc = 'CREATED_AT_DESC',
   Id = 'ID',
   IdDesc = 'ID_DESC',
@@ -3846,6 +3907,25 @@ export type StaffSubmission = {
   submitter?: Maybe<User>;
 };
 
+/** Notification for when a staff submission is accepted, partially accepted, or rejected */
+export type StaffSubmissionUpdateNotification = {
+  __typename?: 'StaffSubmissionUpdateNotification';
+  /** The notification context text */
+  contexts?: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  /** The time the notification was created at */
+  createdAt?: Maybe<Scalars['Int']['output']>;
+  /** The id of the Notification */
+  id: Scalars['Int']['output'];
+  /** The notes of the submission */
+  notes?: Maybe<Scalars['String']['output']>;
+  /** The staff that was modified. */
+  staff?: Maybe<Staff>;
+  /** The status of the submission */
+  status?: Maybe<Scalars['String']['output']>;
+  /** The type of notification */
+  type?: Maybe<NotificationType>;
+};
+
 /** The distribution of the watching/reading status of media or a user's list */
 export type StatusDistribution = {
   __typename?: 'StatusDistribution';
@@ -4216,7 +4296,9 @@ export type ThreadLikeNotification = {
 
 /** Thread sort enums */
 export enum ThreadSort {
+  /** @deprecated Use ID instead */
   CreatedAt = 'CREATED_AT',
+  /** @deprecated Use ID_DESC instead */
   CreatedAtDesc = 'CREATED_AT_DESC',
   Id = 'ID',
   IdDesc = 'ID_DESC',
@@ -4243,6 +4325,7 @@ export type User = {
   avatar?: Maybe<UserAvatar>;
   /** The user's banner images */
   bannerImage?: Maybe<Scalars['String']['output']>;
+  /** List of active bans. Mod-only */
   bans?: Maybe<Scalars['Json']['output']>;
   /** When the user's account was created. (Does not exist for accounts created before 2020) */
   createdAt?: Maybe<Scalars['Int']['output']>;
@@ -4302,7 +4385,7 @@ export type UserFavouritesArgs = {
   page?: InputMaybe<Scalars['Int']['input']>;
 };
 
-/** A user's activity history stats. */
+/** A user's activity history stats for the previous 6 months. Refreshes only periodically */
 export type UserActivityHistory = {
   __typename?: 'UserActivityHistory';
   /** The amount of activity on the day */
