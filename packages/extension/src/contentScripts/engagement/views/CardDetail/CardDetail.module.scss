@@ -15,10 +15,12 @@
 
 .genres {
   column-gap: 7px;
-  font-size: 0.7rem;
+  // px rather than rem: rem follows the host site's root font size
+  font-size: 11.2px;
   flex-wrap: wrap;
-  line-height: 1rem;
-  color: #cccccc;
+  line-height: 16px;
+  // Follows the site's theme: about #ccc on dark sites, dark grey on light ones
+  color: hsl(var(--foreground) / 0.8);
 }
 
 .detail {

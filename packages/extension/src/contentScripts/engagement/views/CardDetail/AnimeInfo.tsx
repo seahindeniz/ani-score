@@ -67,7 +67,7 @@ export const AnimeInfoCard: Component<AnimeInfoCardProps> = (props) => {
         <Chip
           tagName="a"
           emoji="📈"
-          class="text-white decoration-none hover:decoration-underline"
+          class="text-foreground decoration-none hover:decoration-underline"
           text={props.anime.popularity?.toLocaleString()}
           title="Popularity [Visit AniList]"
           onClick={event => event.stopPropagation()}
