@@ -1,8 +1,5 @@
 import type { SiteBaseConfig } from '../base'
-import { createLogger } from '~/utils/logger'
 import './global.scss'
-
-const logger = createLogger('Anizm')
 
 export const config: SiteBaseConfig = {
   theme: 'dark',
