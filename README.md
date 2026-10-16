@@ -8,6 +8,7 @@ and databases.
 ## Supported Websites
 
 - [Anizm.net](https://anizm.net/)
+- [TRanimeizle](https://www.tranimeizle.live/)
 
 ## Credits
 
