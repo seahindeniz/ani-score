@@ -54,7 +54,7 @@ export function customizeCards(page: ListingPage, config: InternalSiteBaseConfig
     const { container, root, shadowDOM } = createEncapsulatedContainer(config)
 
     shadowDOM.appendChild(createStyleLink(config.scope))
-    card.element.querySelector('.title')?.before(container)
+    card.infoContainer?.before(container)
 
     return render(() => <CardDetail card={card} page={page} store={store} onRender={startFetching} index={index} />, root)
   })
