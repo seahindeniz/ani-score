@@ -97,6 +97,10 @@ export interface AnimeData {
 
 export const useAnimeDatabaseStore = createPersistedStore('animeDatabase', {
   lastUpdate: '',
+  /**
+   * Name of the database source the stored data came from.
+   */
+  source: '',
   data: '',
 })
 

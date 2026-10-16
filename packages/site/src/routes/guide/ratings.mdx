@@ -22,6 +22,6 @@ AniList's detailed content tags (up to 5 per anime) are also displayed. Like gen
 
 ## Data Source
 
-All data comes from the [AniList GraphQL API](https://anilist.gitbook.io/anilist-apiv2-docs/). AniScore uses an offline anime database from the [manami-project](https://github.com/manami-project/anime-offline-database) for fuzzy title matching, then fetches detailed information from AniList.
+All data comes from the [AniList GraphQL API](https://anilist.gitbook.io/anilist-apiv2-docs/). AniScore uses an offline anime database from [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database), falling back to [athanasso/anime-offline-database](https://github.com/athanasso/anime-offline-database), for fuzzy title matching, then fetches detailed information from AniList.
 
 This two-step approach ensures accurate matching even when streaming sites use different title formats or romanizations.
