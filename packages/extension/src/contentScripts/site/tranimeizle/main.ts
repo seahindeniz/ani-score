@@ -15,7 +15,8 @@ export const config: SiteBaseConfig = {
             const infoContainer = element.querySelector<HTMLDivElement>('.bar')
             // e.g. "The Apothecary Diaries 3. Sezon 3. Bölüm İzle"
             const text = infoContainer?.querySelector('h4')?.textContent.trim() ?? ''
-            const episodeMatch = text.match(/(\d+)\.\s*Bölüm İzle$/)
+            // Tolerates other whitespace and words between "Bölüm" and "İzle" (e.g. "Final"), and half episodes like "12.5"
+            const episodeMatch = text.match(/(\d+(?:[.,]\d+)?)\.\s*Bölüm\s.*İzle$/)
 
             if (!episodeMatch)
               return undefined

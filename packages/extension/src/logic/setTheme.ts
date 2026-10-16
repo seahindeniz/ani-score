@@ -13,6 +13,21 @@ export async function setTheme(
    */
   theme?: 'system' | 'light' | 'dark',
 ) {
+  const applyTheme = (themeValue: ReturnType<ReturnType<typeof useThemeStore>['data']>) => {
+    root.setAttribute(
+      'data-kb-theme',
+      themeValue === 'system' ? getSystemTheme() : themeValue,
+    )
+  }
+
+  // A fixed theme doesn't depend on the stored setting, so apply it before storage loads; otherwise the light
+  // defaults show until then
+  if (theme && theme !== 'system') {
+    applyTheme(theme)
+
+    return
+  }
+
   const themeStore = useThemeStore()
 
   await themeStore.dataReady
@@ -21,19 +36,6 @@ export async function setTheme(
 
   if (!storedTheme) {
     themeStore.setData('system')
-  }
-
-  const applyTheme = (themeValue: ReturnType<ReturnType<typeof useThemeStore>['data']>) => {
-    root.setAttribute(
-      'data-kb-theme',
-      themeValue === 'system' ? getSystemTheme() : themeValue,
-    )
-  }
-
-  if (theme && theme !== 'system') {
-    applyTheme(theme)
-
-    return
   }
 
   createEffect(on(themeStore.data, (currentTheme) => {

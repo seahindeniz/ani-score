@@ -74,7 +74,7 @@
     "@types/yargs-parser": "21.0.3",
     "@typescript-eslint/eslint-plugin": "^8.2.0",
     "@unocss/eslint-plugin": "^66.5.2",
-    "@unocss/preset-rem-to-px": "66.6.0",
+    "@unocss/preset-rem-to-px": "^66.6.0",
     "@unocss/reset": "^66.5.2",
     "chokidar": "^4.0.3",
     "chrome-types": "0.1.380",

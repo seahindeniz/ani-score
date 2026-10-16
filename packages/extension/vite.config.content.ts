@@ -9,6 +9,7 @@ await Promise.all(contentScriptPaths.map(async (entry) => {
   const base = `dist/contentScripts/${entry.directory}`
   return build(mergeConfig(sharedDOMConfig({
     unoCSS: !entry.directory.includes('site/') && !entry.directory.includes('root/'),
+    remToPx: true,
   }), {
     mode,
     // base: '/__dynamic_base__/',

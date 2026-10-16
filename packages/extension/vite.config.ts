@@ -3,6 +3,7 @@
 import type { UserConfig } from 'vite'
 import { dirname, relative } from 'node:path'
 import process from 'node:process'
+import presetRemToPx from '@unocss/preset-rem-to-px'
 import { config as loadEnv } from 'dotenv'
 import UnoCSS from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
@@ -11,6 +12,7 @@ import { defineConfig, mergeConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
 import { isDev, isFirefox, mode, port, r, targetBrowser } from './scripts/utils'
+import unoConfig from './unocss.config'
 
 loadEnv()
 
@@ -81,17 +83,25 @@ export const sharedConfig: UserConfig = {
   },
 }
 
-export function sharedDOMConfig(props: { icons?: boolean, unoCSS?: boolean } = {}) {
+export function sharedDOMConfig(props: { icons?: boolean, unoCSS?: boolean, remToPx?: boolean } = {}) {
   const propsWithDefaults = {
     icons: true,
     unoCSS: true,
+    remToPx: false,
     ...props,
   }
 
   return mergeConfig(sharedConfig, {
     plugins: [
       propsWithDefaults.icons && Icons({ compiler: 'solid' }),
-      propsWithDefaults.unoCSS && UnoCSS(),
+      propsWithDefaults.unoCSS && UnoCSS(
+        propsWithDefaults.remToPx
+          // Content scripts render inside the host page, where `rem` follows the site's root font size (e.g. 10px on
+          // tranimeizle), so their sizes are emitted in px at the default 16px base. Extension pages keep rem, so they
+          // still follow the user's browser font size.
+          ? { ...unoConfig, configFile: false, presets: [...unoConfig.presets ?? [], presetRemToPx()] }
+          : undefined,
+      ),
 
       // rewrite assets to use relative path
       {

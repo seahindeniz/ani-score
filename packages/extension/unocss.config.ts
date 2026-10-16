@@ -1,4 +1,3 @@
-import presetRemToPx from '@unocss/preset-rem-to-px'
 import { presetAttributify, presetIcons, presetWind3, transformerDirectives, transformerVariantGroup } from 'unocss'
 import presetAnimations from 'unocss-preset-animations'
 import { presetKobalte } from 'unocss-preset-primitives'
@@ -16,9 +15,6 @@ export default defineConfig({
     presetIcons(),
     presetAnimations(),
     presetKobalte(),
-    // Content scripts render inside the host page, where `rem` follows the site's root font size (e.g. 10px on
-    // tranimeizle), so sizes are emitted in px at the default 16px base
-    presetRemToPx(),
   ],
   transformers: [
     transformerVariantGroup(),
