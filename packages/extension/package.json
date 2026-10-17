@@ -42,7 +42,8 @@
     "lint:type": "tsc --noEmit --project tsconfig.node.json && tsc --noEmit --project tsconfig.app.json",
     "test": "vitest test",
     "test:e2e": "playwright test",
-    "codegen": "graphql-codegen"
+    "codegen": "graphql-codegen",
+    "release": "release-it"
   },
   "dependencies": {
     "@floating-ui/dom": "1.7.4",
