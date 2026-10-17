@@ -2,7 +2,13 @@ import type { SiteBaseConfig } from '../base'
 import './global.scss'
 
 export const config: SiteBaseConfig = {
-  theme: 'light',
+  theme: (set) => {
+    const sync = () => set(window.localStorage.getItem('temabuton') === 'dark' ? 'dark' : 'light')
+
+    sync()
+    // The site's theme toggle swaps `dark-mode` / `light-mode` on the body, right before saving the choice to storage
+    new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['class'] })
+  },
   listingPages: [
     {
       isValidPage: () => window.location.pathname === '/' || /^\/listeler\/yenibolum\/sayfa-\d+\/?$/.test(window.location.pathname),
@@ -13,8 +19,12 @@ export const config: SiteBaseConfig = {
           .map((element) => {
             // The bar is absolutely positioned over the poster, so inserting before it places the details below the poster
             const infoContainer = element.querySelector<HTMLDivElement>('.bar')
+
+            if (!infoContainer)
+              return undefined
+
             // e.g. "The Apothecary Diaries 3. Sezon 3. Bölüm İzle"
-            const text = infoContainer?.querySelector('h4')?.textContent.trim() ?? ''
+            const text = infoContainer.querySelector('h4')?.textContent.trim() ?? ''
             // Tolerates other whitespace and words between "Bölüm" and "İzle" (e.g. "Final"), and half episodes like "12.5"
             const episodeMatch = text.match(/(\d+(?:[.,]\d+)?)\.\s*Bölüm\s.*İzle$/)
 
@@ -32,9 +42,13 @@ export const config: SiteBaseConfig = {
             if (!title)
               return undefined
 
-            return { element, infoContainer, title, episodeNumber }
+            return {
+              element,
+              render: container => infoContainer.before(container),
+              title,
+              episodeNumber,
+            }
           })
-          .filter(card => card != null)
       },
       getShimmeringElement: card => card.element.querySelector<HTMLAnchorElement>('a.news-image'),
     },

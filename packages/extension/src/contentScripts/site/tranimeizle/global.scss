@@ -32,6 +32,22 @@
 
   > .ani-score {
     grid-area: 2 / 1 / 3 / 2;
+
+    // Padding instead of the default top margin, so the details' box sits flush against the poster
+    &::part(container) {
+      margin-top: 0;
+      padding-top: 12px;
+    }
+  }
+
+  // The site's theme toggle swaps these body classes live, without a reload
+  @at-root body.light-mode & > .ani-score::part(container) {
+    background-color: #fff;
+  }
+
+  @at-root body.dark-mode & > .ani-score::part(container) {
+    border: 1px solid #661924;
+    border-top-width: 0;
   }
 
   // The site's `z-index: 1` was inert on the static poster, but on a grid item it lifts the poster above the overlays

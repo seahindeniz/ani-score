@@ -2,6 +2,7 @@ import type { AnimeDetails } from '~/background/logic/fetchDetails'
 import type { InternalSiteBaseConfig, ListingPage } from '~/contentScripts/site/base'
 import { createMutable } from 'solid-js/store'
 import { render } from 'solid-js/web'
+import { filterNullish } from '~/utils/filterNullish'
 import { createLogger } from '~/utils/logger'
 import { CardDetail } from '../views/CardDetail/CardDetail'
 import { createEncapsulatedContainer } from './createEncapsulatedContainer'
@@ -9,7 +10,7 @@ import { createStyleLink } from './createStyleLink'
 
 export function customizeCards(page: ListingPage, config: InternalSiteBaseConfig) {
   const logger = createLogger('customizeCards')
-  const episodeCards = page.episodeCards()
+  const episodeCards = filterNullish(page.episodeCards())
 
   logger.log('Found episode cards:', episodeCards)
 
@@ -27,7 +28,7 @@ export function customizeCards(page: ListingPage, config: InternalSiteBaseConfig
     const animeMap = await window.messageGateway.sendMessage(
       'fetch-details',
       {
-        cards: episodeCards.map(card => ({
+        cards: (episodeCards).map(card => ({
           title: card.title,
           episodeNumber: card.episodeNumber,
         })),
@@ -51,10 +52,10 @@ export function customizeCards(page: ListingPage, config: InternalSiteBaseConfig
   logger.log('store:', store)
 
   const disposers = episodeCards.map((card, index) => {
-    const { container, root, shadowDOM } = createEncapsulatedContainer(config)
+    const { container, root, shadowDOM } = createEncapsulatedContainer()
 
     shadowDOM.appendChild(createStyleLink(config.scope))
-    card.infoContainer?.before(container)
+    card.render(container)
 
     return render(() => <CardDetail card={card} page={page} store={store} onRender={startFetching} index={index} />, root)
   })

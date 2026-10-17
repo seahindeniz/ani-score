@@ -12,16 +12,25 @@ export const config: SiteBaseConfig = {
         return Array.from(elements)
           .map((element) => {
             const infoContainer = element.querySelector<HTMLDivElement>('.v3-card-copy')
-            const title = infoContainer?.querySelector('h3')?.textContent.trim()
-            const episodeNumberText = infoContainer?.querySelector('span')?.textContent.trim()
+            const header = infoContainer?.querySelector('h3')
+
+            if (!infoContainer || !header)
+              return undefined
+
+            const title = header.textContent.trim()
+            const episodeNumberText = infoContainer.querySelector('span')?.textContent.trim()
             const episodeNumber = episodeNumberText ? Number.parseInt(episodeNumberText.replace('. Bölüm ', '')) : Number.NaN
 
             if (!title || episodeNumber == null || Number.isNaN(episodeNumber))
               return undefined
 
-            return { element, infoContainer, title, episodeNumber }
+            return {
+              element,
+              render: container => header.after(container),
+              title,
+              episodeNumber,
+            }
           })
-          .filter(card => card != null)
       },
       getShimmeringElement: card => card.element.querySelector<HTMLDivElement>('div.v3-poster-frame'),
     },
@@ -33,16 +42,25 @@ export const config: SiteBaseConfig = {
         return Array.from(elements)
           .map((element) => {
             const infoContainer = element.querySelector<HTMLDivElement>('.v3-card-copy')
-            const title = infoContainer?.querySelector('h3')?.textContent.trim()
-            const episodeNumberText = infoContainer?.querySelector('span')?.textContent.trim()
+            const header = infoContainer?.querySelector('h3')
+
+            if (!infoContainer || !header)
+              return undefined
+
+            const title = header.textContent.trim()
+            const episodeNumberText = infoContainer.querySelector('span')?.textContent.trim()
             const episodeNumber = episodeNumberText ? Number.parseInt(episodeNumberText.replace('. Bölüm ', '')) : Number.NaN
 
             if (!title || episodeNumber == null || Number.isNaN(episodeNumber))
               return undefined
 
-            return { element, infoContainer, title, episodeNumber }
+            return {
+              element,
+              render: container => header.after(container),
+              title,
+              episodeNumber,
+            }
           })
-          .filter(card => card != null)
       },
       getShimmeringElement: card => card.element.querySelector<HTMLDivElement>('div.v3-poster-frame'),
     },
