@@ -58,7 +58,8 @@ export const sharedConfig: UserConfig = {
   build: {
     cssMinify: false,
     minify: false,
-    sourcemap: 'inline',
+    // Inline sourcemaps made the content scripts ~3.5x larger, and they're parsed on every matching page
+    sourcemap: isDev ? 'inline' : false,
   },
   esbuild: {
     minifyIdentifiers: false,
