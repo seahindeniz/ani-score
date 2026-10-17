@@ -1,5 +1,5 @@
 import type { InternalSiteBaseConfig } from '~/contentScripts/site/base'
-import { debounce, leading } from '@solid-primitives/scheduled'
+import { debounce, leadingAndTrailing } from '@solid-primitives/scheduled'
 import { rootContainerClass } from '~/constants/main'
 import { useRefStore } from '../store/refStore'
 import { createEncapsulatedContainer } from './createEncapsulatedContainer'
@@ -31,18 +31,17 @@ export async function initSiteLogic(config: InternalSiteBaseConfig) {
       injectGlobals()
 
       const disposables = [] as (() => void)[]
-      const runListingPageLogic = leading(debounce, () => {
-        disposables.push(customizeCards(page, config))
-      }, 250)
-
-      runListingPageLogic()
-      page.reInit?.(() => {
+      // Runs right away, and once more after a burst of re-renders settles, so the last re-render isn't dropped
+      const runListingPageLogic = leadingAndTrailing(debounce, () => {
         disposables.forEach(dispose => dispose())
 
         disposables.length = 0
 
-        runListingPageLogic()
-      })
+        disposables.push(customizeCards(page, config))
+      }, 250)
+
+      runListingPageLogic()
+      page.reInit?.(() => runListingPageLogic())
     }
   })
 }

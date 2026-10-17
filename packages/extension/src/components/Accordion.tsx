@@ -5,8 +5,6 @@ import { cn } from '~/utils'
 interface AccordionContextValue {
   expandedItems: () => Set<string>
   toggleItem: (value: string) => void
-  multiple: boolean
-  collapsible: boolean
 }
 
 const AccordionContext = createContext<AccordionContextValue>()
@@ -37,7 +35,7 @@ export const Accordion: Component<AccordionProps> = (props) => {
       const next = new Set(prev)
 
       if (next.has(value)) {
-        if (local.collapsible) {
+        if (local.collapsible ?? true) {
           next.delete(value)
         }
       }
@@ -55,12 +53,6 @@ export const Accordion: Component<AccordionProps> = (props) => {
   const contextValue: AccordionContextValue = {
     expandedItems,
     toggleItem,
-    get multiple() {
-      return local.multiple ?? false
-    },
-    get collapsible() {
-      return local.collapsible ?? true
-    },
   }
 
   return (

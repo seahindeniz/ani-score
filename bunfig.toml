@@ -1,0 +1,9 @@
+[install]
+# Hoist everything to the root node_modules (replaces pnpm's shamefully-hoist)
+linker = "hoisted"
+# Save exact versions (replaces pnpm's save-prefix="")
+exact = true
+
+[run]
+# Run `node` and node-shebang bins (vite, vitest, vinxi, eslint, tsc, ...) on Bun
+bun = true

@@ -2,29 +2,30 @@
   "name": "ani-score-monorepo",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@9.7.1",
+  "packageManager": "bun@1.4.3",
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
-    "node": ">=22"
+    "bun": ">=1.4"
   },
   "scripts": {
-    "dev": "pnpm -r dev",
-    "dev-firefox": "pnpm -r dev-firefox",
-    "dev:site": "pnpm --filter @ani-score/site dev",
-    "build": "pnpm -r build",
-    "build-firefox": "pnpm -r build-firefox",
-    "build:site": "pnpm --filter @ani-score/site build",
-    "lint": "pnpm -r run lint",
-    "test": "pnpm -r run test",
-    "release": "pnpm -r release"
+    "dev": "bun run --parallel --workspaces --if-present dev",
+    "dev-firefox": "bun run --parallel --workspaces --if-present dev-firefox",
+    "dev:site": "bun run --filter @ani-score/site dev",
+    "build": "bun run --workspaces --if-present build",
+    "build-firefox": "bun run --workspaces --if-present build-firefox",
+    "build:site": "bun run --filter @ani-score/site build",
+    "lint": "bun run --workspaces --if-present lint",
+    "test": "bun run --workspaces --if-present test",
+    "release": "bun run --workspaces --if-present release"
   },
   "devDependencies": {
     "@commitlint/cli": "20.1.0",
     "@commitlint/config-conventional": "20.0.0",
-    "lefthook": "2.0.2"
+    "lefthook": "2.2.2"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "lefthook"
-    ]
-  }
+  "trustedDependencies": [
+    "lefthook"
+  ]
 }

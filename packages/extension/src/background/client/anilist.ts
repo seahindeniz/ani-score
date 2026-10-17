@@ -5,7 +5,8 @@ export const anilistClient = new Client({
   url: 'https://graphql.anilist.co',
   exchanges: [cacheExchange, fetchExchange],
   preferGetMethod: false,
-  async fetch(input, init) {
+  // The cast is for the unit tests' Bun types, whose `fetch` also has a `preconnect` method that urql never calls
+  fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
     const tokenStore = useTokenStore()
 
     await tokenStore.dataReady
@@ -19,5 +20,5 @@ export const anilistClient = new Client({
         ...init?.headers,
       },
     })
-  },
+  }) as typeof fetch,
 })

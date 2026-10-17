@@ -13,6 +13,7 @@ node_modules
 .eslintcache
 *.timestamp-*.*js
 test-results/
+coverage/
 !.gitkeep
 .env
 **/.claude/settings.local.json

@@ -13,17 +13,17 @@ const wantAll = Boolean(argv.pack) || (!argv.zip && !argv.crx && !argv.xpi)
 const wantZip = wantAll || Boolean(argv.zip)
 const wantCrx = wantAll || Boolean(argv.crx)
 const wantXpi = wantAll || Boolean(argv.xpi)
-const version = process.env.npm_package_version
+const { version } = await fs.readJSON(r('package.json'))
 
 if (!version) {
-  log('PACK', 'error: npm_package_version is not defined')
+  log('PACK', 'error: version is not defined in package.json')
   process.exit(1)
 }
 
 try {
   if (wantZip || wantCrx) {
     log('PACK', 'running build')
-    execSync('pnpm run build', { stdio: 'inherit', env: process.env })
+    execSync('bun run build', { stdio: 'inherit', env: process.env })
   }
 
   await fs.ensureDir(r('release'))
@@ -40,7 +40,7 @@ try {
 
   if (wantXpi) {
     log('PACK', 'running build for Firefox')
-    execSync('pnpm run build-firefox', { stdio: 'inherit', env: process.env })
+    execSync('bun run build-firefox', { stdio: 'inherit', env: process.env })
 
     const env = {
       ...process.env,

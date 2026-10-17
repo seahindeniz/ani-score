@@ -1,0 +1,3 @@
+[run]
+# Run `node` and node-shebang bins on Bun (the root bunfig.toml is not read from here)
+bun = true

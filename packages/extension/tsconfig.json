@@ -1,7 +1,14 @@
 {
+  "compilerOptions": {
+    // For `bun test`, which reads this file but not `references` (Vite has its own alias)
+    "paths": {
+      "~/*": ["./src/*"]
+    }
+  },
   "references": [
     { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    { "path": "./tsconfig.node.json" },
+    { "path": "./tsconfig.test.json" }
   ],
   "files": []
 }

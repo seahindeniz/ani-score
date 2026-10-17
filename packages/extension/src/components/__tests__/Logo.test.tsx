@@ -1,5 +1,5 @@
+import { describe, expect, it } from 'bun:test'
 import { render } from '@solidjs/testing-library'
-import { describe, expect, it } from 'vitest'
 import Logo from '../Logo'
 
 describe('logo component', () => {

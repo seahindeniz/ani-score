@@ -4,7 +4,7 @@ import { outputDirectory } from './scripts/constants'
 
 export default {
   hooks: {
-    'after:bump': 'pnpm run pack',
+    'after:bump': 'bun run pack',
   },
   npm: {
     publish: false,

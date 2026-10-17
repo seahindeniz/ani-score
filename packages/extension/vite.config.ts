@@ -1,5 +1,3 @@
-/// <reference types="vitest" />
-
 import type { UserConfig } from 'vite'
 import { dirname, relative } from 'node:path'
 import process from 'node:process'
@@ -141,9 +139,5 @@ export default defineConfig(({ command }) => mergeConfig(sharedDOMConfig(), {
         sidepanel: r('src/sidepanel/index.html'),
       },
     },
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
   },
 }))

@@ -11,14 +11,12 @@ import { TagColor } from './TagColors/TagColors'
 export const SidePanel: Component = () => {
   const tokenStore = useTokenStore()
 
-  function toggleAnilistAuthorization() {
-    if (tokenStore.data().anilist) {
-      tokenStore.setData({ ...tokenStore.data(), anilist: '' })
-
-      return
-    }
-
+  function authorizeAnilist() {
     browser.tabs.create({ url: ANILIST_TOKEN_URL })
+  }
+
+  function signOut() {
+    tokenStore.setData({ ...tokenStore.data(), anilist: '' })
   }
 
   return (
@@ -29,7 +27,7 @@ export const SidePanel: Component = () => {
           <Button
             size="lg"
             class={clsx('flex items-center justify-center')}
-            onClick={toggleAnilistAuthorization}
+            onClick={authorizeAnilist}
           >
             <SimpleIconsAnilist />
             Authorize Anilist
@@ -38,6 +36,12 @@ export const SidePanel: Component = () => {
       >
         <GenreColors />
         <TagColor />
+        <div class="w-full flex justify-center">
+          <Button variant="outline" onClick={signOut}>
+            <SimpleIconsAnilist />
+            Sign out of AniList
+          </Button>
+        </div>
       </Show>
     </main>
   )

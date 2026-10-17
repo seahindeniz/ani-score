@@ -37,6 +37,8 @@ export const ColorPickerRow: Component<Props> = (props) => {
               options={props.names!}
               class="flex-grow-1"
               placeholder="Select"
+              // Picking the current option again would otherwise deselect it, leaving the row without a name
+              disallowEmptySelection
               value={name}
               onChange={value => props.updateColor({ name: value! })}
               itemComponent={props => (

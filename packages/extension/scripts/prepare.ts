@@ -20,13 +20,13 @@ async function stubIndexHtml() {
 async function writeManifest() {
   log('PRE', `Writing manifest for ${mode} mode`)
 
-  execSync(`npx tsx scripts/manifest --writeManifest --mode ${mode}`, { stdio: 'inherit', env: process.env })
+  execSync(`bun scripts/manifest.ts --writeManifest --mode ${mode}`, { stdio: 'inherit', env: process.env })
 }
 
 async function generateGraphQLTypes() {
   log('PRE', `Generating GraphQL types`)
 
-  execSync(`pnpm run codegen`, { stdio: 'inherit', env: process.env })
+  execSync(`bun run codegen`, { stdio: 'inherit', env: process.env })
 }
 
 generateGraphQLTypes()

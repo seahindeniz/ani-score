@@ -1,8 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm lint:*)",
-      "Bash(pnpm list:*)",
+      "Bash(bun run lint:*)",
+      "Bash(bun pm ls:*)",
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:github.com)",
       "WebSearch"

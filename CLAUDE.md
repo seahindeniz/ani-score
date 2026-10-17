@@ -4,16 +4,27 @@
 
 AniScore is a browser extension that displays anime ratings from AniList on streaming sites. Built with SolidJS, TypeScript, and the Vitesse WebExt boilerplate. Currently supports Anizm.net and TRanimeizle with an extensible architecture for adding more sites.
 
-This is a **pnpm workspace monorepo**. The extension lives in `packages/extension/`. Root scripts delegate to workspace packages.
+This is a **Bun workspace monorepo**: Bun is both the package manager and the runtime. The extension lives in `packages/extension/`. Root scripts delegate to workspace packages.
 
 ## Commands
 
 Most scripts run from the repo root (see root `package.json`). These two exist only in the extension package:
 
 ```bash
-pnpm --filter ani-score test:e2e   # Run Playwright E2E tests
-pnpm --filter ani-score codegen    # Generate GraphQL types from AniList schema
+bun run --filter ani-score test:e2e   # Run Playwright E2E tests
+bun run --filter ani-score codegen    # Generate GraphQL types from AniList schema
 ```
+
+Always use `bun run test` / `bun run build`. Bare `bun build` invokes Bun's bundler instead of the package script. Bare `bun test` lacks the `--conditions development --conditions browser` flags (bunfig can't set them), so Solid resolves to its server build and rendering fails.
+
+### Bun runtime
+- `[run] bun = true` makes `node` and node-based CLIs (Vite, vinxi, ESLint, tsc) run on Bun. Bun reads `bunfig.toml` only from the current directory, so it is set in the root and in each package.
+- E2E runs Playwright on Bun, which needs `@playwright/test` ≥1.64 (older versions crash loading TS on Bun). The tests launch the full `chromium` channel because headless shell can't load extensions, so install it with `bunx playwright install chromium`.
+
+### Unit tests
+- `bun test` with happy-dom; tests live in `__tests__/` folders next to the code. `packages/extension/test/` holds the setup: `preload.ts` registers the DOM, the Vite `define` globals and a fake `browser`/`chrome` (`fake-browser.ts`). `vite-compat-plugin.ts` compiles Solid JSX with `babel-preset-solid` and stubs Vite-only imports (`~icons/*`, styles, `?url`/`?raw`, `.svg`).
+- `bun run test` enforces 100% line and function coverage of `src/` (minus generated `src/gql/`). Bun can't measure branches, and only reports files a test imports, so `scripts/check-coverage.ts` fails for any source file with runtime code that is missing from `coverage/lcov.info`.
+- For a fresh copy of a module with state, import it with a query string (`await import('../store.ts?case=1')`); its own imports stay shared.
 
 ## Architecture
 

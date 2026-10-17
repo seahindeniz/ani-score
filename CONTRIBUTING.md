@@ -6,25 +6,24 @@ you get started with development.
 ## Development Setup
 
 1. **Prerequisites**
-   - Node.js (v18+)
-   - pnpm package manager
+   - [Bun](https://bun.sh) v1.4+ (package manager and runtime)
 
 2. **Installation**
    ```bash
    git clone https://github.com/seahindeniz/ani-score.git
    cd ani-score
-   pnpm install
+   bun install
    ```
 
 3. **Development**
    ```bash
-   pnpm dev        # For Chrome/Chromium
-   pnpm dev-firefox # For Firefox
+   bun run dev         # For Chrome/Chromium
+   bun run dev-firefox # For Firefox
    ```
 
 4. **Build for Production**
    ```bash
-   pnpm build
+   bun run build
    ```
 
 ## Project Structure
@@ -55,7 +54,7 @@ To add support for a new anime streaming site or database:
    - `global.scss` - Add any custom styling needed for the site
 
 1. **Testing your implementation**
-   - Run `pnpm dev` to start development mode
+   - Run `bun run dev` to start development mode
    - Navigate to your target website
    - Verify that anime ratings appear correctly
 

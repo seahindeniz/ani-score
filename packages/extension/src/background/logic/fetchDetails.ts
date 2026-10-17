@@ -31,10 +31,6 @@ function createAlias(title: string, index: number): string {
   return `a_${index + 1}_${cleanTitle}`
 }
 
-function escapeGraphQLString(str: string): string {
-  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')
-}
-
 function generateBatchQuery(animeList: ReturnType<typeof findAnimeListInDatabase>) {
   let currentChunk: FieldNode[] = []
   let chunkIndex = 0
@@ -62,7 +58,8 @@ function generateBatchQuery(animeList: ReturnType<typeof findAnimeListInDatabase
 
             if (idOrSearchArgument.value.kind === Kind.INT || idOrSearchArgument.value.kind === Kind.STRING) {
               Object.assign(idOrSearchArgument.value, {
-                value: source === 'withId' ? anilist! : source === 'withIdMal' ? mal! : escapeGraphQLString(title),
+                // The query printer escapes string values, so the title goes in as is
+                value: source === 'withId' ? anilist! : source === 'withIdMal' ? mal! : title,
               })
             }
           }
@@ -168,40 +165,45 @@ export async function fetchDetails(props: Props) {
       queryPromises.push(
         anilistClient.query<FetchResult>(query, {}, {
           requestPolicy: 'network-only',
-        }).toPromise(),
+        }).toPromise()
+          // urql reports failures through `error`; a rejection here is unexpected, and is handled right away so it
+          // isn't left unhandled while the next batch waits
+          .catch((error: unknown) => ({ data: undefined, error: error instanceof Error ? error : new Error(String(error)) })),
       )
 
       await wait(150)
     }
 
-    const results = await Promise.allSettled(queryPromises)
+    const results = await Promise.all(queryPromises)
 
-    for (const result of results) {
-      if (result.status === 'rejected' && result.reason.error) {
-        logger.error('GraphQL query error:', result.reason.error)
+    for (const { error } of results) {
+      if (!error)
+        continue
 
-        if (result.reason?.error?.message?.includes('Invalid token')) {
-          const tokenStore = useTokenStore()
+      logger.error('GraphQL query error:', error)
 
-          tokenStore.setData({ ...tokenStore.data(), anilist: '' })
+      if (error.message.includes('Invalid token')) {
+        const tokenStore = useTokenStore()
 
-          browser.notifications.create('open-side-panel', {
-            type: 'basic',
-            iconUrl: browser.runtime.getURL('assets/icon-512.png'),
-            title: 'AniScore',
-            message: 'Anilist token is invalid. Please click on the AniScore extension icon and re-authenticate.',
-            priority: 2,
-          })
-        }
+        tokenStore.setData({ ...tokenStore.data(), anilist: '' })
+
+        browser.notifications.create('open-side-panel', {
+          type: 'basic',
+          iconUrl: browser.runtime.getURL('assets/icon-512.png'),
+          title: 'AniScore',
+          message: 'Anilist token is invalid. Please click on the AniScore extension icon and re-authenticate.',
+          priority: 2,
+        })
 
         return undefined
       }
     }
 
+    // Other errors only lose their own batch; the titles in it come back as not found
     const mergedData = results.reduce(
       (map, result) => {
-        if (result.status === 'fulfilled' && result.value.data) {
-          Object.assign(map, result.value.data)
+        if (result.data) {
+          Object.assign(map, result.data)
         }
 
         return map

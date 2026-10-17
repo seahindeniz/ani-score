@@ -4,7 +4,7 @@
   "commit-msg": {
     "commands": {
       "lint commit message": {
-        "run": "pnpm commitlint --edit {1}"
+        "run": "bunx --bun commitlint --edit {1}"
       }
     }
   },
@@ -12,11 +12,11 @@
     "parallel": true,
     "commands": {
       "lint": {
-        "run": "pnpm lint"
+        "run": "bun run lint"
       },
       "test": {
         "skip": true,
-        "run": "pnpm test"
+        "run": "bun run test"
       }
     }
   }
