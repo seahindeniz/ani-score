@@ -5,6 +5,7 @@ import { useRefStore } from '../store/refStore'
 import { createEncapsulatedContainer } from './createEncapsulatedContainer'
 import { createStyleLink } from './createStyleLink'
 import { customizeCards } from './customizeCards'
+import { initSiteTheme } from './siteTheme'
 
 export async function initSiteLogic(config: InternalSiteBaseConfig) {
   let injectGlobals = () => {
@@ -13,7 +14,9 @@ export async function initSiteLogic(config: InternalSiteBaseConfig) {
     const refStore = useRefStore()
     const siteSpecificGlobalStyle = createStyleLink(config.scope)
 
-    refStore.portalRoot = createEncapsulatedContainer(config)
+    initSiteTheme(config.theme)
+
+    refStore.portalRoot = createEncapsulatedContainer()
 
     refStore.portalRoot.container.classList.add(rootContainerClass)
 

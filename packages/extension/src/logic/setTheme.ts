@@ -2,28 +2,31 @@ import { debounce } from '@solid-primitives/scheduled'
 import { createEffect, on } from 'solid-js'
 import { useThemeStore } from './storage'
 
+export type Theme = 'light' | 'dark' | 'system'
+export type ResolvedTheme = Exclude<Theme, 'system'>
+
 const isDarkQuery = () => window.matchMedia('(prefers-color-scheme: dark)')
 const determineTheme = (matches: boolean) => matches ? 'dark' : 'light'
 const getSystemTheme = () => determineTheme(isDarkQuery().matches)
 
-export async function setTheme(
-  root = document.documentElement,
+export function applyTheme(root: HTMLElement, theme: ResolvedTheme) {
+  root.setAttribute('data-kb-theme', theme)
+}
+
+/**
+ * Calls `onChange` with the resolved theme, then again whenever it changes.
+ */
+export async function watchTheme(
+  onChange: (theme: ResolvedTheme) => void,
   /**
    * @default 'system'
    */
-  theme?: 'system' | 'light' | 'dark',
+  theme?: Theme,
 ) {
-  const applyTheme = (themeValue: ReturnType<ReturnType<typeof useThemeStore>['data']>) => {
-    root.setAttribute(
-      'data-kb-theme',
-      themeValue === 'system' ? getSystemTheme() : themeValue,
-    )
-  }
-
   // A fixed theme doesn't depend on the stored setting, so apply it before storage loads; otherwise the light
   // defaults show until then
   if (theme && theme !== 'system') {
-    applyTheme(theme)
+    onChange(theme)
 
     return
   }
@@ -39,14 +42,24 @@ export async function setTheme(
   }
 
   createEffect(on(themeStore.data, (currentTheme) => {
-    applyTheme(currentTheme)
+    onChange(currentTheme === 'system' ? getSystemTheme() : currentTheme)
   }))
 
   isDarkQuery().addEventListener('change', debounce((event) => {
     const currentTheme = themeStore.data()
 
     if (currentTheme === 'system') {
-      applyTheme(determineTheme(event.matches))
+      onChange(determineTheme(event.matches))
     }
   }, 200))
+}
+
+export async function setTheme(
+  root = document.documentElement,
+  /**
+   * @default 'system'
+   */
+  theme?: Theme,
+) {
+  await watchTheme(resolvedTheme => applyTheme(root, resolvedTheme), theme)
 }

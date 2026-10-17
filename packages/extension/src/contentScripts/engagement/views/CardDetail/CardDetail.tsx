@@ -111,6 +111,8 @@ export const CardDetail: Component<Props> = (props) => {
   return (
     <div
       ref={containerRef}
+      // Lets site styles reach this element through the shadow root with `.ani-score::part(container)`
+      part="container"
       class={styles.container}
       classList={{
         'items-center': details() == null,

@@ -1,4 +1,4 @@
-import type { setTheme } from '~/logic/setTheme'
+import type { ResolvedTheme, Theme } from '~/logic/setTheme'
 
 export interface Meta {
   urlPatterns: `*://${string}`[]
@@ -6,14 +6,14 @@ export interface Meta {
 
 export interface EpisodeCard {
   element: HTMLElement
-  infoContainer: HTMLDivElement | null
+  render: (container: HTMLDivElement) => void
   title: string
   episodeNumber: number
 }
 
 export interface ListingPage {
   isValidPage: () => boolean
-  episodeCards: () => EpisodeCard[]
+  episodeCards: () => (EpisodeCard | undefined | null)[]
   reInit?: (next: () => void) => void
   /**
    * Element within the episode card to apply "watching" state styles to.
@@ -27,9 +27,12 @@ export interface SiteBaseConfig {
    * Normally, AniScore adapts to the system theme by default.
    * You can override this behavior by specifying a theme here.
    *
+   * To follow the site's own theme, pass a function instead. It's called once per page, and should call `set` with the
+   * current theme, then again whenever the site switches theme.
+   *
    * @default 'system'
    */
-  theme?: Parameters<typeof setTheme>[1]
+  theme?: Theme | ((set: (theme: ResolvedTheme) => void) => void)
 }
 
 export interface InternalSiteBaseConfig extends SiteBaseConfig {
