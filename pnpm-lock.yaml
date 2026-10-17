@@ -102,6 +102,9 @@ importers:
       '@unocss/eslint-plugin':
         specifier: ^66.5.2
         version: 66.6.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
+      '@unocss/preset-rem-to-px':
+        specifier: ^66.6.0
+        version: 66.6.0
       '@unocss/reset':
         specifier: ^66.5.2
         version: 66.6.0
@@ -2444,6 +2447,9 @@ packages:
 
   '@unocss/preset-mini@66.6.0':
     resolution: {integrity: sha512-8bQyTuMJcry/z4JTDsQokI0187/1CJIkVx9hr9eEbKf/gWti538P8ktKEmHCf8IyT0At5dfP9oLHLCUzVetdbA==}
+
+  '@unocss/preset-rem-to-px@66.6.0':
+    resolution: {integrity: sha512-qJ0qf1MD/otLIwnLd7hPLektJEBn/ygcEcV/5NsrWp+RBhcPFjVpYyXPzDMkB2i6+cdZeOC3dw2f/xipbDslDg==}
 
   '@unocss/preset-tagify@66.6.0':
     resolution: {integrity: sha512-Vy9olM61lqTDxcHbfDkIJNp9LF2m8K9I/F2J0diD+BVZgpym1QRK6+aZaeAPJuMCyQrOk87dm7VIiAPFtLOXFA==}
@@ -10696,6 +10702,10 @@ snapshots:
       '@unocss/core': 66.6.0
       '@unocss/extractor-arbitrary-variants': 66.6.0
       '@unocss/rule-utils': 66.6.0
+
+  '@unocss/preset-rem-to-px@66.6.0':
+    dependencies:
+      '@unocss/core': 66.6.0
 
   '@unocss/preset-tagify@66.6.0':
     dependencies:

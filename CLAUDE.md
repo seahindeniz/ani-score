@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-AniScore is a browser extension that displays anime ratings from AniList on streaming sites. Built with SolidJS, TypeScript, and the Vitesse WebExt boilerplate. Currently supports Anizm.net with an extensible architecture for adding more sites.
+AniScore is a browser extension that displays anime ratings from AniList on streaming sites. Built with SolidJS, TypeScript, and the Vitesse WebExt boilerplate. Currently supports Anizm.net and TRanimeizle with an extensible architecture for adding more sites.
 
 This is a **pnpm workspace monorepo**. The extension lives in `packages/extension/`. Root scripts delegate to workspace packages.
 

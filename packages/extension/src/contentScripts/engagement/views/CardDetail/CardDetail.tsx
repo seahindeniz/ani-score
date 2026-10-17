@@ -140,7 +140,7 @@ export const CardDetail: Component<Props> = (props) => {
                       )
                     : <MdiHeartPlusOutline class="text-red-500" />
                 }
-                class="text-white decoration-none hover:decoration-underline"
+                class="text-foreground decoration-none hover:decoration-underline"
                 loading={isMakingFavorite()}
                 text={details()!.favourites! + softFavoriteAdditionCount()}
                 title={isFavorite() ? 'Remove Favorite' : 'Add Favorite'}
