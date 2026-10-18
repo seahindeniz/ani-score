@@ -1,50 +1,28 @@
-import { join } from 'node:path';
-
 import type { Manifest } from 'webextension-polyfill';
 
 import type PkgType from '../package.json';
 import { argv, isDev, isFirefox, log, port, r } from '../scripts/utils';
 import { contentScriptPaths } from '../src/utils/contentScripts';
+import { loadBundledSites } from './sites';
 
 export async function getManifest() {
   const pkg = (await Bun.file(r('package.json')).json()) as typeof PkgType;
 
-  const contentScripts = [
-    ...(await Promise.all(
-      contentScriptPaths.map(async (entry) => {
-        let config = {
-          urlPatterns: ['<all_urls>'] as unknown as `*://${string}`[],
-        };
-        const filePath = join('../', entry.relativeDir, 'meta')
-          .replace(/\.(ts|tsx)$/, '')
-          .replace(/\\/g, '/');
-
-        try {
-          const moduleContent = await import(filePath);
-
-          if (moduleContent?.meta) {
-            config = moduleContent.meta;
-          }
-        } catch {
-          //
-        }
-        return {
-          matches: config.urlPatterns,
-          js: [`dist/contentScripts/${entry.directory}/${entry.name}`],
-        };
-      }),
-    )),
-  ];
-  const contentScriptsByScope = Object.groupBy(contentScripts, (item) =>
-    item.matches.includes('<all_urls>' as `*://${string}`) ? 'broad' : 'other',
-  );
-  const websitePatterns = Array.from(
-    new Set(contentScriptsByScope.other?.flatMap((item) => item.matches) || []),
-  );
-
-  contentScriptsByScope.broad?.forEach((item) => {
-    item.matches = websitePatterns;
-  });
+  const sites = loadBundledSites();
+  const patternsOf = (access: 'required' | 'optional') =>
+    Array.from(
+      new Set(
+        sites
+          .filter((site) => (site.access ?? 'optional') === access)
+          .flatMap((site) => site.matches),
+      ),
+    );
+  // Sites the extension may access from install; the engagement script picks the config matching the page
+  const websitePatterns = patternsOf('required');
+  const contentScripts = contentScriptPaths.map((entry) => ({
+    matches: websitePatterns,
+    js: [`dist/contentScripts/${entry.directory}/${entry.name}`],
+  }));
 
   const manifest: Manifest.WebExtensionManifest = {
     manifest_version: 3,
@@ -78,7 +56,15 @@ export async function getManifest() {
       ...(isFirefox ? [] : ['sidePanel']),
       'notifications',
       'unlimitedStorage',
+      // Injects AniScore on the optional sites the user allows (`registerContentScripts`), and the site editor
+      'scripting',
+      // "Integrate this site with AniScore"; the click lets the editor run on that tab (`activeTab`)
+      'contextMenus',
+      'activeTab',
     ],
+    // Granted per site when the user turns it on, never at install. `*://*/*` grants nothing by itself: the browser
+    // only asks for a site that's declared here, so it lets users add sites that no bundled config lists.
+    optional_host_permissions: [...patternsOf('optional'), '*://*/*'],
     host_permissions: [
       ...(isDev ? [`http://localhost:${port}/*`] : []),
       'https://github.com/cedya77/anime-offline-database/*',
@@ -88,16 +74,12 @@ export async function getManifest() {
       ...websitePatterns,
     ],
     content_scripts: contentScripts,
+    // AniList's sign-in redirects back to the side panel. Content scripts carry their CSS inline, so web pages
+    // can't load (or probe for) anything from the extension.
     web_accessible_resources: [
       {
-        resources: [
-          'dist/contentScripts/**/*.css',
-          'dist/sidepanel/index.html',
-        ],
-        matches: [
-          'https://anilist.co/*',
-          ...websitePatterns.filter((item) => item.endsWith('/*')),
-        ],
+        resources: ['dist/sidepanel/index.html'],
+        matches: ['https://anilist.co/*'],
       },
     ],
     content_security_policy: {

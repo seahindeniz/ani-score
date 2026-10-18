@@ -1,0 +1,43 @@
+{
+  "$schema": "../site.schema.json",
+  "schemaVersion": 1,
+  "id": "anizm",
+  "name": "Anizm",
+  "matches": ["*://anizm.net/", "*://anizm.net/*"],
+  "access": "required",
+  "theme": "dark",
+  "pages": [
+    {
+      "name": "New episodes",
+      "match": { "path": "^/yeniler$" },
+      "cards": [
+        {
+          "selector": ".v3-latest-grid > article.v3-episode-card",
+          "title": { "selector": ".v3-card-copy h3" },
+          "episode": {
+            "selector": ".v3-card-copy span",
+            "steps": [{ "match": "(\\d+)" }]
+          },
+          "inject": { "selector": ".v3-card-copy h3", "position": "after" },
+          "shimmer": { "selector": "div.v3-poster-frame" }
+        }
+      ]
+    },
+    {
+      "name": "Home",
+      "match": { "path": "^/$" },
+      "cards": [
+        {
+          "selector": ".v3-poster-rail > :is(article.v3-episode-card, article.v3-series-card)",
+          "title": { "selector": ".v3-card-copy h3" },
+          "episode": {
+            "selector": ".v3-card-copy span",
+            "steps": [{ "match": "(\\d+)" }]
+          },
+          "inject": { "selector": ".v3-card-copy h3", "position": "after" },
+          "shimmer": { "selector": "div.v3-poster-frame" }
+        }
+      ]
+    }
+  ]
+}

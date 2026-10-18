@@ -26,9 +26,7 @@ function setup(names?: string[]) {
 describe('color picker row', () => {
   it('edits a free-form tag name in lower case', () => {
     const { updateColor } = setup();
-    const input = screen.getByPlaceholderText(
-      'Enter tag name',
-    ) as HTMLInputElement;
+    const input = screen.getByPlaceholderText('Tag name') as HTMLInputElement;
 
     expect(input.value).toBe('action');
 
@@ -53,7 +51,10 @@ describe('color picker row', () => {
   it('picks the name from a list', async () => {
     const { updateColor } = setup(['action', 'Drama']);
 
-    await pickOption(screen.getByRole('button', { name: /action/i }), 'Drama');
+    await pickOption(
+      screen.getByRole('button', { name: /^Genre.*action/i }),
+      'Drama',
+    );
 
     expect(updateColor).toHaveBeenCalledWith({ name: 'Drama' });
   });
@@ -61,10 +62,15 @@ describe('color picker row', () => {
   it('keeps the name when the current one is picked again', async () => {
     const { updateColor } = setup(['action', 'Drama']);
 
-    await pickOption(screen.getByRole('button', { name: /action/i }), 'action');
+    await pickOption(
+      screen.getByRole('button', { name: /^Genre.*action/i }),
+      'action',
+    );
 
     expect(updateColor).not.toHaveBeenCalledWith({ name: null });
-    expect(screen.getByRole('button', { name: /action/i })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /^Genre.*action/i }),
+    ).toBeTruthy();
   });
 
   it('changes the color and resets the row', () => {

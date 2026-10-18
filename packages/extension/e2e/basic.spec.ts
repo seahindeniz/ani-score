@@ -6,7 +6,7 @@ test('side panel asks to authorize AniList', async ({ page, extensionId }) => {
     `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
   );
   await expect(
-    page.getByRole('button', { name: 'Authorize Anilist' }),
+    page.getByRole('button', { name: 'Sign in with AniList' }),
   ).toBeVisible();
 });
 
@@ -24,11 +24,11 @@ test('side panel lets a signed-in viewer add genre colors', async ({
   );
 
   await expect(
-    page.getByRole('button', { name: 'Authorize Anilist' }),
+    page.getByRole('button', { name: 'Sign in with AniList' }),
   ).toHaveCount(0);
-  await expect(page.getByText('Tag Colors')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tag colors' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Add Genre' }).click();
+  await page.getByRole('button', { name: 'Add genre' }).click();
 
   // A new entry starts with the first genre from AniList's genre collection
   await expect
@@ -51,10 +51,10 @@ test('side panel signs the viewer out', async ({
     `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
   );
 
-  await page.getByRole('button', { name: 'Sign out of AniList' }).click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
 
   await expect(
-    page.getByRole('button', { name: 'Authorize Anilist' }),
+    page.getByRole('button', { name: 'Sign in with AniList' }),
   ).toBeVisible();
   await expect.poll(() => getStorage('token')).toEqual({ anilist: '' });
 });

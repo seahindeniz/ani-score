@@ -8,6 +8,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '~/components/ui/select';
@@ -28,11 +29,12 @@ export const ColorPickerRow: Component<Props> = (props) => {
       <Show
         when={props.names}
         fallback={
-          <TextField>
+          <TextField class="flex-1">
             <TextFieldInput
               value={props.name}
               type="text"
-              placeholder="Enter tag name"
+              placeholder="Tag name"
+              aria-label="Tag"
               onInput={(e) =>
                 props.updateColor({ name: e.currentTarget.value.toLowerCase() })
               }
@@ -54,6 +56,8 @@ export const ColorPickerRow: Component<Props> = (props) => {
                 <SelectItem item={props.item}>{props.item.rawValue}</SelectItem>
               )}
             >
+              {/* Read with the chosen genre: "Genre, Action" */}
+              <SelectLabel class="sr-only">Genre</SelectLabel>
               <SelectTrigger>
                 <SelectValue<string>>
                   {(state) => state.selectedOption()}
@@ -68,8 +72,9 @@ export const ColorPickerRow: Component<Props> = (props) => {
         <AvatarFallback>
           <input
             list="presetColors"
-            class="h-full w-full"
+            class="h-full w-full cursor-pointer"
             type="color"
+            aria-label={`Color for ${props.name || 'this tag'}`}
             value={props.color}
             onInput={(e) => props.updateColor({ color: e.currentTarget.value })}
           />
@@ -80,13 +85,15 @@ export const ColorPickerRow: Component<Props> = (props) => {
           </datalist>
         </AvatarFallback>
       </Avatar>
+      {/* Quiet until pointed at: a red button on every row outweighs the colors themselves */}
       <Button
         onClick={props.resetColor}
-        variant="destructive"
+        variant="ghost"
         size="icon"
-        class="min-w-[40px]"
+        class="min-w-[40px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        aria-label={`Remove ${props.name ? `the ${props.name} color` : 'this color'}`}
       >
-        <AntDesignCloseOutlined />
+        <AntDesignCloseOutlined aria-hidden="true" />
       </Button>
     </div>
   );

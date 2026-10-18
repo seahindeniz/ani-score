@@ -16,6 +16,7 @@ export default defineConfig(
             '/tr/guide/installation',
             '/tr/guide/ratings',
             '/tr/guide/watch-tracking',
+            '/tr/guide/add-a-site',
           ],
         },
       },
@@ -95,6 +96,10 @@ export default defineConfig(
                   title: 'Watch Tracking',
                   link: '/watch-tracking',
                 },
+                {
+                  title: 'Add a Site',
+                  link: '/add-a-site',
+                },
               ],
             },
           ],
@@ -137,6 +142,10 @@ export default defineConfig(
                     {
                       title: 'İzleme Takibi',
                       link: '/watch-tracking',
+                    },
+                    {
+                      title: 'Site Ekleme',
+                      link: '/add-a-site',
                     },
                   ],
                 },

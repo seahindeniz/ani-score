@@ -44,7 +44,7 @@ Always use `bun run test` / `bun run build`. Bare `bun build` invokes Bun's bund
 1. Background script loads anime database from [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database), falling back to [athanasso/anime-offline-database](https://github.com/athanasso/anime-offline-database) (both continue the archived manami-project dataset), into MiniSearch for fuzzy title matching
 2. Content scripts detect anime cards on supported sites using site-specific selectors
 3. Title is matched against the database to get AniList ID
-4. Background script queries AniList GraphQL API for ratings/details
+4. Background script queries AniList GraphQL API for ratings/details, and keeps them 15 minutes per title (`background/logic/detailsCache.ts`), until the AniList account changes; a card asks past that after the user favorites the anime, or opens its details more than a minute after they were fetched
 5. Results are displayed via Shadow DOM-encapsulated UI on the page
 
 ### Key Patterns

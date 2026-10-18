@@ -1,5 +1,5 @@
 import { debounce } from '@solid-primitives/scheduled';
-import { createEffect, on } from 'solid-js';
+import { createEffect, createRoot, on } from 'solid-js';
 
 import { useThemeStore } from './storage';
 
@@ -15,7 +15,7 @@ export function applyTheme(root: HTMLElement, theme: ResolvedTheme) {
 }
 
 /**
- * Calls `onChange` with the resolved theme, then again whenever it changes.
+ * Calls `onChange` with the resolved theme, then again whenever it changes, until `signal` aborts.
  */
 export async function watchTheme(
   onChange: (theme: ResolvedTheme) => void,
@@ -23,6 +23,7 @@ export async function watchTheme(
    * @default 'system'
    */
   theme?: Theme,
+  signal?: AbortSignal,
 ) {
   // A fixed theme doesn't depend on the stored setting, so apply it before storage loads; otherwise the light
   // defaults show until then
@@ -36,28 +37,33 @@ export async function watchTheme(
 
   await themeStore.dataReady;
 
+  if (signal?.aborted) return;
+
   const storedTheme = themeStore.data();
 
   if (!storedTheme) {
     themeStore.setData('system');
   }
 
-  createEffect(
-    on(themeStore.data, (currentTheme) => {
-      onChange(currentTheme === 'system' ? getSystemTheme() : currentTheme);
-    }),
-  );
+  createRoot((dispose) => {
+    createEffect(
+      on(themeStore.data, (currentTheme) => {
+        onChange(currentTheme === 'system' ? getSystemTheme() : currentTheme);
+      }),
+    );
+    signal?.addEventListener('abort', dispose);
+  });
 
-  isDarkQuery().addEventListener(
-    'change',
-    debounce((event) => {
-      const currentTheme = themeStore.data();
+  const onSystemChange = debounce((event: MediaQueryListEvent) => {
+    const currentTheme = themeStore.data();
 
-      if (currentTheme === 'system') {
-        onChange(determineTheme(event.matches));
-      }
-    }, 200),
-  );
+    if (currentTheme === 'system') {
+      onChange(determineTheme(event.matches));
+    }
+  }, 200);
+
+  isDarkQuery().addEventListener('change', onSystemChange, { signal });
+  signal?.addEventListener('abort', () => onSystemChange.clear());
 }
 
 export async function setTheme(

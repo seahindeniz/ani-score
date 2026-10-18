@@ -98,9 +98,22 @@ function createStorageArea(
 
 const extensionId = 'test-extension-id';
 
+interface RegisteredContentScript {
+  id: string;
+  matches?: string[];
+  excludeMatches?: string[];
+  js?: string[];
+  runAt?: string;
+}
+
 function createFakeBrowser() {
   const onChanged = createEvent();
+  const onPermissionsAdded = createEvent();
+  const onPermissionsRemoved = createEvent();
   let badgeText = '';
+  // Optional host permissions the user granted
+  const grantedOrigins = new Set<string>();
+  let registeredScripts: RegisteredContentScript[] = [];
 
   return {
     storage: {
@@ -120,6 +133,62 @@ function createFakeBrowser() {
       openOptionsPage: mock(async () => {}),
       onMessage: createEvent(),
       onInstalled: createEvent(),
+      onStartup: createEvent(),
+      getManifest: mock(() => ({
+        content_scripts: [
+          { matches: ['*://anizm.net/*'], js: ['dist/gateway.js'] },
+          { matches: ['*://anizm.net/*'], js: ['dist/engagement.js'] },
+        ],
+      })),
+    },
+    permissions: {
+      contains: mock(async ({ origins = [] }: { origins?: string[] }) =>
+        origins.every((origin) => grantedOrigins.has(origin)),
+      ),
+      // Like the user accepting the browser's prompt; a test can make it decline with `mockResolvedValueOnce(false)`
+      request: mock(async ({ origins = [] }: { origins?: string[] }) => {
+        origins.forEach((origin) => grantedOrigins.add(origin));
+        onPermissionsAdded.dispatch({ origins });
+
+        return true;
+      }),
+      remove: mock(async ({ origins = [] }: { origins?: string[] }) => {
+        origins.forEach((origin) => grantedOrigins.delete(origin));
+        onPermissionsRemoved.dispatch({ origins });
+
+        return true;
+      }),
+      onAdded: onPermissionsAdded,
+      onRemoved: onPermissionsRemoved,
+    },
+    contextMenus: {
+      removeAll: mock(async () => {}),
+      create: mock((_properties: Record<string, unknown>) => 'id'),
+      onClicked: createEvent(),
+    },
+    scripting: {
+      // Resolves with one result per frame, like the browser; set what scripts return with `mockResolvedValueOnce`
+      executeScript: mock(
+        async (
+          _injection: Record<string, unknown>,
+        ): Promise<{ result?: unknown }[]> => [{ result: undefined }],
+      ),
+      getRegisteredContentScripts: mock(
+        async ({ ids }: { ids?: string[] } = {}) =>
+          registeredScripts.filter((script) => !ids || ids.includes(script.id)),
+      ),
+      registerContentScripts: mock(
+        async (scripts: RegisteredContentScript[]) => {
+          registeredScripts.push(...structuredClone(scripts));
+        },
+      ),
+      unregisterContentScripts: mock(
+        async ({ ids }: { ids?: string[] } = {}) => {
+          registeredScripts = registeredScripts.filter(
+            (script) => ids && !ids.includes(script.id),
+          );
+        },
+      ),
     },
     action: {
       getBadgeText: mock(async (_details: unknown) => badgeText),
@@ -132,14 +201,35 @@ function createFakeBrowser() {
     tabs: {
       create: mock(async (properties: Record<string, unknown>) => ({
         id: 1,
+        windowId: 1,
+        status: 'loading',
         ...properties,
       })),
+      // Resolves with the open tabs; set them with `mockResolvedValueOnce`
+      query: mock(
+        async (
+          _query: Record<string, unknown>,
+        ): Promise<
+          { id: number; windowId: number; active: boolean; url?: string }[]
+        > => [],
+      ),
+      update: mock(async (id: number, properties: Record<string, unknown>) => ({
+        id,
+        ...properties,
+      })),
+      onUpdated: createEvent(),
       executeScript: mock(
         async (_tabId: number, _details: unknown): Promise<unknown[]> => [],
       ),
     },
     notifications: {
       create: mock(async (id: string, _options: unknown) => id),
+    },
+    windows: {
+      update: mock(async (id: number, properties: Record<string, unknown>) => ({
+        id,
+        ...properties,
+      })),
     },
     webNavigation: {
       onCommitted: createEvent(),
@@ -149,6 +239,10 @@ function createFakeBrowser() {
     },
     resetBadge: () => {
       badgeText = '';
+    },
+    resetPermissions: () => {
+      grantedOrigins.clear();
+      registeredScripts = [];
     },
   };
 }
@@ -171,20 +265,30 @@ export function resetFakeBrowser() {
     runtime,
     action,
     tabs,
+    windows,
     notifications,
     webNavigation,
     sidePanel,
+    permissions,
+    scripting,
+    contextMenus,
   } = fakeBrowser;
 
   storage.local.reset();
   storage.sync.reset();
   fakeBrowser.resetBadge();
+  fakeBrowser.resetPermissions();
 
   for (const event of [
     storage.onChanged,
     runtime.onMessage,
     runtime.onInstalled,
+    runtime.onStartup,
+    tabs.onUpdated,
     webNavigation.onCommitted,
+    permissions.onAdded,
+    permissions.onRemoved,
+    contextMenus.onClicked,
   ])
     event.clear();
 
@@ -197,9 +301,14 @@ export function resetFakeBrowser() {
     runtime.onInstalled,
     action,
     tabs,
+    windows,
     notifications,
     webNavigation.onCommitted,
     sidePanel,
+    permissions,
+    scripting,
+    contextMenus,
+    contextMenus.onClicked,
   ]) {
     for (const value of Object.values(api)) {
       if (typeof value === 'function' && 'mockClear' in value)

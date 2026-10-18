@@ -21,6 +21,7 @@ import {
   parseLookups,
 } from '../../__tests__/network';
 import { anilistClient } from '../../client/anilist';
+import { detailsTtl, forgetDetails } from '../detailsCache';
 import type { AnimeDetails } from '../fetchDetails';
 import { fetchDetails } from '../fetchDetails';
 import { loadDatabase } from '../loadDatabase';
@@ -51,6 +52,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  // Each test asks AniList anew
+  forgetDetails(() => true);
   requests = [];
   fetchMock = mockFetch({
     [anilistURL]: anilistHandler([frieren, apothecarySeason3], requests),
@@ -189,6 +192,56 @@ describe('fetchDetails', () => {
 
     expect(details?.['Sousou no Frieren']).toEqual(frieren);
     expect(details?.Six).toBeNull();
+
+    // The failed batch is asked for again, the other one isn't
+    requests = [];
+    answerAniList(anilistHandler([frieren], requests));
+    await fetchDetails({
+      cards: ['Sousou no Frieren', 'Six'].map((title) => ({
+        title,
+        episodeNumber: 1,
+      })),
+    });
+
+    expect(parseLookups(requests[0].query)).toEqual([
+      { alias: 'a_1_six', by: 'search', value: '"Six"' },
+    ]);
+  });
+
+  test('keeps the details for 15 minutes, or as long as asked', async () => {
+    const cards = [{ title: 'Sousou no Frieren', episodeNumber: 1 }];
+    const now = spyOn(Date, 'now');
+
+    now.mockReturnValue(0);
+    await fetchDetails({ cards });
+    now.mockReturnValue(detailsTtl - 1);
+
+    expect(await fetchDetails({ cards })).toEqual({
+      'Sousou no Frieren': frieren,
+    });
+    expect(requests).toHaveLength(1);
+
+    await fetchDetails({ cards, maxAge: 0 });
+
+    expect(requests).toHaveLength(2);
+
+    // Kept since then: half a minute old is young enough, a minute and a half isn't
+    now.mockReturnValue(detailsTtl - 1 + 30_000);
+    await fetchDetails({ cards, maxAge: 60_000 });
+
+    expect(requests).toHaveLength(2);
+
+    now.mockReturnValue(detailsTtl - 1 + 90_000);
+    await fetchDetails({ cards, maxAge: 60_000 });
+
+    expect(requests).toHaveLength(3);
+
+    now.mockReturnValue(3 * detailsTtl);
+    await fetchDetails({ cards });
+
+    expect(requests).toHaveLength(4);
+
+    now.mockRestore();
   });
 
   test('handles a request that rejects while later batches are still waiting', async () => {

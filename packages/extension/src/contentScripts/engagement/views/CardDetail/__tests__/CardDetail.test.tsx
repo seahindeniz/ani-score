@@ -10,7 +10,7 @@ import {
 import { createMutable } from 'solid-js/store';
 
 import type { AnimeDetails } from '~/background/logic/fetchDetails';
-import type { EpisodeCard, ListingPage } from '~/contentScripts/site/base';
+import type { EpisodeCard } from '~/contentScripts/sites/types';
 import { useSettingsStore } from '~/logic';
 
 import { CardDetail } from '../CardDetail';
@@ -37,7 +37,7 @@ function anime(overrides: Partial<AnimeDetails> = {}) {
 
 function setup(
   details: AnimeDetails | null | undefined,
-  page: Partial<ListingPage> = {},
+  { withShimmer = true, onRefresh = mock() } = {},
 ) {
   const shimmering = document.createElement('div');
   const card: EpisodeCard = {
@@ -45,30 +45,16 @@ function setup(
     render: () => {},
     title: 'Frieren',
     episodeNumber: 1,
+    shimmeringElement: withShimmer ? shimmering : null,
   };
   const store = createMutable({
     anime: details === undefined ? {} : { Frieren: details },
   }) as {
     anime: Record<string, AnimeDetails>;
   };
-  const onRender = mock(async () => {});
+  render(() => <CardDetail card={card} store={store} onRefresh={onRefresh} />);
 
-  render(() => (
-    <CardDetail
-      card={card}
-      page={{
-        isValidPage: () => true,
-        episodeCards: () => [],
-        getShimmeringElement: () => shimmering,
-        ...page,
-      }}
-      store={store}
-      index={0}
-      onRender={onRender}
-    />
-  ));
-
-  return { store, shimmering, onRender };
+  return { store, shimmering, onRefresh };
 }
 
 beforeEach(() => {
@@ -81,10 +67,9 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('card detail', () => {
-  it('shows a spinner until details arrive, and asks for them on mount', async () => {
-    const { store, onRender } = setup(undefined);
+  it('shows a spinner until details arrive', async () => {
+    const { store } = setup(undefined);
 
-    expect(onRender).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Not Found')).toBeNull();
     expect(document.querySelector('[part="container"] svg')).toBeTruthy();
 
@@ -135,11 +120,11 @@ describe('card detail', () => {
     );
 
     expect(screen.getByTitle('Add Favorite').textContent).toBe('5000');
-    expect(screen.getByTitle('Trending').textContent).toBe('⚡');
-    expect(screen.getByTitle('Watching').textContent).toBe('👀3/ 14');
+    expect(screen.getByTitle('Trending').textContent).toBe('Trending');
+    expect(screen.getByTitle('Watching').textContent).toBe('3/14');
     expect(
       screen.getByTitle('Popularity [Visit AniList]').textContent,
-    ).toContain('1,234');
+    ).toContain('1.2K');
     expect(screen.getByText('Fantasy').style.color).toBe('#ff0000');
     expect(screen.getByText('Drama').style.color).toBe('');
     expect(screen.getByText('Magic').style.color).toBe('#0000ff');
@@ -161,13 +146,11 @@ describe('card detail', () => {
   it('counts unreleased episodes as zero', () => {
     setup(anime({ mediaListEntry: { progress: 0 }, episodes: null }));
 
-    expect(screen.getByTitle('Watching').textContent).toBe('👀0/ 0');
+    expect(screen.getByTitle('Watching').textContent).toBe('0/0');
   });
 
   it('works on pages without a shimmering element', () => {
-    setup(anime({ mediaListEntry: { progress: 1 } }), {
-      getShimmeringElement: undefined,
-    });
+    setup(anime({ mediaListEntry: { progress: 1 } }), { withShimmer: false });
 
     expect(screen.getByTitle('Watching')).toBeTruthy();
   });
@@ -189,6 +172,31 @@ describe('card detail', () => {
     fireEvent.click(remove);
 
     expect((await screen.findByTitle('Add Favorite')).textContent).toBe('10');
+  });
+
+  it("asks for AniList's details again after a toggle, which replace the count it kept", async () => {
+    const { store, onRefresh } = setup(anime());
+
+    fireEvent.click(screen.getByTitle('Add Favorite'));
+
+    expect((await screen.findByTitle('Remove Favorite')).textContent).toBe(
+      '11',
+    );
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+
+    store.anime.Frieren = anime({ isFavourite: true, favourites: 11 });
+
+    expect(screen.getByTitle('Remove Favorite').textContent).toBe('11');
+  });
+
+  it('asks for the details again when the user opens them, unless they were asked for just now', async () => {
+    const { onRefresh } = setup(anime({ popularity: 250_000 }));
+
+    fireEvent.mouseMove(screen.getByTitle('Popularity [Visit AniList]'));
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1), {
+      timeout: 1000,
+    });
+    expect(onRefresh).toHaveBeenCalledWith(60_000);
   });
 
   it('starts as a favorite when AniList says so', () => {

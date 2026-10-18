@@ -1,0 +1,54 @@
+{
+  "$schema": "../site.schema.json",
+  "schemaVersion": 1,
+  "id": "sonanime",
+  "name": "SonAnime",
+  "matches": ["*://sonanime.com/*", "*://www.sonanime.com/*"],
+  "theme": "dark",
+  "pages": [
+    {
+      "name": "Home",
+      "match": {
+        "path": "^/$"
+      },
+      "cards": [
+        {
+          "selector": "div.anime-card-wrapper",
+          "has": ".image-details p",
+          "title": {
+            "selector": ".image-details h3"
+          },
+          "episode": {
+            "selector": "a[href*=\"/episode/\"]",
+            "source": {
+              "attr": "href"
+            },
+            "steps": [
+              {
+                "match": "/episode/(\\d+)"
+              }
+            ]
+          },
+          "season": {
+            "selector": "a[href*=\"/season/\"]",
+            "source": {
+              "attr": "href"
+            },
+            "steps": [
+              {
+                "match": "/season/(\\d+)"
+              }
+            ]
+          },
+          "inject": {
+            "selector": ".square-box",
+            "position": "after"
+          },
+          "shimmer": {
+            "selector": ".square-box"
+          }
+        }
+      ]
+    }
+  ]
+}

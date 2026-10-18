@@ -1,0 +1,1041 @@
+{
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[^\\r\\n]+$"
+    },
+    "matches": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(\\*|https?):\\/\\/(\\*|(?:\\*\\.)?[^/*:]+)(\\/.*)$"
+      },
+      "minItems": 1
+    },
+    "access": {
+      "enum": [
+        "required",
+        "optional"
+      ],
+      "type": "string",
+      "description": "Bundled configs only: \"required\" sites are allowed at install, \"optional\" ones once the user enables them"
+    },
+    "theme": {
+      "anyOf": [
+        {
+          "enum": [
+            "dark",
+            "light",
+            "system"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dark": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "selector": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "selector"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "localStorage": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "equals": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "equals"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "localStorage"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "any": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/Condition"
+                      },
+                      "minItems": 1
+                    }
+                  },
+                  "required": [
+                    "any"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "description": "Follows the site's theme: dark while the condition holds"
+            }
+          },
+          "required": [
+            "dark"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "observe": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The element watched for changes; the body by default"
+    },
+    "css": {
+      "type": "string",
+      "description": "Applied once one of the pages applies"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "match": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  }
+                ],
+                "description": "Tested against location.pathname; a list applies to the paths any of them matches"
+              },
+              "search": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Tested against location.search"
+              },
+              "selector": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The page only applies while this element exists"
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          },
+          "css": {
+            "type": "string",
+            "description": "Applied while this page applies"
+          },
+          "layout": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "container": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "mode": {
+                  "enum": [
+                    "grid",
+                    "flex",
+                    "block"
+                  ],
+                  "type": "string",
+                  "description": "How the container lays out its cards"
+                },
+                "spacing": {
+                  "enum": [
+                    "gap",
+                    "margin",
+                    "padding"
+                  ],
+                  "type": "string",
+                  "description": "What spaces the cards: the container's gap (the default), or the margins or the padding of the elements in it"
+                },
+                "gap": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 200
+                },
+                "minCardWidth": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2000
+                }
+              },
+              "required": [
+                "container",
+                "mode"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Spacing for the elements that hold the cards, so the details have room; applied while this page applies"
+          },
+          "sizes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "selector": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "height": {
+                  "anyOf": [
+                    {
+                      "const": "auto"
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 2000
+                    }
+                  ]
+                },
+                "width": {
+                  "anyOf": [
+                    {
+                      "const": "auto"
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 2000
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "selector"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Sizes for elements in the cards whose fixed height or width leaves the details no room: \"auto\" to lift the limit, or pixels; applied while this page applies"
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "selector": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The card's outermost element, the one that separates it from the other cards"
+                },
+                "exclude": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Skips cards that match this selector"
+                },
+                "has": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Only keeps cards that contain a match of this selector"
+                },
+                "title": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Relative to the card; leave it out to use the card"
+                        },
+                        "source": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "text",
+                                "ownText"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "attr": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "attr"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "match": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": "Keeps what a capture group matched (group 1 by default); no match leaves the value empty"
+                                  },
+                                  "flags": {
+                                    "type": "string",
+                                    "pattern": "^[imsu]*$"
+                                  },
+                                  "group": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "match"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "replace": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": "Replaces every match with `with`, which may use $1, $2…"
+                                  },
+                                  "with": {
+                                    "type": "string"
+                                  },
+                                  "flags": {
+                                    "type": "string",
+                                    "pattern": "^[imsu]*$"
+                                  }
+                                },
+                                "required": [
+                                  "replace",
+                                  "with"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "preset": {
+                                    "enum": [
+                                      "tr-season-markers"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "preset"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": [],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "selector": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Relative to the card; leave it out to use the card"
+                          },
+                          "source": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "text",
+                                  "ownText"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "attr": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "attr"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "steps": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "match": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "Keeps what a capture group matched (group 1 by default); no match leaves the value empty"
+                                    },
+                                    "flags": {
+                                      "type": "string",
+                                      "pattern": "^[imsu]*$"
+                                    },
+                                    "group": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    }
+                                  },
+                                  "required": [
+                                    "match"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "replace": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "Replaces every match with `with`, which may use $1, $2…"
+                                    },
+                                    "with": {
+                                      "type": "string"
+                                    },
+                                    "flags": {
+                                      "type": "string",
+                                      "pattern": "^[imsu]*$"
+                                    }
+                                  },
+                                  "required": [
+                                    "replace",
+                                    "with"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "preset": {
+                                      "enum": [
+                                        "tr-season-markers"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "preset"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "required": [],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    }
+                  ]
+                },
+                "episode": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Relative to the card; leave it out to use the card"
+                        },
+                        "source": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "text",
+                                "ownText"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "attr": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "attr"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "match": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": "Keeps what a capture group matched (group 1 by default); no match leaves the value empty"
+                                  },
+                                  "flags": {
+                                    "type": "string",
+                                    "pattern": "^[imsu]*$"
+                                  },
+                                  "group": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "match"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "replace": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": "Replaces every match with `with`, which may use $1, $2…"
+                                  },
+                                  "with": {
+                                    "type": "string"
+                                  },
+                                  "flags": {
+                                    "type": "string",
+                                    "pattern": "^[imsu]*$"
+                                  }
+                                },
+                                "required": [
+                                  "replace",
+                                  "with"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "preset": {
+                                    "enum": [
+                                      "tr-season-markers"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "preset"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": [],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "selector": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Relative to the card; leave it out to use the card"
+                          },
+                          "source": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "text",
+                                  "ownText"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "attr": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "attr"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "steps": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "match": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "Keeps what a capture group matched (group 1 by default); no match leaves the value empty"
+                                    },
+                                    "flags": {
+                                      "type": "string",
+                                      "pattern": "^[imsu]*$"
+                                    },
+                                    "group": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    }
+                                  },
+                                  "required": [
+                                    "match"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "replace": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "Replaces every match with `with`, which may use $1, $2…"
+                                    },
+                                    "with": {
+                                      "type": "string"
+                                    },
+                                    "flags": {
+                                      "type": "string",
+                                      "pattern": "^[imsu]*$"
+                                    }
+                                  },
+                                  "required": [
+                                    "replace",
+                                    "with"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "preset": {
+                                      "enum": [
+                                        "tr-season-markers"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "preset"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "required": [],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    }
+                  ]
+                },
+                "allowMissingEpisode": {
+                  "type": "boolean",
+                  "description": "Shows the details also on cards whose episode can't be read (e.g. movies), instead of skipping them"
+                },
+                "season": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Relative to the card; leave it out to use the card"
+                        },
+                        "source": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "text",
+                                "ownText"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "attr": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "attr"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "match": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": "Keeps what a capture group matched (group 1 by default); no match leaves the value empty"
+                                  },
+                                  "flags": {
+                                    "type": "string",
+                                    "pattern": "^[imsu]*$"
+                                  },
+                                  "group": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "match"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "replace": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": "Replaces every match with `with`, which may use $1, $2…"
+                                  },
+                                  "with": {
+                                    "type": "string"
+                                  },
+                                  "flags": {
+                                    "type": "string",
+                                    "pattern": "^[imsu]*$"
+                                  }
+                                },
+                                "required": [
+                                  "replace",
+                                  "with"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "preset": {
+                                    "enum": [
+                                      "tr-season-markers"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "preset"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": [],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "selector": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Relative to the card; leave it out to use the card"
+                          },
+                          "source": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "text",
+                                  "ownText"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "attr": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "attr"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "steps": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "match": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "Keeps what a capture group matched (group 1 by default); no match leaves the value empty"
+                                    },
+                                    "flags": {
+                                      "type": "string",
+                                      "pattern": "^[imsu]*$"
+                                    },
+                                    "group": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    }
+                                  },
+                                  "required": [
+                                    "match"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "replace": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "description": "Replaces every match with `with`, which may use $1, $2…"
+                                    },
+                                    "with": {
+                                      "type": "string"
+                                    },
+                                    "flags": {
+                                      "type": "string",
+                                      "pattern": "^[imsu]*$"
+                                    }
+                                  },
+                                  "required": [
+                                    "replace",
+                                    "with"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "preset": {
+                                      "enum": [
+                                        "tr-season-markers"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "preset"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "required": [],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    }
+                  ]
+                },
+                "inject": {
+                  "type": "object",
+                  "properties": {
+                    "selector": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "position": {
+                      "enum": [
+                        "before",
+                        "after",
+                        "prepend",
+                        "append"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "position"
+                  ],
+                  "additionalProperties": false
+                },
+                "shimmer": {
+                  "type": "object",
+                  "properties": {
+                    "selector": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "selector",
+                "title",
+                "inject"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "match",
+          "cards"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "matches",
+    "pages"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$defs": {
+    "Condition": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "selector"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "localStorage": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "equals": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "equals"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "localStorage"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Condition"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "title": "AniScore site config"
+}

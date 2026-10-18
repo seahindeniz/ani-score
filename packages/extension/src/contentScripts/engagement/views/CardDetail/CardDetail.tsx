@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import type { Component, FlowComponent, ParentComponent } from 'solid-js';
+import type { Component } from 'solid-js';
 import {
   createEffect,
   createMemo,
@@ -7,12 +7,11 @@ import {
   For,
   Match,
   on,
-  onMount,
   Show,
   Switch,
 } from 'solid-js';
-import AntDesignTagsFilled from '~icons/ant-design/tags-filled';
-import DeviconPlainPlaywright from '~icons/devicon-plain/playwright';
+import LucideEye from '~icons/lucide/eye';
+import LucideFlame from '~icons/lucide/flame';
 import MdiHeart from '~icons/mdi/heart';
 import MdiHeartMinus from '~icons/mdi/heart-minus';
 import MdiHeartPlusOutline from '~icons/mdi/heart-plus-outline';
@@ -20,40 +19,27 @@ import StreamlineFreehandServerError404NotFound from '~icons/streamline-freehand
 import SvgSpinners3DotsMove from '~icons/svg-spinners/3-dots-move';
 
 import type { fetchDetails } from '~/background/logic/fetchDetails';
+import type { EpisodeCard } from '~/contentScripts/sites/types';
 import { toColorEntries, useSettingsStore } from '~/logic';
 import { isTrending } from '~/utils/isTrending';
 
-import type { EpisodeCard, ListingPage } from '../../../site/base';
 import { AnimeInfoCard } from './AnimeInfo';
 import { Chip } from './Chip';
 
 import styles from './CardDetail.module.scss';
 import '~/styles';
 
-const SubDetail: FlowComponent<{ title: string }> = (props) => (
-  <div
-    title={props.title}
-    class={clsx('align-self text-sm', styles.subDetail)}
-    style={{
-      'align-self': 'start',
-      'line-height': '1.5em',
-      'font-size': '0.8em',
-    }}
-  >
-    {props.children}
-  </div>
-);
-
-const TagContainer: ParentComponent<{
-  class?: string;
-}> = (props) => <div class={clsx(props.class)}>{props.children}</div>;
+// Opening the details brings them up to date, but hovering one card after another doesn't ask AniList each time
+const detailsMaxAge = 60 * 1000;
 
 interface Props {
   card: EpisodeCard;
-  page: ListingPage;
   store: { anime: NonNullable<Awaited<ReturnType<typeof fetchDetails>>> };
-  index: number;
-  onRender?: () => Promise<void>;
+  /**
+   * Asks AniList for the card's details again when what the extension keeps is older than `maxAge` milliseconds (0, or
+   * left out, asks right away).
+   */
+  onRefresh?: (maxAge?: number) => void;
 }
 
 export const CardDetail: Component<Props> = (props) => {
@@ -111,21 +97,20 @@ export const CardDetail: Component<Props> = (props) => {
         setSoftFavoriteAdditionCount((count) =>
           isFavorite() ? count + 1 : count - 1,
         );
+        // AniList's count comes back with the change, replacing the one counted here
+        props.onRefresh?.();
       }
     } finally {
       setMakingFavorite(false);
     }
   };
 
-  onMount(() => {
-    void props.onRender?.();
-  });
-
   createEffect(
     on(details, (anime) => {
       if (!anime) return;
 
       setFavorite(Boolean(anime?.isFavourite));
+      setSoftFavoriteAdditionCount(0);
     }),
   );
 
@@ -133,9 +118,10 @@ export const CardDetail: Component<Props> = (props) => {
     on(details, (anime) => {
       const isWatching = Boolean(anime?.mediaListEntry);
 
-      props.page
-        .getShimmeringElement?.(props.card)
-        ?.classList.toggle('ani-score-watching', isWatching);
+      props.card.shimmeringElement?.classList.toggle(
+        'ani-score-watching',
+        isWatching,
+      );
     }),
   );
 
@@ -158,7 +144,7 @@ export const CardDetail: Component<Props> = (props) => {
         </Match>
         <Match when={details()}>
           <div
-            class={clsx(styles.row, 'justify-between')}
+            class={clsx(styles.row, styles.stats)}
             onMouseEnter={() => setHeartHovered(true)}
             onMouseLeave={() => setHeartHovered(false)}
           >
@@ -182,49 +168,67 @@ export const CardDetail: Component<Props> = (props) => {
                 onClick={handleFavoriteClick}
               />
             </Show>
-            <Show when={details()?.startDate != null && isTrending(details()!)}>
-              <Chip emoji="⚡" title="Trending" />
+            <Show when={details()?.popularity}>
+              <AnimeInfoCard
+                anime={details()!}
+                onOpen={() => props.onRefresh?.(detailsMaxAge)}
+              />
             </Show>
             <Show when={details()?.mediaListEntry}>
               <Chip
-                emoji="👀"
-                text={details()!.mediaListEntry?.progress}
+                emoji={<LucideEye class={styles.icon} />}
+                text={
+                  <span>
+                    {details()!.mediaListEntry?.progress}
+                    <span class={styles.total} title="Episodes out">
+                      /
+                      {Math.max(
+                        details()?.episodes || 0,
+                        details()?.nextAiringEpisode?.episode || 0,
+                      )}
+                    </span>
+                  </span>
+                }
                 title="Watching"
-              >
-                <SubDetail title="Total released episodes">
-                  {`/ ${Math.max(details()?.episodes || 0, details()?.nextAiringEpisode?.episode || 0)}`}
-                </SubDetail>
-              </Chip>
+              />
             </Show>
-            <Show when={details()?.popularity}>
-              <AnimeInfoCard anime={details()!} />
+            <Show when={details()?.startDate != null && isTrending(details()!)}>
+              <Chip
+                class={styles.trending}
+                emoji={<LucideFlame />}
+                text="Trending"
+                title="Trending"
+              />
             </Show>
           </div>
           <Show when={details()?.genres?.length}>
-            <TagContainer class={clsx(styles.row, styles.genres)}>
-              <DeviconPlainPlaywright />
+            <div class={clsx(styles.row, styles.genres)}>
               <For each={details()!.genres}>
                 {(genre) => (
-                  <div style={{ color: genreSettings()[genre!] }}>{genre}</div>
+                  <span
+                    class={styles.genre}
+                    style={{ color: genreSettings()[genre!] }}
+                  >
+                    {genre}
+                  </span>
                 )}
               </For>
-            </TagContainer>
+            </div>
           </Show>
           <Show when={details()?.tags?.length}>
-            <TagContainer class={clsx(styles.row, styles.genres)}>
-              <AntDesignTagsFilled />
+            <div class={clsx(styles.row, styles.tags)}>
               <For
                 each={details()!
                   .tags!.filter((item) => item != null)
                   .slice(0, 5)}
               >
                 {({ name }) => (
-                  <div style={{ color: tags()[name.toLowerCase()] }}>
+                  <span style={{ color: tags()[name.toLowerCase()] }}>
                     {name}
-                  </div>
+                  </span>
                 )}
               </For>
-            </TagContainer>
+            </div>
           </Show>
         </Match>
       </Switch>

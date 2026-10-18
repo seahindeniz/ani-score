@@ -2,7 +2,7 @@ import type { TypedDocumentNode } from '@urql/core';
 import type { FieldNode } from 'graphql';
 import { Kind } from 'graphql';
 
-import type { EpisodeCard } from '~/contentScripts/site/base';
+import type { EpisodeCard } from '~/contentScripts/sites/types';
 import type {
   BatchAnimeTemplateQuery,
   BatchAnimeTemplateQueryVariables,
@@ -13,10 +13,16 @@ import { wait } from '~/utils/wait';
 
 import { anilistClient } from '../client/anilist';
 import { batchTemplate, singleAnimeQuery } from '../gql-queries/anilist';
+import { cacheDetails, readCachedDetails } from './detailsCache';
 import { searchAnimeByTitle } from './loadDatabase';
 
 interface Props {
   cards: Pick<EpisodeCard, 'title' | 'episodeNumber'>[];
+  /**
+   * Asks AniList again for details kept longer than this many milliseconds: 0 after the user changed the anime there,
+   * a little longer when they open its details.
+   */
+  maxAge?: number;
 }
 
 const maxAnimePerQuery = 5;
@@ -205,10 +211,16 @@ export async function fetchDetails(props: Props) {
     return undefined;
   }
 
-  logger.log('Fetching details for titles:', uniqueTitles);
+  const { found, missing } = readCachedDetails(uniqueTitles, {
+    maxAge: props.maxAge,
+  });
+
+  if (missing.length === 0) return found;
+
+  logger.log('Fetching details for titles:', missing);
 
   try {
-    const dbResult = findAnimeListInDatabase(uniqueTitles);
+    const dbResult = findAnimeListInDatabase(missing);
     const queries = generateBatchQuery(dbResult);
     const queryPromises = [];
 
@@ -277,17 +289,21 @@ export async function fetchDetails(props: Props) {
       >,
     );
 
-    return uniqueTitles.reduce(
-      (map, title, index) => {
-        const alias = createAlias(title, index);
-        const animeData = mergedData[alias];
+    const fetched: Record<string, AnimeDetails | null> = {};
+    const answered: Record<string, AnimeDetails | null> = {};
 
-        map[title] = animeData?.results[0] || null;
+    missing.forEach((title, index) => {
+      const alias = createAlias(title, index);
 
-        return map;
-      },
-      {} as Record<string, AnimeDetails | null>,
-    );
+      fetched[title] = mergedData[alias]?.results[0] || null;
+
+      // A failed batch is asked for again next time
+      if (alias in mergedData) answered[title] = fetched[title];
+    });
+
+    cacheDetails(answered);
+
+    return { ...found, ...fetched };
   } catch (error) {
     logger.error('Error fetching anime details:', error);
 

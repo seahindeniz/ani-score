@@ -1,0 +1,21 @@
+.v3-poster-rail {
+  gap: 30px;
+
+  & > :is(.v3-episode-card, .v3-series-card) {
+    flex-basis: 220px;
+  }
+}
+
+.v3-latest-grid {
+  gap: 30px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+}
+
+/* Transparent full-page popunder click-catcher injected by an ad script; it swallows hover events meant for the cards */
+#dontfoid {
+  pointer-events: none !important;
+}
+
+.ani-score-watching {
+  border-radius: 8px;
+}

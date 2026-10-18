@@ -1,0 +1,55 @@
+{
+  "$schema": "../site.schema.json",
+  "schemaVersion": 1,
+  "id": "asyaanimeleri",
+  "name": "Asya Animeleri",
+  "matches": ["*://asyaanimeleri.top/*", "*://www.asyaanimeleri.top/*"],
+  "theme": {
+    "dark": {
+      "selector": "body.darkmode"
+    }
+  },
+  "pages": [
+    {
+      "name": "Latest episodes",
+      "match": {
+        "path": "^/(page/\\d+/?)?$"
+      },
+      "cards": [
+        {
+          "selector": ".listupd.normal article.bs",
+          "exclude": ".cloned",
+          "has": ".timeago",
+          "title": {
+            "selector": ".tt h2",
+            "steps": [
+              {
+                "match": "^(.*?)[\\s,]*\\d+(?:-\\d+)?\\.\\s*B[öo]l[üu]m",
+                "flags": "i"
+              },
+              {
+                "preset": "tr-season-markers"
+              }
+            ]
+          },
+          "episode": {
+            "selector": ".tt h2",
+            "steps": [
+              {
+                "match": "(\\d+)(?:-\\d+)?\\.\\s*B[öo]l[üu]m",
+                "flags": "i"
+              }
+            ]
+          },
+          "inject": {
+            "selector": "a.tip",
+            "position": "after"
+          },
+          "shimmer": {
+            "selector": ".limit"
+          }
+        }
+      ]
+    }
+  ]
+}

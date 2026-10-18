@@ -1,5 +1,6 @@
 import type { Component } from 'solid-js';
-import { createMemo, For } from 'solid-js';
+import { createMemo, For, Show } from 'solid-js';
+import MdiPlus from '~icons/mdi/plus';
 
 import { Button } from '~/components/ui/button';
 import {
@@ -28,12 +29,14 @@ export const TagColor: Component = () => {
   };
 
   return (
-    <Card class="w-xs">
+    <Card class="w-full">
       <CardHeader>
-        <CardTitle>Tag Colors</CardTitle>
-        <CardDescription>Customize the color for each tag.</CardDescription>
+        <CardTitle>Tag colors</CardTitle>
+        <CardDescription>
+          Give a tag a color to make it stand out in AniScore's details.
+        </CardDescription>
       </CardHeader>
-      <CardContent class="flex flex-col gap-7">
+      <CardContent class="flex flex-col gap-4">
         <div class="flex flex-col gap-4">
           {/* Iterating ids keeps rows mounted while entries are replaced on every change; iterating the entry objects would recreate the inputs mid-edit */}
           <For each={entries().map((entry) => entry.id)}>
@@ -67,7 +70,12 @@ export const TagColor: Component = () => {
             }}
           </For>
         </div>
+        <Show when={!entries().length}>
+          <p class="m-0 text-sm text-muted-foreground">No tag colors yet.</p>
+        </Show>
         <Button
+          variant="outline"
+          class="self-start"
           onClick={() => {
             setEntries([
               ...entries(),
@@ -79,7 +87,8 @@ export const TagColor: Component = () => {
             ]);
           }}
         >
-          Add Tag
+          <MdiPlus aria-hidden="true" />
+          Add tag
         </Button>
       </CardContent>
     </Card>

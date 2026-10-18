@@ -1,0 +1,129 @@
+name: Site integration
+
+# A maintainer approves a "Site integration" issue by adding the `site-integration: approved` label (only people with
+# triage access can label), and this opens a pull request that adds the proposed config as a bundled site.
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-integration-${{ github.event.issue.number }}
+
+jobs:
+  pull-request:
+    # Quoted, since the label's ": " would otherwise make this line a YAML mapping
+    if: "${{ github.event.label.name == 'site-integration: approved' }}"
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      # The app's token, unlike GITHUB_TOKEN, lets the pushed branch trigger the checkup workflow
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      # The steps below run code on the issue's content, so the token isn't left in the git config for them; only the
+      # pull request step gets it
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Git user
+        run: |
+          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+
+      # Pinned to a commit: this workflow holds the app's token, so a moved tag mustn't change the code it runs
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          # `bun lint` and `bun fmt` are only in canary builds; switch back to `bun-version-file: package.json` once Bun 1.4.4 is released
+          bun-version: canary
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # The issue body is user input: it reaches the script only through the environment, never the shell
+      - name: Write the config from the issue
+        id: config
+        working-directory: packages/extension
+        run: bun scripts/site-config-from-issue.ts
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+
+      - name: Format the config
+        run: bun run format
+
+      # Includes validating every bundled config, with the selector checks the build can't run
+      - name: Run unit tests
+        run: bun run --filter ani-score test
+
+      - name: Open the pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+          AUTHOR_ID: ${{ github.event.issue.user.id }}
+          SITE_ID: ${{ steps.config.outputs.id }}
+          SITE_NAME: ${{ steps.config.outputs.name }}
+          SITE_URL: ${{ steps.config.outputs.site-url }}
+          UPDATED: ${{ steps.config.outputs.updated }}
+        run: |
+          branch="site/${SITE_ID}-${ISSUE_NUMBER}"
+          verb=$([ "$UPDATED" = true ] && echo update || echo add)
+
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git switch -c "$branch"
+          git add packages/extension/src/sites
+          git commit \
+            -m "feat(sites): ${verb} ${SITE_NAME}" \
+            -m "Closes #${ISSUE_NUMBER}" \
+            -m "Co-authored-by: ${AUTHOR} <${AUTHOR_ID}+${AUTHOR}@users.noreply.github.com>"
+          git push --force origin "$branch"
+
+          body="Adds the site config proposed in #${ISSUE_NUMBER} by @${AUTHOR}, for ${SITE_URL}.
+
+          Review this diff before merging: it's what ships, and the issue may have been edited after it was approved. Check the config's pages with the editor's live preview. Users turn the site on from the side panel.
+
+          Closes #${ISSUE_NUMBER}"
+
+          if gh pr view "$branch" > /dev/null 2>&1; then
+            gh pr edit "$branch" --body "$body"
+          else
+            gh pr create --head "$branch" --title "feat(sites): ${verb} ${SITE_NAME}" --body "$body"
+          fi
+
+      - name: Report a config that can't be added
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ERROR: ${{ steps.config.outputs.error }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "The config couldn't be added${ERROR:+:
+
+          \`\`\`
+          ${ERROR}
+          \`\`\`
+          }
+
+          See the [workflow run](${RUN_URL}) for details. Edit the config in the issue, then add the label again."

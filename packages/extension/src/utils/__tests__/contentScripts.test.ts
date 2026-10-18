@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 
-import { contentScriptPaths, getContentScriptScope } from '../contentScripts';
+import {
+  contentScriptPaths,
+  getContentScriptScope,
+  injectedScriptPaths,
+} from '../contentScripts';
 
 describe('getContentScriptScope', () => {
   it('maps a site entry to its build directory', () => {
@@ -37,13 +41,24 @@ describe('getContentScriptScope', () => {
 });
 
 describe('contentScriptPaths', () => {
-  it('lists the message gateway first, then the engagement and site scripts, without the widget', () => {
+  it('lists the message gateway first, then the engagement script, without the widget', () => {
     const directories = contentScriptPaths.map((script) => script.directory);
 
     expect(directories[0]).toBe('root/messageGateway');
     expect(directories).toContain('engagement');
-    expect(directories).toContain('site/anizm');
-    expect(directories).toContain('site/tranimeizle');
+    // Sites are configs, read by the engagement script rather than scripts of their own
+    expect(directories.some((directory) => directory.startsWith('site/'))).toBe(
+      false,
+    );
     expect(directories).not.toContain('widget');
+    expect(directories).not.toContain('editor');
+  });
+});
+
+describe('injectedScriptPaths', () => {
+  it('lists the editor, which the background injects when the user asks', () => {
+    expect(injectedScriptPaths.map((script) => script.directory)).toEqual([
+      'editor',
+    ]);
   });
 });

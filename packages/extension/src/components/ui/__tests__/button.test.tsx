@@ -39,6 +39,21 @@ describe('button', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it('sits within a line as a quiet text action', () => {
+    render(() => (
+      <Button variant="quiet" size="inline">
+        Export
+      </Button>
+    ));
+
+    const button = screen.getByRole('button', { name: 'Export' });
+
+    expect(button.className).toContain('text-muted-foreground');
+    // Sized by its text, 24px tall: the inline size replaces the base text size and padding
+    expect(button.className).toContain('h-6 px-0 text-xs');
+    expect(button.className).not.toContain('text-sm');
+  });
+
   it('exposes the variant classes', () => {
     expect(buttonVariants({ variant: 'link', size: 'icon' })).toContain(
       'size-10',

@@ -1,4 +1,5 @@
-import { createStyleLink } from './createStyleLink';
+import { createStyle } from './createStyle';
+import { engagementStyles } from './engagementStyles';
 import { addThemeRoot } from './siteTheme';
 
 export function createEncapsulatedContainer() {
@@ -12,7 +13,7 @@ export function createEncapsulatedContainer() {
   container.className = __NAME__;
 
   addThemeRoot(root);
-  shadowDOM.append(createStyleLink('engagement'), root);
+  shadowDOM.append(createStyle(engagementStyles), root);
 
   return { container, root, shadowDOM };
 }

@@ -1,0 +1,41 @@
+---
+title: Add a Site
+---
+
+# {frontmatter.title}
+
+AniScore works on any anime site once it knows where the site's episode cards are. You can teach it a new site yourself, right on the site, without writing code, and share it so AniScore works there for everyone.
+
+## Turn on a built-in site
+
+Some sites come with AniScore but stay off until you turn them on: open AniScore's side panel and choose the site under **Add a site**. Your browser asks whether AniScore may access that site; it never gets access to sites you didn't turn on. To turn a site off again, choose **Turn off** in its **⋯** menu. That works for every site, also Anizm and TRanimeizle, which are on from install; a site you turned off waits under **Add a site**.
+
+## Integrate a new site
+
+1. Open a page of the site that lists episodes, such as its latest episodes.
+2. Right-click the page (or AniScore's toolbar button) and choose **Integrate this site with AniScore**. Allow access when your browser asks, so AniScore keeps working there after you save.
+3. A setup panel opens and asks for one thing at a time, mostly a click on the page:
+   1. **Find the episode cards**: click any episode. AniScore outlines the cards like it; use **Make bigger** if the outline only covers part of a card.
+   2. **Pick the anime's name** in one of the cards. AniScore looks the anime up by its name alone, so when the text you pick also holds the season, the episode or words like _izle_ (_Ao Ashi 2.Sezon 3.Bölüm izle_), it says so and suggests the name alone: from another element of the card, or the text before _2.Sezon_.
+   3. **Pick the episode number**. AniScore lists where it found one, such as the text or the card's link; check the one it chose reads right, or click the episode on the page. On a site without episode numbers, choose **No episodes here**.
+   4. **Find the season** (optional), the same way. Cards without a season count as the first season.
+   5. **Choose where the score goes**. AniScore's details now show on the page, so you see the result right away.
+   6. **Match the site's colors** (optional): dark, light, or the site's own light and dark switch, which AniScore learns when you flip it once.
+   7. **Highlight anime on your list** (optional): the part of a card that glows while the anime is on your AniList list, and the space between the cards so the glow doesn't run into the next one. AniScore changes the space the way the site makes it (a gap, or the cards' margins or padding), and under **Room for the score** it lists the parts of the card from the score up to the whole card, marking those too short or too narrow for it. Give each one the site's height and width, no limit, or a size of your own; pointing at one outlines it on the page.
+   8. **Check and save**: review what AniScore reads, choose whether scores show on some pages (this one to start with) or on every page of the site, and click **Save**.
+
+You can drag the panel by its header. Your work is kept as a draft if you close it before saving.
+
+## Change a site's setup
+
+Click the pencil next to the site in the side panel (AniScore switches to a tab of the site, or opens one), or choose **Integrate this site with AniScore** again on the site, and AniScore asks whether to **Edit the setup** or **Start from scratch**. The editor lists the same steps, each with what it reads now, and marks the ones that need a look. Open one to change it. Its **Advanced** settings hold the details behind it: selectors, the rules that read a value (with ready-made ones like _"12. Bölüm" → 12_), fallbacks and the page addresses. **Custom CSS** takes your own CSS, for every page of the site or only this one, for what the other settings don't cover. To name a page, click the pencil next to the page list.
+
+When other pages of the site have the same cards, like the next pages of a list, open one of them, open the editor's **Pages and addresses** and click **Add this page**: a setup applies on any of its addresses. To set up a page with other cards, choose **Add a page** in the editor's page list. For a page whose address doesn't change, like a single-page app that pages in place, set **Only while this exists** in the page's advanced settings. For a page with a second kind of card, use **Add another kind of card**.
+
+## Share it with everyone
+
+After saving, choose **Share with everyone** in the editor's menu, or in your site's **⋯** menu in the side panel. It opens a GitHub issue with your setup filled in. A maintainer reviews it, and once it's approved it ships with the next AniScore release, for everyone to turn on.
+
+## Remove a site
+
+Choose **Delete this setup** in the editor's menu, or use your site's **⋯** menu in the side panel: **Export** downloads its setup, and **Delete** (or **Reset to built-in** for a built-in site you edited) removes yours. **Import a setup**, below the list, adds one from a file's contents.

@@ -1,0 +1,49 @@
+{
+  "$schema": "../site.schema.json",
+  "schemaVersion": 1,
+  "id": "animexe",
+  "name": "AnimeXe",
+  "matches": ["*://animexe.com/*", "*://www.animexe.com/*"],
+  "theme": "dark",
+  "pages": [
+    {
+      "name": "Home",
+      "match": {
+        "path": "^/$"
+      },
+      "cards": [
+        {
+          "selector": ".sl-scroll > a.sl-card",
+          "title": {
+            "selector": ".sl-anime-name"
+          },
+          "episode": {
+            "selector": ".sl-title",
+            "steps": [
+              {
+                "match": "(\\d+)\\.\\s*B[öo]l[üu]m",
+                "flags": "i"
+              }
+            ]
+          },
+          "season": {
+            "selector": ".sl-ep-badge",
+            "steps": [
+              {
+                "match": "S(\\d+)",
+                "flags": "i"
+              }
+            ]
+          },
+          "inject": {
+            "selector": ".sl-body",
+            "position": "append"
+          },
+          "shimmer": {
+            "selector": ".sl-thumb"
+          }
+        }
+      ]
+    }
+  ]
+}

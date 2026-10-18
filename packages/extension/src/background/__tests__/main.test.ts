@@ -57,11 +57,13 @@ test('starts the background services', async () => {
   });
   expect('__VITE_CLIENT_LOADED__' in globalThis).toBe(true);
 
-  // Listeners are cleared after each test, so the install handler is checked here too
+  // Listeners are cleared after each test, so the install handlers are checked here too: the site scripts sync, and
+  // the install is logged
+  expect(fakeBrowser.runtime.onStartup.addListener).toHaveBeenCalledTimes(1);
+
   const results = fakeBrowser.runtime.onInstalled.dispatch({
     reason: 'install',
   });
 
-  expect(results).toHaveLength(1);
-  expect(await results[0]).toBeUndefined();
+  expect(await Promise.all(results)).toEqual([undefined, undefined]);
 });

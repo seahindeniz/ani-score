@@ -21,21 +21,19 @@ describe('tag colors', () => {
   it('adds an empty tag row', () => {
     render(() => <TagColor />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add Tag' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add tag' }));
 
     expect(tagColor()).toEqual([
       { id: 'magic', name: 'magic', color: '#0000ff' },
       { id: expect.any(String), name: '', color: '#ffffff' },
     ]);
-    expect(screen.getAllByPlaceholderText('Enter tag name')).toHaveLength(2);
+    expect(screen.getAllByPlaceholderText('Tag name')).toHaveLength(2);
   });
 
   it('renames and recolors a tag', () => {
     render(() => <TagColor />);
 
-    const name = screen.getByPlaceholderText(
-      'Enter tag name',
-    ) as HTMLInputElement;
+    const name = screen.getByPlaceholderText('Tag name') as HTMLInputElement;
 
     name.value = 'Elf';
     fireEvent.input(name);
@@ -56,9 +54,7 @@ describe('tag colors', () => {
     render(() => <TagColor />);
 
     const before = tagColor();
-    const name = screen.getByPlaceholderText(
-      'Enter tag name',
-    ) as HTMLInputElement;
+    const name = screen.getByPlaceholderText('Tag name') as HTMLInputElement;
 
     name.value = 'MAGIC';
     fireEvent.input(name);
@@ -72,6 +68,6 @@ describe('tag colors', () => {
     fireEvent.click(screen.getAllByRole('button')[0]);
 
     expect(tagColor()).toEqual([]);
-    expect(screen.queryByPlaceholderText('Enter tag name')).toBeNull();
+    expect(screen.queryByPlaceholderText('Tag name')).toBeNull();
   });
 });
