@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  codeBlock,
   configFromIssue,
   issueFields,
   type IssueResult,
@@ -108,7 +109,23 @@ describe('configFromIssue', () => {
     expect(issueFields(issueBody('{}'))).toMatchObject({
       Site: 'https://openani.me/episodes/latest/1',
       Notes: '_No response_',
-      Config: '{}',
+      Config: '```json\n{}\n```',
+    });
+    expect(codeBlock('```json\n{}\n```')).toBe('{}');
+    expect(codeBlock('{}')).toBeUndefined();
+  });
+
+  it('only takes a config that is the code block alone', () => {
+    // GitHub hides the comment, so the reviewer would only see part of what's parsed
+    const body = issueBody(JSON.stringify(config)).replace(
+      '\n```\n\n### Notes',
+      '\n```\n<!-- hidden -->\n\n### Notes',
+    );
+
+    expect(configFromIssue(body)).toEqual({
+      success: false,
+      error:
+        "The config must be the form's code block, with nothing around it.",
     });
   });
 
@@ -142,7 +159,9 @@ describe('configFromIssue', () => {
   });
 
   it('says what is wrong with the config', () => {
-    expect(configFromIssue(issueBody(''))).toEqual({
+    expect(
+      configFromIssue(issueBody('x').replace('```json\nx\n```', '')),
+    ).toEqual({
       success: false,
       error: 'The issue has no config.',
     });

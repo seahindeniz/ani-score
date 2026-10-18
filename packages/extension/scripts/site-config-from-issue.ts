@@ -16,9 +16,9 @@ export const formHeadings = [
 ];
 
 /**
- * The form's fields by label: the text under each `### Label` heading, unwrapped from the code fence a `render`ed
- * field gets. `undefined` unless the body has exactly the form's headings, in order, so an edited body can't show the
- * reviewer one config and hand the workflow another (say, under a second "Config" heading).
+ * The form's fields by label: the text under each `### Label` heading. `undefined` unless the body has exactly the
+ * form's headings, in order, so an edited body can't show the reviewer one config and hand the workflow another (say,
+ * under a second "Config" heading).
  */
 export function issueFields(body: string) {
   const headings = Array.from(body.matchAll(/^### (.*)$/gm), ([, label]) =>
@@ -30,14 +30,17 @@ export function issueFields(body: string) {
   const sections = body.split(/^### .*$/m).slice(1);
 
   return Object.fromEntries(
-    formHeadings.map((label, index) => {
-      const text = sections[index].trim();
-      const fenced = /^```\w*\n([\s\S]*?)\n```$/.exec(text);
-
-      return [label, fenced ? fenced[1] : text];
-    }),
-  );
+    formHeadings.map((label, index) => [label, sections[index].trim()]),
+  ) as Record<(typeof formHeadings)[number], string>;
 }
+
+/**
+ * The content of a field that is a single code block and nothing else, as the form renders the config. GitHub shows a
+ * code block as is, so the reviewer sees exactly what gets parsed; text around it (an HTML comment, say) could hide
+ * part of it.
+ */
+export const codeBlock = (text: string) =>
+  /^```\w*\n([\s\S]*?)\n```$/.exec(text)?.[1];
 
 export type IssueResult =
   | { success: true; config: SiteConfig; siteUrl?: string }
@@ -56,9 +59,19 @@ export function configFromIssue(body: string): IssueResult {
     };
   }
 
-  const json = fields.Config;
+  if (!fields.Config) {
+    return { success: false, error: 'The issue has no config.' };
+  }
 
-  if (!json) return { success: false, error: 'The issue has no config.' };
+  const json = codeBlock(fields.Config);
+
+  if (json === undefined) {
+    return {
+      success: false,
+      error:
+        "The config must be the form's code block, with nothing around it.",
+    };
+  }
 
   let input: unknown;
 
