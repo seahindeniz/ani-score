@@ -1,0 +1,49 @@
+{
+  "$schema": "../site.schema.json",
+  "schemaVersion": 1,
+  "id": "animecix",
+  "name": "AnimeciX",
+  "matches": ["*://animecix.tv/*", "*://www.animecix.tv/*"],
+  "theme": "dark",
+  "pages": [
+    {
+      "name": "Home",
+      "match": {
+        "path": "^/$"
+      },
+      "cards": [
+        {
+          "selector": "episode-portrait-item",
+          "title": {
+            "selector": ".grid-label a.title"
+          },
+          "episode": {
+            "selector": ".grid-label .subtitle",
+            "steps": [
+              {
+                "match": "(\\d+)\\.\\s*B[öo]l[üu]m",
+                "flags": "i"
+              }
+            ]
+          },
+          "season": {
+            "selector": ".grid-label .subtitle",
+            "steps": [
+              {
+                "match": "(\\d+)\\.\\s*Sezon",
+                "flags": "i"
+              }
+            ]
+          },
+          "inject": {
+            "selector": ".grid-label",
+            "position": "append"
+          },
+          "shimmer": {
+            "selector": "media-image"
+          }
+        }
+      ]
+    }
+  ]
+}

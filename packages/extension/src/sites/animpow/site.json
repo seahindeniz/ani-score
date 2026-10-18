@@ -1,0 +1,49 @@
+{
+  "$schema": "../site.schema.json",
+  "schemaVersion": 1,
+  "id": "animpow",
+  "name": "AnimPow",
+  "matches": ["*://animpow.com/*", "*://www.animpow.com/*"],
+  "theme": "dark",
+  "pages": [
+    {
+      "name": "Home",
+      "match": {
+        "path": "^/$"
+      },
+      "cards": [
+        {
+          "selector": "a[class*=\"home_recent-card__\"]",
+          "title": {
+            "selector": "[class*=\"home_recent-title__\"]"
+          },
+          "episode": {
+            "selector": "[class*=\"home_recent-ep-badge__\"]",
+            "steps": [
+              {
+                "match": "E(\\d+)",
+                "flags": "i"
+              }
+            ]
+          },
+          "season": {
+            "selector": "[class*=\"home_recent-ep-badge__\"]",
+            "steps": [
+              {
+                "match": "S(\\d+)",
+                "flags": "i"
+              }
+            ]
+          },
+          "inject": {
+            "selector": "[class*=\"home_recent-info__\"]",
+            "position": "append"
+          },
+          "shimmer": {
+            "selector": "[class*=\"home_recent-thumb__\"]"
+          }
+        }
+      ]
+    }
+  ]
+}

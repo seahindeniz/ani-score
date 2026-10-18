@@ -70,9 +70,9 @@ test('side panel imports a site config, to be turned on', async ({
   extensionId,
   getStorage,
 }) => {
-  const config = { ...editedAnizm, id: 'openani', name: 'OpenAni' };
+  const config = { ...editedAnizm, id: 'kitsune', name: 'Kitsune' };
 
-  config.matches = ['*://openani.me/*'];
+  config.matches = ['*://kitsune.me/*'];
 
   await page.goto(
     `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
@@ -86,13 +86,13 @@ test('side panel imports a site config, to be turned on', async ({
   await page.getByRole('button', { name: 'Import' }).click();
 
   await expect(page.getByRole('status')).toHaveText(
-    'Imported OpenAni. Turn it on to allow it on openani.me.',
+    'Imported Kitsune. Turn it on to allow it on kitsune.me.',
   );
 
-  const openani = page.locator('[data-site="openani"]');
+  const kitsune = page.locator('[data-site="kitsune"]');
 
-  await expect(openani).toContainText('Yours');
-  await expect(openani.getByRole('button', { name: 'Turn on' })).toBeVisible();
+  await expect(kitsune).toContainText('Yours');
+  await expect(kitsune.getByRole('button', { name: 'Turn on' })).toBeVisible();
   await expect
     .poll(() => getStorage('userSites'))
     .toEqual([{ config, savedAt: expect.any(Number) }]);

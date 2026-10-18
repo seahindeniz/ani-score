@@ -1,0 +1,45 @@
+{
+  "$schema": "../site.schema.json",
+  "schemaVersion": 1,
+  "id": "animex",
+  "name": "AnimeX",
+  "matches": ["*://www.animex.club/*", "*://animex.club/*"],
+  "theme": "dark",
+  "pages": [
+    {
+      "name": "Home",
+      "match": {
+        "path": "^/$"
+      },
+      "cards": [
+        {
+          "selector": "a.episode-card",
+          "title": {
+            "selector": "h3",
+            "steps": [
+              {
+                "preset": "tr-season-markers"
+              }
+            ]
+          },
+          "episode": {
+            "selector": "p.text-gradient",
+            "steps": [
+              {
+                "match": "(\\d+)\\.\\s*B[öo]l[üu]m",
+                "flags": "i"
+              }
+            ]
+          },
+          "inject": {
+            "selector": "p.text-gradient",
+            "position": "after"
+          },
+          "shimmer": {
+            "selector": ":scope > div:first-child"
+          }
+        }
+      ]
+    }
+  ]
+}

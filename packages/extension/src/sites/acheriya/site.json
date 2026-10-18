@@ -1,0 +1,87 @@
+{
+  "$schema": "../site.schema.json",
+  "schemaVersion": 1,
+  "id": "acheriya",
+  "name": "Acheriya",
+  "matches": ["*://acheriya.com/*", "*://www.acheriya.com/*"],
+  "theme": {
+    "dark": {
+      "selector": "html.dark"
+    }
+  },
+  "pages": [
+    {
+      "name": "Home",
+      "match": {
+        "path": "^/$"
+      },
+      "cards": [
+        {
+          "selector": "div.grid > div.group",
+          "has": "a[href*=\"/bolum-\"]",
+          "title": {
+            "selector": "h3",
+            "steps": [
+              {
+                "replace": "\\s+S(\\d+)$",
+                "with": " Season $1"
+              }
+            ]
+          },
+          "episode": {
+            "selector": "a[href*=\"/bolum-\"]",
+            "source": {
+              "attr": "href"
+            },
+            "steps": [
+              {
+                "match": "bolum-(\\d+)"
+              }
+            ]
+          },
+          "inject": {
+            "selector": "a[href*=\"/bolum-\"]",
+            "position": "after"
+          },
+          "shimmer": {
+            "selector": "a > div:first-child"
+          }
+        }
+      ]
+    },
+    {
+      "name": "New episodes",
+      "match": {
+        "path": "^/yeni-eklenenler/?$"
+      },
+      "cards": [
+        {
+          "selector": "div.space-y-4 > div.bg-card",
+          "title": {
+            "selector": "h3",
+            "steps": [
+              {
+                "replace": "\\s+S(\\d+)$",
+                "with": " Season $1"
+              }
+            ]
+          },
+          "episode": {
+            "selector": "a[href*=\"/bolum-\"]",
+            "source": {
+              "attr": "href"
+            },
+            "steps": [
+              {
+                "match": "bolum-(\\d+)"
+              }
+            ]
+          },
+          "inject": {
+            "position": "append"
+          }
+        }
+      ]
+    }
+  ]
+}

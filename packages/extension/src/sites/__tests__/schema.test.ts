@@ -68,7 +68,18 @@ describe('parseSiteConfig', () => {
   });
 
   it('accepts every bundled config', () => {
-    expect(sites.map((site) => site.id)).toEqual(['anizm', 'tranimeizle']);
+    expect(sites.map((site) => site.id)).toEqual([
+      'acheriya',
+      'animecix',
+      'animex',
+      'animexe',
+      'animpow',
+      'anizm',
+      'asyaanimeleri',
+      'openani',
+      'sonanime',
+      'tranimeizle',
+    ]);
 
     for (const site of sites) {
       expect(errorOf(site)).toBeUndefined();

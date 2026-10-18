@@ -1,0 +1,63 @@
+{
+  "$schema": "../site.schema.json",
+  "schemaVersion": 1,
+  "id": "openani",
+  "name": "OpenAnime",
+  "matches": ["*://openani.me/*", "*://www.openani.me/*"],
+  "pages": [
+    {
+      "name": "Episodes",
+      "match": {
+        "path": "^/(episodes/(latest|populars)/\\d+/?)?$"
+      },
+      "cards": [
+        {
+          "selector": "div:has(> a.anime-card[href^=\"/anime/\"]:only-child)",
+          "title": [
+            {
+              "selector": "a.anime-card .anime-name",
+              "steps": [
+                {
+                  "match": "^(.*?)[\\s,]*(?:\\d+\\.?\\s*Sezon|Season\\s*\\d+)",
+                  "flags": "i"
+                }
+              ]
+            },
+            {
+              "selector": "a.anime-card .anime-name"
+            }
+          ],
+          "episode": {
+            "selector": "a.anime-card",
+            "source": {
+              "attr": "href"
+            },
+            "steps": [
+              {
+                "match": "/\\d+/(\\d+)/?$"
+              }
+            ]
+          },
+          "season": {
+            "selector": "a.anime-card",
+            "source": {
+              "attr": "href"
+            },
+            "steps": [
+              {
+                "match": "/(\\d+)/\\d+/?$"
+              }
+            ]
+          },
+          "inject": {
+            "selector": "a.anime-card",
+            "position": "after"
+          },
+          "shimmer": {
+            "selector": "a.anime-card"
+          }
+        }
+      ]
+    }
+  ]
+}

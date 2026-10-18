@@ -84,14 +84,14 @@ describe('sites', () => {
 
   it('imports a config, to be turned on', async () => {
     await renderSites();
-    paste(JSON.stringify(config('openani')));
+    paste(JSON.stringify(config('kitsune')));
 
     expect(screen.getByRole('status').textContent).toBe(
-      'Imported Openani. Turn it on to allow it on openani.me.',
+      'Imported Kitsune. Turn it on to allow it on kitsune.me.',
     );
-    expect(row('openani').textContent).toContain('Yours');
+    expect(row('kitsune').textContent).toContain('Yours');
     expect(store.data()).toEqual([
-      { config: config('openani'), savedAt: expect.any(Number) },
+      { config: config('kitsune'), savedAt: expect.any(Number) },
     ]);
     expect(
       (screen.getByLabelText('Site config') as HTMLTextAreaElement).value,
@@ -99,11 +99,11 @@ describe('sites', () => {
   });
 
   it('replaces a config imported again', async () => {
-    await renderSites([{ config: config('openani'), savedAt: 1 }]);
-    paste(JSON.stringify(config('openani', { name: 'OpenAni' })));
+    await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
+    paste(JSON.stringify(config('kitsune', { name: 'OpenAni' })));
 
     expect(store.data()).toHaveLength(1);
-    expect(row('openani').textContent).toContain('OpenAni');
+    expect(row('kitsune').textContent).toContain('OpenAni');
   });
 
   it('says why a config cannot be imported', async () => {
@@ -114,7 +114,7 @@ describe('sites', () => {
       "That isn't valid JSON.",
     );
 
-    paste(JSON.stringify(config('openani', { schemaVersion: 9 as 1 })));
+    paste(JSON.stringify(config('kitsune', { schemaVersion: 9 as 1 })));
 
     expect(screen.getByRole('status').textContent).toBe(
       'This config needs a newer AniScore (schema version 9)',
@@ -123,63 +123,63 @@ describe('sites', () => {
   });
 
   it("asks the browser for access to turn a site on, and drops access it doesn't need to turn it off", async () => {
-    await renderSites([{ config: config('openani'), savedAt: 1 }]);
-    fireEvent.click(button('openani', 'Turn on'));
+    await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
+    fireEvent.click(button('kitsune', 'Turn on'));
 
     expect(fakeBrowser.permissions.request).toHaveBeenCalledWith({
-      origins: ['*://openani.me/*'],
+      origins: ['*://kitsune.me/*'],
     });
-    await waitFor(() => expect(button('openani', 'Turn off')).toBeTruthy());
+    await waitFor(() => expect(button('kitsune', 'Turn off')).toBeTruthy());
     expect(screen.getByRole('status').textContent).toBe(
-      'Openani is on. Reload its open tabs to see ratings.',
+      'Kitsune is on. Reload its open tabs to see ratings.',
     );
 
-    fireEvent.click(button('openani', 'Turn off'));
+    fireEvent.click(button('kitsune', 'Turn off'));
 
     expect(fakeBrowser.permissions.remove).toHaveBeenCalledWith({
-      origins: ['*://openani.me/*'],
+      origins: ['*://kitsune.me/*'],
     });
-    await waitFor(() => expect(button('openani', 'Turn on')).toBeTruthy());
+    await waitFor(() => expect(button('kitsune', 'Turn on')).toBeTruthy());
   });
 
   it('stays off when the user declines access', async () => {
     fakeBrowser.permissions.request.mockResolvedValueOnce(false);
-    await renderSites([{ config: config('openani'), savedAt: 1 }]);
-    fireEvent.click(button('openani', 'Turn on'));
+    await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
+    fireEvent.click(button('kitsune', 'Turn on'));
 
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toBe(
-        'Openani stays off, since access was declined.',
+        'Kitsune stays off, since access was declined.',
       ),
     );
   });
 
   it('deletes a config with the access only it needed', async () => {
     await fakeBrowser.permissions.request({
-      origins: ['*://openani.me/*', '*://animex.me/*'],
+      origins: ['*://kitsune.me/*', '*://otakuden.me/*'],
     });
     await renderSites([
-      { config: config('openani'), savedAt: 1 },
+      { config: config('kitsune'), savedAt: 1 },
       {
-        config: config('animex', {
-          matches: ['*://animex.me/*', '*://openani.me/*'],
+        config: config('otakuden', {
+          matches: ['*://otakuden.me/*', '*://kitsune.me/*'],
         }),
         savedAt: 2,
       },
     ]);
-    fireEvent.click(button('animex', 'Delete'));
+    fireEvent.click(button('otakuden', 'Delete'));
 
     expect(
       store.data().map((entry) => (entry.config as SiteConfig).id),
-    ).toEqual(['openani']);
+    ).toEqual(['kitsune']);
     expect(fakeBrowser.permissions.remove).toHaveBeenCalledWith({
-      origins: ['*://animex.me/*'],
+      origins: ['*://otakuden.me/*'],
     });
 
-    fireEvent.click(button('openani', 'Delete'));
+    fireEvent.click(button('kitsune', 'Delete'));
 
     expect(fakeBrowser.permissions.remove).toHaveBeenCalledWith({
-      origins: ['*://openani.me/*'],
+      origins: ['*://kitsune.me/*'],
     });
   });
 
@@ -231,17 +231,17 @@ describe('sites', () => {
       configurable: true,
     });
     await renderSites([
-      { config: config('openani'), savedAt: 1 },
-      { config: config('animex', { css: 'a'.repeat(9000) }), savedAt: 2 },
+      { config: config('kitsune'), savedAt: 1 },
+      { config: config('otakuden', { css: 'a'.repeat(9000) }), savedAt: 2 },
     ]);
 
     // Built-in sites are shared already
     expect(button('anizm', 'Share')).toBeUndefined();
 
-    fireEvent.click(button('openani', 'Share'));
+    fireEvent.click(button('kitsune', 'Share'));
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toBe(
-        "Opened a GitHub issue with Openani's config.",
+        "Opened a GitHub issue with Kitsune's config.",
       ),
     );
 
@@ -251,17 +251,17 @@ describe('sites', () => {
 
     // Without the `access` that only bundled configs have
     expect(JSON.parse(new URL(url).searchParams.get('config')!)).toEqual(
-      config('openani'),
+      config('kitsune'),
     );
 
-    fireEvent.click(button('animex', 'Share'));
+    fireEvent.click(button('otakuden', 'Share'));
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toBe(
-        "Animex's config is too long for a link, so it's on your clipboard: paste it into the form's Config field.",
+        "Otakuden's config is too long for a link, so it's on your clipboard: paste it into the form's Config field.",
       ),
     );
     expect(JSON.parse(writeText.mock.calls[0][0])).toEqual(
-      config('animex', { css: 'a'.repeat(9000) }),
+      config('otakuden', { css: 'a'.repeat(9000) }),
     );
   });
 
@@ -277,15 +277,15 @@ describe('sites', () => {
       'click',
     ).mockImplementation(() => {});
 
-    await renderSites([{ config: config('openani'), savedAt: 1 }]);
-    fireEvent.click(button('openani', 'Export'));
+    await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
+    fireEvent.click(button('kitsune', 'Export'));
     fireEvent.click(button('anizm', 'Export'));
 
     const [[blob]] = createObjectURL.mock.calls as unknown as [[Blob]];
 
-    expect(JSON.parse(await blob.text())).toEqual(config('openani'));
+    expect(JSON.parse(await blob.text())).toEqual(config('kitsune'));
     expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe(
-      'openani.json',
+      'kitsune.json',
     );
     expect((click.mock.contexts[1] as HTMLAnchorElement).download).toBe(
       'anizm.json',
@@ -300,13 +300,13 @@ describe('sites', () => {
   it('shows more than one host as a count', async () => {
     await renderSites([
       {
-        config: config('openani', {
-          matches: ['*://openani.me/*', '*://*.openani.tv/*'],
+        config: config('kitsune', {
+          matches: ['*://kitsune.me/*', '*://*.kitsune.tv/*'],
         }),
         savedAt: 1,
       },
     ]);
 
-    expect(row('openani').textContent).toContain('openani.me +1');
+    expect(row('kitsune').textContent).toContain('kitsune.me +1');
   });
 });
