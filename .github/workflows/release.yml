@@ -45,6 +45,8 @@ jobs:
     timeout-minutes: 8
     runs-on: ubuntu-latest
     environment: Production
+    outputs:
+      version: ${{ steps.release.outputs.version }}
     steps:
       - uses: actions/create-github-app-token@v3
         id: app-token
@@ -87,16 +89,68 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Release
+        id: release
         if: github.ref == 'refs/heads/main'
         working-directory: packages/extension
         # Unquoted, so an empty version passes no argument and release-it derives it
-        run: bun run release $RELEASE_VERSION
+        run: |
+          bun run release $RELEASE_VERSION
+          echo "version=$(bun -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
         env:
           RELEASE_VERSION: ${{ inputs.version }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           ANILIST_TOKEN_URL: ${{ vars.ANILIST_TOKEN_URL }}
           WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
           WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
+
+  # A separate job, so a failed upload can be retried with "Re-run failed jobs" without releasing again
+  publish-chrome:
+    # Skipped until the Chrome Web Store access is set up (see CONTRIBUTING.md)
+    if: ${{ vars.CHROME_PUBLISHER_ID != '' && needs.release.outputs.version != '' }}
+    needs: release
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    environment: Production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RELEASE_VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          # `bun lint` and `bun fmt` are only in canary builds; switch back to `bun-version-file: package.json` once Bun 1.4.4 is released
+          bun-version: canary
+
+      - name: Download the release zip
+        working-directory: packages/extension
+        run: gh release download "$RELEASE_VERSION" --pattern "extension-$RELEASE_VERSION.zip" --dir release
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # Keyless: GitHub's OIDC token is exchanged for a short-lived token of the service account
+      - name: Authenticate to Google Cloud
+        id: google
+        # Pinned to a commit: this action handles the credential that can publish to the store
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.CHROME_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+          create_credentials_file: false
+
+      - name: Publish to the Chrome Web Store
+        working-directory: packages/extension
+        run: bun scripts/publish-chrome.ts
+        env:
+          CHROME_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
+          CHROME_PUBLISHER_ID: ${{ vars.CHROME_PUBLISHER_ID }}
+          CHROME_EXTENSION_ID: pjioojkbcigohkncmfoedipogbejlkko
 
   build-site:
     if: ${{ needs.changes.outputs.site == 'true' }}
