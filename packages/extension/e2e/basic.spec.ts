@@ -1,44 +1,70 @@
-import { expect, test } from './fixtures'
-import { mockNetwork } from './mocks'
+import { expect, test } from './fixtures';
+import { mockNetwork } from './mocks';
 
 test('side panel asks to authorize AniList', async ({ page, extensionId }) => {
-  await page.goto(`chrome-extension://${extensionId}/dist/sidepanel/index.html`)
-  await expect(page.getByRole('button', { name: 'Authorize Anilist' })).toBeVisible()
-})
+  await page.goto(
+    `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
+  );
+  await expect(
+    page.getByRole('button', { name: 'Authorize Anilist' }),
+  ).toBeVisible();
+});
 
-test('side panel lets a signed-in viewer add genre colors', async ({ context, page, extensionId, setStorage, getStorage }) => {
-  await mockNetwork(context)
-  await setStorage({ token: { anilist: 'test-token' } })
-  await page.goto(`chrome-extension://${extensionId}/dist/sidepanel/index.html`)
+test('side panel lets a signed-in viewer add genre colors', async ({
+  context,
+  page,
+  extensionId,
+  setStorage,
+  getStorage,
+}) => {
+  await mockNetwork(context);
+  await setStorage({ token: { anilist: 'test-token' } });
+  await page.goto(
+    `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
+  );
 
-  await expect(page.getByRole('button', { name: 'Authorize Anilist' })).toHaveCount(0)
-  await expect(page.getByText('Tag Colors')).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Authorize Anilist' }),
+  ).toHaveCount(0);
+  await expect(page.getByText('Tag Colors')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Add Genre' }).click()
+  await page.getByRole('button', { name: 'Add Genre' }).click();
 
   // A new entry starts with the first genre from AniList's genre collection
-  await expect.poll(() => getStorage('settings')).toMatchObject({
-    genreColor: [{ name: 'Action', color: '#ffffff' }],
-  })
-})
+  await expect
+    .poll(() => getStorage('settings'))
+    .toMatchObject({
+      genreColor: [{ name: 'Action', color: '#ffffff' }],
+    });
+});
 
-test('side panel signs the viewer out', async ({ context, page, extensionId, setStorage, getStorage }) => {
-  await mockNetwork(context)
-  await setStorage({ token: { anilist: 'test-token' } })
-  await page.goto(`chrome-extension://${extensionId}/dist/sidepanel/index.html`)
+test('side panel signs the viewer out', async ({
+  context,
+  page,
+  extensionId,
+  setStorage,
+  getStorage,
+}) => {
+  await mockNetwork(context);
+  await setStorage({ token: { anilist: 'test-token' } });
+  await page.goto(
+    `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
+  );
 
-  await page.getByRole('button', { name: 'Sign out of AniList' }).click()
+  await page.getByRole('button', { name: 'Sign out of AniList' }).click();
 
-  await expect(page.getByRole('button', { name: 'Authorize Anilist' })).toBeVisible()
-  await expect.poll(() => getStorage('token')).toEqual({ anilist: '' })
-})
+  await expect(
+    page.getByRole('button', { name: 'Authorize Anilist' }),
+  ).toBeVisible();
+  await expect.poll(() => getStorage('token')).toEqual({ anilist: '' });
+});
 
 test('popup page', async ({ page, extensionId }) => {
-  await page.goto(`chrome-extension://${extensionId}/dist/popup/index.html`)
-  await expect(page.locator('button')).toHaveText('Open Options')
-})
+  await page.goto(`chrome-extension://${extensionId}/dist/popup/index.html`);
+  await expect(page.locator('button')).toHaveText('Open Options');
+});
 
 test('options page', async ({ page, extensionId }) => {
-  await page.goto(`chrome-extension://${extensionId}/dist/options/index.html`)
-  await expect(page.locator('img')).toHaveAttribute('alt', 'extension icon')
-})
+  await page.goto(`chrome-extension://${extensionId}/dist/options/index.html`);
+  await expect(page.locator('img')).toHaveAttribute('alt', 'extension icon');
+});

@@ -1,12 +1,12 @@
-import { SolidBaseRoot } from "@kobalte/solidbase/client";
-import { Router } from "@solidjs/router";
-import { FileRoutes } from "@solidjs/start/router";
-import "./custom.css";
+import { SolidBaseRoot } from '@kobalte/solidbase/client';
+import { Router } from '@solidjs/router';
+import { FileRoutes } from '@solidjs/start/router';
+import './custom.css';
 
 export default function App() {
-	return (
-		<Router root={SolidBaseRoot}>
-			<FileRoutes />
-		</Router>
-	);
+  return (
+    <Router root={SolidBaseRoot}>
+      <FileRoutes />
+    </Router>
+  );
 }

@@ -1,66 +1,82 @@
-import type { AnimeDetails } from '~/background/logic/fetchDetails'
-import type { InternalSiteBaseConfig, ListingPage } from '~/contentScripts/site/base'
-import { createMutable } from 'solid-js/store'
-import { render } from 'solid-js/web'
-import { filterNullish } from '~/utils/filterNullish'
-import { createLogger } from '~/utils/logger'
-import { CardDetail } from '../views/CardDetail/CardDetail'
-import { createEncapsulatedContainer } from './createEncapsulatedContainer'
-import { createStyleLink } from './createStyleLink'
+import { createMutable } from 'solid-js/store';
+import { render } from 'solid-js/web';
 
-export function customizeCards(page: ListingPage, config: InternalSiteBaseConfig) {
-  const logger = createLogger('customizeCards')
-  const episodeCards = filterNullish(page.episodeCards())
+import type { AnimeDetails } from '~/background/logic/fetchDetails';
+import type {
+  InternalSiteBaseConfig,
+  ListingPage,
+} from '~/contentScripts/site/base';
+import { filterNullish } from '~/utils/filterNullish';
+import { createLogger } from '~/utils/logger';
 
-  logger.log('Found episode cards:', episodeCards)
+import { CardDetail } from '../views/CardDetail/CardDetail';
+import { createEncapsulatedContainer } from './createEncapsulatedContainer';
+import { createStyleLink } from './createStyleLink';
+
+export function customizeCards(
+  page: ListingPage,
+  config: InternalSiteBaseConfig,
+) {
+  const logger = createLogger('customizeCards');
+  const episodeCards = filterNullish(page.episodeCards());
+
+  logger.log('Found episode cards:', episodeCards);
 
   const store = createMutable({
     anime: {} as Record<string, AnimeDetails | null>,
-  })
+  });
 
   let startFetching = async () => {
-    startFetching = () => Promise.resolve()
+    startFetching = () => Promise.resolve();
 
-    logger.log('Starting to fetch details for episode cards')
+    logger.log('Starting to fetch details for episode cards');
 
-    await window.messageGateway.sendMessage('initialize', null)
+    await window.messageGateway.sendMessage('initialize', null);
 
-    const animeMap = await window.messageGateway.sendMessage(
-      'fetch-details',
-      {
-        cards: (episodeCards).map(card => ({
-          title: card.title,
-          episodeNumber: card.episodeNumber,
-        })),
-      },
-    )
+    const animeMap = await window.messageGateway.sendMessage('fetch-details', {
+      cards: episodeCards.map((card) => ({
+        title: card.title,
+        episodeNumber: card.episodeNumber,
+      })),
+    });
 
-    logger.log('the response from background:', animeMap)
+    logger.log('the response from background:', animeMap);
 
     if (!animeMap) {
-      logger.log('No details fetched from background')
-      return
+      logger.log('No details fetched from background');
+      return;
     }
 
-    logger.log('Fetched details from background:', animeMap)
+    logger.log('Fetched details from background:', animeMap);
 
     // eslint-disable-next-line solid/reactivity
-    store.anime = animeMap
-  }
+    store.anime = animeMap;
+  };
 
-  logger.log('Customizing cards for site:', config)
-  logger.log('store:', store)
+  logger.log('Customizing cards for site:', config);
+  logger.log('store:', store);
 
   const disposers = episodeCards.map((card, index) => {
-    const { container, root, shadowDOM } = createEncapsulatedContainer()
+    const { container, root, shadowDOM } = createEncapsulatedContainer();
 
-    shadowDOM.appendChild(createStyleLink(config.scope))
-    card.render(container)
+    shadowDOM.appendChild(createStyleLink(config.scope));
+    card.render(container);
 
-    return render(() => <CardDetail card={card} page={page} store={store} onRender={startFetching} index={index} />, root)
-  })
+    return render(
+      () => (
+        <CardDetail
+          card={card}
+          page={page}
+          store={store}
+          onRender={startFetching}
+          index={index}
+        />
+      ),
+      root,
+    );
+  });
 
   return () => {
-    disposers.forEach(dispose => dispose())
-  }
+    disposers.forEach((dispose) => dispose());
+  };
 }

@@ -15,8 +15,5 @@
     "test/**/*.ts",
     "scripts/check-coverage.ts"
   ],
-  "exclude": [
-    "dist",
-    "node_modules"
-  ]
+  "exclude": ["dist", "node_modules"]
 }

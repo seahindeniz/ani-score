@@ -1,5 +1,6 @@
-import { cacheExchange, Client, fetchExchange } from '@urql/core'
-import { useTokenStore } from '~/logic'
+import { cacheExchange, Client, fetchExchange } from '@urql/core';
+
+import { useTokenStore } from '~/logic';
 
 export const anilistClient = new Client({
   url: 'https://graphql.anilist.co',
@@ -7,9 +8,9 @@ export const anilistClient = new Client({
   preferGetMethod: false,
   // The cast is for the unit tests' Bun types, whose `fetch` also has a `preconnect` method that urql never calls
   fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const tokenStore = useTokenStore()
+    const tokenStore = useTokenStore();
 
-    await tokenStore.dataReady
+    await tokenStore.dataReady;
 
     return fetch(input, {
       ...init,
@@ -19,6 +20,6 @@ export const anilistClient = new Client({
         'Content-Type': 'application/json',
         ...init?.headers,
       },
-    })
+    });
   }) as typeof fetch,
-})
+});

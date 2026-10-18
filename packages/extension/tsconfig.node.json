@@ -3,16 +3,11 @@
     "target": "ESNext",
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
-    "lib": [
-      "ESNext"
-    ],
+    "lib": ["ESNext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "types": [
-      "vite/client",
-      "bun"
-    ],
+    "types": ["vite/client", "bun"],
     "strict": true,
     "noUnusedLocals": true,
     "allowSyntheticDefaultImports": true,
@@ -30,8 +25,5 @@
     "./package.json",
     "./src/utils/contentScripts.ts"
   ],
-  "exclude": [
-    "dist",
-    "node_modules"
-  ]
+  "exclude": ["dist", "node_modules"]
 }

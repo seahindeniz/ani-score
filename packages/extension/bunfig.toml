@@ -5,16 +5,9 @@ bun = true
 [test]
 # Unit tests live next to the code; Playwright's specs in e2e/ aren't for bun test
 root = "src"
-preload = [ "./test/preload.ts" ]
+preload = ["./test/preload.ts"]
 coverageSkipTestFiles = true
-coveragePathIgnorePatterns = [
-  "src/gql/**",
-  "src/**/__tests__/**",
-  "test/**"
-]
+coveragePathIgnorePatterns = ["src/gql/**", "src/**/__tests__/**", "test/**"]
 # Bun measures lines and functions (not branches)
 coverageThreshold = { lines = 1.0, functions = 1.0 }
-coverageReporter = [
-  "text",
-  "lcov"
-]
+coverageReporter = ["text", "lcov"]

@@ -1,25 +1,28 @@
-import { afterEach, describe, expect, it } from 'bun:test'
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
-import { useStorageComposable } from '~/logic'
-import { fakeBrowser } from '../../../test/fake-browser'
-import Popup from '../Popup'
+import { afterEach, describe, expect, it } from 'bun:test';
 
-afterEach(cleanup)
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library';
+
+import { useStorageComposable } from '~/logic';
+
+import { fakeBrowser } from '../../../test/fake-browser';
+import Popup from '../Popup';
+
+afterEach(cleanup);
 
 describe('popup', () => {
   it('opens the options page', () => {
-    render(() => <Popup />)
+    render(() => <Popup />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Options' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Options' }));
 
-    expect(fakeBrowser.runtime.openOptionsPage).toHaveBeenCalledTimes(1)
-  })
+    expect(fakeBrowser.runtime.openOptionsPage).toHaveBeenCalledTimes(1);
+  });
 
   it('shows the stored demo value', async () => {
-    render(() => <Popup />)
+    render(() => <Popup />);
 
-    useStorageComposable().setData('Changed')
+    useStorageComposable().setData('Changed');
 
-    expect(await screen.findByText('Changed')).toBeTruthy()
-  })
-})
+    expect(await screen.findByText('Changed')).toBeTruthy();
+  });
+});

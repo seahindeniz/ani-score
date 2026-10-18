@@ -17,6 +17,7 @@ You are an expert browser extension developer specializing in the AniScore proje
 ## Project-Specific Knowledge
 
 ### Tech Stack
+
 - UI Framework: SolidJS with Kobalte Core for accessible primitives
 - Styling: UnoCSS utilities + SCSS + Shadow DOM isolation
 - State: Custom persisted stores via `webextension-polyfill` storage API
@@ -28,21 +29,30 @@ You are an expert browser extension developer specializing in the AniScore proje
 1. **Import Alias**: Always use `~/` for imports from `src/` (e.g., `import { logger } from '~/utils/logger'`)
 
 2. **SolidJS Components**: Use SolidJS patterns, NOT React:
+
    ```tsx
-   import { createSignal, For, Show } from 'solid-js'
+   import { createSignal, For, Show } from 'solid-js';
 
    function MyComponent(props: { title: string }) {
-     const [count, setCount] = createSignal(0)
-     return <Show when={props.title}><div>{props.title}</div></Show>
+     const [count, setCount] = createSignal(0);
+     return (
+       <Show when={props.title}>
+         <div>{props.title}</div>
+       </Show>
+     );
    }
    ```
 
 3. **UI Variants**: Use class-variance-authority with cn utility:
-   ```tsx
-   import { cva } from 'class-variance-authority'
-   import { cn } from '~/utils'
 
-   const variants = cva('base-classes', { variants: { size: { sm: '...', lg: '...' } } })
+   ```tsx
+   import { cva } from 'class-variance-authority';
+
+   import { cn } from '~/utils';
+
+   const variants = cva('base-classes', {
+     variants: { size: { sm: '...', lg: '...' } },
+   });
    ```
 
 4. **Messaging**: Use `webext-bridge` for background-content communication:
@@ -50,6 +60,7 @@ You are an expert browser extension developer specializing in the AniScore proje
    - Background: `onMessage('type', handler)` in `src/background/logic/message.ts`
 
 5. **Site Configuration** for new streaming sites:
+
    ```ts
    export const config: SiteBaseConfig = {
      theme: 'dark',
@@ -62,10 +73,11 @@ You are an expert browser extension developer specializing in the AniScore proje
    ```
 
 6. **Logging**: Use the logger utility:
-   ```ts
-   import { createLogger } from '~/utils/logger'
 
-   const logger = createLogger('ModuleName')
+   ```ts
+   import { createLogger } from '~/utils/logger';
+
+   const logger = createLogger('ModuleName');
    ```
 
 7. **Colors**: **ONLY use `oklch()` for all color definitions**. This project is migrating to oklch for better perceptual uniformity. Do NOT use:
@@ -75,6 +87,7 @@ You are an expert browser extension developer specializing in the AniScore proje
    - Named colors (`red`, `blue`)
 
    Always use oklch format:
+
    ```scss
    // ✓ Correct
    color: oklch(0.7 0.15 250);
@@ -88,6 +101,7 @@ You are an expert browser extension developer specializing in the AniScore proje
    When refactoring existing code that uses other color formats, migrate them to oklch.
 
 ### Directory Structure
+
 - `src/background/` - Service worker, API clients, GraphQL queries
 - `src/contentScripts/site/` - Per-site configurations with `main.ts`, `meta.ts`, `global.scss`
 - `src/contentScripts/engagement/` - Content script logic, stores, views
@@ -96,6 +110,7 @@ You are an expert browser extension developer specializing in the AniScore proje
 - `src/logic/` - Shared logic (storage, theme)
 
 ### Global Variables Available
+
 - `__DEV__` - Development mode flag
 - `__NAME__` - Extension name
 - `__TARGET_BROWSER__` - 'chrome' or 'firefox'

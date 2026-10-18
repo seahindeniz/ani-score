@@ -1,19 +1,28 @@
-import type { UserConfig } from 'vite'
-import { dirname, relative } from 'node:path'
-import process from 'node:process'
-import presetRemToPx from '@unocss/preset-rem-to-px'
-import UnoCSS from 'unocss/vite'
-import AutoImport from 'unplugin-auto-import/vite'
-import Icons from 'unplugin-icons/vite'
-import { defineConfig, mergeConfig } from 'vite'
-import solid from 'vite-plugin-solid'
-import packageJson from './package.json'
-import { isDev, isFirefox, mode, port, r, targetBrowser } from './scripts/utils'
-import unoConfig from './unocss.config'
+import { dirname, relative } from 'node:path';
+import process from 'node:process';
+
+import presetRemToPx from '@unocss/preset-rem-to-px';
+import UnoCSS from 'unocss/vite';
+import AutoImport from 'unplugin-auto-import/vite';
+import Icons from 'unplugin-icons/vite';
+import type { UserConfig } from 'vite';
+import { defineConfig, mergeConfig } from 'vite';
+import solid from 'vite-plugin-solid';
+
+import packageJson from './package.json';
+import {
+  isDev,
+  isFirefox,
+  mode,
+  port,
+  r,
+  targetBrowser,
+} from './scripts/utils';
+import unoConfig from './unocss.config';
 
 const ANILIST_TOKEN_URL = isFirefox
   ? process.env.ANILIST_TOKEN_URL_FIREFOX
-  : process.env.ANILIST_TOKEN_URL
+  : process.env.ANILIST_TOKEN_URL;
 
 export const sharedConfig: UserConfig = {
   root: r('src'),
@@ -31,7 +40,6 @@ export const sharedConfig: UserConfig = {
     'process.env.NODE_ENV': JSON.stringify(mode),
     ANILIST_TOKEN_URL: JSON.stringify(ANILIST_TOKEN_URL ?? ''),
     __TARGET_BROWSER__: JSON.stringify(targetBrowser),
-
   },
   plugins: [
     solid({
@@ -42,9 +50,7 @@ export const sharedConfig: UserConfig = {
     AutoImport({
       imports: [
         {
-          'webextension-polyfill': [
-            ['=', 'browser'],
-          ],
+          'webextension-polyfill': [['=', 'browser']],
         },
       ],
       dts: r('src/auto-imports.d.ts'),
@@ -62,11 +68,7 @@ export const sharedConfig: UserConfig = {
     minifyWhitespace: true,
   },
   optimizeDeps: {
-    include: [
-      'solid-js',
-      'solid-js/web',
-      'webextension-polyfill',
-    ],
+    include: ['solid-js', 'solid-js/web', 'webextension-polyfill'],
     exclude: [],
   },
   css: {
@@ -77,27 +79,34 @@ export const sharedConfig: UserConfig = {
       },
     },
   },
-}
+};
 
-export function sharedDOMConfig(props: { icons?: boolean, unoCSS?: boolean, remToPx?: boolean } = {}) {
+export function sharedDOMConfig(
+  props: { icons?: boolean; unoCSS?: boolean; remToPx?: boolean } = {},
+) {
   const propsWithDefaults = {
     icons: true,
     unoCSS: true,
     remToPx: false,
     ...props,
-  }
+  };
 
   return mergeConfig(sharedConfig, {
     plugins: [
       propsWithDefaults.icons && Icons({ compiler: 'solid' }),
-      propsWithDefaults.unoCSS && UnoCSS(
-        propsWithDefaults.remToPx
-          // Content scripts render inside the host page, where `rem` follows the site's root font size (e.g. 10px on
-          // tranimeizle), so their sizes are emitted in px at the default 16px base. Extension pages keep rem, so they
-          // still follow the user's browser font size.
-          ? { ...unoConfig, configFile: false, presets: [...unoConfig.presets ?? [], presetRemToPx()] }
-          : undefined,
-      ),
+      propsWithDefaults.unoCSS
+        && UnoCSS(
+          propsWithDefaults.remToPx
+            ? // Content scripts render inside the host page, where `rem` follows the site's root font size (e.g. 10px on
+              // tranimeizle), so their sizes are emitted in px at the default 16px base. Extension pages keep rem, so they
+              // still follow the user's browser font size.
+              {
+                ...unoConfig,
+                configFile: false,
+                presets: [...(unoConfig.presets ?? []), presetRemToPx()],
+              }
+            : undefined,
+        ),
 
       // rewrite assets to use relative path
       {
@@ -105,36 +114,42 @@ export function sharedDOMConfig(props: { icons?: boolean, unoCSS?: boolean, remT
         enforce: 'post',
         apply: 'build',
         transformIndexHtml(html, { path }) {
-          return html.replace(/"\/assets\//g, `"${relative(dirname(path), '/assets')}/`)
+          return html.replace(
+            /"\/assets\//g,
+            `"${relative(dirname(path), '/assets')}/`,
+          );
         },
       },
     ],
-  } as UserConfig)
+  } as UserConfig);
 }
 
-export default defineConfig(({ command }) => mergeConfig(sharedDOMConfig(), {
-  base: command === 'serve' && !isFirefox ? `http://localhost:${port}/` : '/dist/',
-  server: {
-    port,
-    hmr: {
-      host: 'localhost',
+export default defineConfig(({ command }) =>
+  mergeConfig(sharedDOMConfig(), {
+    base:
+      command === 'serve' && !isFirefox
+        ? `http://localhost:${port}/`
+        : '/dist/',
+    server: {
+      port,
+      hmr: {
+        host: 'localhost',
+      },
+      origin: `http://localhost:${port}`,
     },
-    origin: `http://localhost:${port}`,
-  },
-  build: {
-    watch: isDev
-      ? {}
-      : undefined,
-    outDir: r('extension/dist'),
-    emptyOutDir: false,
-    sourcemap: isDev ? 'inline' : false,
-    target: 'esnext',
-    rollupOptions: {
-      input: {
-        options: r('src/options/index.html'),
-        popup: r('src/popup/index.html'),
-        sidepanel: r('src/sidepanel/index.html'),
+    build: {
+      watch: isDev ? {} : undefined,
+      outDir: r('extension/dist'),
+      emptyOutDir: false,
+      sourcemap: isDev ? 'inline' : false,
+      target: 'esnext',
+      rollupOptions: {
+        input: {
+          options: r('src/options/index.html'),
+          popup: r('src/popup/index.html'),
+          sidepanel: r('src/sidepanel/index.html'),
+        },
       },
     },
-  },
-}))
+  }),
+);

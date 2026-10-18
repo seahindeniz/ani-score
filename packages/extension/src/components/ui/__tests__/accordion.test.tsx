@@ -1,8 +1,15 @@
-import { afterEach, describe, expect, it } from 'bun:test'
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../accordion'
+import { afterEach, describe, expect, it } from 'bun:test';
 
-afterEach(cleanup)
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library';
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../accordion';
+
+afterEach(cleanup);
 
 describe('accordion', () => {
   it('expands an item when its trigger is clicked', async () => {
@@ -13,23 +20,23 @@ describe('accordion', () => {
           <AccordionContent class="content">Adventure</AccordionContent>
         </AccordionItem>
       </Accordion>
-    ))
+    ));
 
-    const trigger = screen.getByRole('button', { name: 'Genres' })
+    const trigger = screen.getByRole('button', { name: 'Genres' });
 
-    expect(screen.getByTestId('item').className).toContain('border-b')
-    expect(screen.getByTestId('item').className).toContain('item')
-    expect(trigger.className).toContain('trigger')
-    expect(trigger.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByText('Adventure')).toBeNull()
+    expect(screen.getByTestId('item').className).toContain('border-b');
+    expect(screen.getByTestId('item').className).toContain('item');
+    expect(trigger.className).toContain('trigger');
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('Adventure')).toBeNull();
 
-    fireEvent.click(trigger)
+    fireEvent.click(trigger);
 
-    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
 
-    const content = await screen.findByRole('region')
+    const content = await screen.findByRole('region');
 
-    expect(content.textContent).toBe('Adventure')
-    expect(content.className).toContain('content')
-  })
-})
+    expect(content.textContent).toBe('Adventure');
+    expect(content.className).toContain('content');
+  });
+});

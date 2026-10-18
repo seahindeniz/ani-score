@@ -1,24 +1,31 @@
-import type { JSX, ParentProps } from 'solid-js'
-import clsx from 'clsx'
-import { Show } from 'solid-js'
-import { Dynamic } from 'solid-js/web'
-import SvgSpinnersPulseRing from '~icons/svg-spinners/pulse-ring'
-import styles from './CardDetail.module.scss'
+import clsx from 'clsx';
+import type { JSX, ParentProps } from 'solid-js';
+import { Show } from 'solid-js';
+import { Dynamic } from 'solid-js/web';
+import SvgSpinnersPulseRing from '~icons/svg-spinners/pulse-ring';
+
+import styles from './CardDetail.module.scss';
 
 interface Props<TagName extends keyof JSX.IntrinsicElements> {
-  text?: JSX.Element
-  emoji?: JSX.Element
-  title?: string
-  loading?: boolean
-  tagName?: TagName
-  attributes?: JSX.IntrinsicElements[TagName]
-  style?: JSX.CSSProperties
-  class?: string
-  classList?: JSX.CustomAttributes<JSX.IntrinsicElements[TagName]>['classList']
-  onClick?: JSX.EventHandlerUnion<JSX.IntrinsicElements[TagName], MouseEvent, JSX.EventHandler<JSX.IntrinsicElements[TagName], MouseEvent>>
+  text?: JSX.Element;
+  emoji?: JSX.Element;
+  title?: string;
+  loading?: boolean;
+  tagName?: TagName;
+  attributes?: JSX.IntrinsicElements[TagName];
+  style?: JSX.CSSProperties;
+  class?: string;
+  classList?: JSX.CustomAttributes<JSX.IntrinsicElements[TagName]>['classList'];
+  onClick?: JSX.EventHandlerUnion<
+    JSX.IntrinsicElements[TagName],
+    MouseEvent,
+    JSX.EventHandler<JSX.IntrinsicElements[TagName], MouseEvent>
+  >;
 }
 
-export function Chip<TagName extends keyof JSX.IntrinsicElements>(props: ParentProps<Props<TagName>>): JSX.Element {
+export function Chip<TagName extends keyof JSX.IntrinsicElements>(
+  props: ParentProps<Props<TagName>>,
+): JSX.Element {
   return (
     // @ts-expect-error pass all props to Dynamic
     <Dynamic
@@ -32,7 +39,10 @@ export function Chip<TagName extends keyof JSX.IntrinsicElements>(props: ParentP
     >
       <Show when={props.emoji}>
         <div class="relative">
-          <Show when={typeof props.emoji === 'string'} fallback={<>{props.emoji}</>}>
+          <Show
+            when={typeof props.emoji === 'string'}
+            fallback={<>{props.emoji}</>}
+          >
             <span>{props.emoji}</span>
           </Show>
           <Show when={props.loading}>
@@ -43,5 +53,5 @@ export function Chip<TagName extends keyof JSX.IntrinsicElements>(props: ParentP
       {props.text}
       {props.children}
     </Dynamic>
-  )
+  );
 }

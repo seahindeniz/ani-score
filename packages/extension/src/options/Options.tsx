@@ -1,12 +1,12 @@
-import logo from '~/assets/logo.svg'
-import { useStorageComposable } from '~/logic'
+import logo from '~/assets/logo.svg';
+import { useStorageComposable } from '~/logic';
 
 export default function Options() {
-  const { data: storageDemo, setData: setStorageDemo } = useStorageComposable()
+  const { data: storageDemo, setData: setStorageDemo } = useStorageComposable();
 
   function handleInput(event: InputEvent) {
-    const target = event.currentTarget as HTMLInputElement
-    setStorageDemo(target.value)
+    const target = event.currentTarget as HTMLInputElement;
+    setStorageDemo(target.value);
   }
 
   return (
@@ -20,9 +20,7 @@ export default function Options() {
         class="mt-2 border border-gray-400 rounded px-2 py-1"
       />
 
-      <div class="mt-4">
-        Powered by Vite ⚡
-      </div>
+      <div class="mt-4">Powered by Vite ⚡</div>
     </main>
-  )
+  );
 }

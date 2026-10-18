@@ -1,25 +1,27 @@
-import { logger } from '~/utils/logger'
-import { connectToWS } from './logic/connectToWS'
-import { fetchCSS } from './logic/fetchCSS'
-import { listenMessages } from './logic/message'
+import { logger } from '~/utils/logger';
+
+import { connectToWS } from './logic/connectToWS';
+import { fetchCSS } from './logic/fetchCSS';
+import { listenMessages } from './logic/message';
 
 // only on dev mode
 if (import.meta.hot) {
   // @ts-expect-error for background HMR
-  import('/@vite/client')
+  import('/@vite/client');
   // load latest content script
-  import('./contentScriptHMR')
+  import('./contentScriptHMR');
 }
 
-listenMessages()
-fetchCSS()
-connectToWS()
+listenMessages();
+fetchCSS();
+connectToWS();
 
 if (__TARGET_BROWSER__ === 'chrome') {
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
-    .catch((error: unknown) => logger.error(error))
+  chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((error: unknown) => logger.error(error));
 }
 
 browser.runtime.onInstalled.addListener(async (): Promise<void> => {
-  logger.log('Extension installed')
-})
+  logger.log('Extension installed');
+});

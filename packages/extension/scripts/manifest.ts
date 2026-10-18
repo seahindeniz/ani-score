@@ -1,41 +1,50 @@
-import type { Manifest } from 'webextension-polyfill'
-import type PkgType from '../package.json'
-import { join } from 'node:path'
-import { argv, isDev, isFirefox, log, port, r } from '../scripts/utils'
-import { contentScriptPaths } from '../src/utils/contentScripts'
+import { join } from 'node:path';
+
+import type { Manifest } from 'webextension-polyfill';
+
+import type PkgType from '../package.json';
+import { argv, isDev, isFirefox, log, port, r } from '../scripts/utils';
+import { contentScriptPaths } from '../src/utils/contentScripts';
 
 export async function getManifest() {
-  const pkg = await Bun.file(r('package.json')).json() as typeof PkgType
+  const pkg = (await Bun.file(r('package.json')).json()) as typeof PkgType;
 
   const contentScripts = [
-    ...await Promise.all(contentScriptPaths.map(async (entry) => {
-      let config = {
-        urlPatterns: ['<all_urls>'] as unknown as `*://${string}`[],
-      }
-      const filePath = join('../', entry.relativeDir, 'meta').replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/')
+    ...(await Promise.all(
+      contentScriptPaths.map(async (entry) => {
+        let config = {
+          urlPatterns: ['<all_urls>'] as unknown as `*://${string}`[],
+        };
+        const filePath = join('../', entry.relativeDir, 'meta')
+          .replace(/\.(ts|tsx)$/, '')
+          .replace(/\\/g, '/');
 
-      try {
-        const moduleContent = (await import(filePath))
+        try {
+          const moduleContent = await import(filePath);
 
-        if (moduleContent?.meta) {
-          config = moduleContent.meta
+          if (moduleContent?.meta) {
+            config = moduleContent.meta;
+          }
+        } catch {
+          //
         }
-      }
-      catch {
-        //
-      }
-      return ({
-        matches: config.urlPatterns,
-        js: [`dist/contentScripts/${entry.directory}/${entry.name}`],
-      })
-    })),
-  ]
-  const contentScriptsByScope = Object.groupBy(contentScripts, item => item.matches.includes('<all_urls>' as `*://${string}`) ? 'broad' : 'other')
-  const websitePatterns = Array.from(new Set(contentScriptsByScope.other?.flatMap(item => item.matches) || []))
+        return {
+          matches: config.urlPatterns,
+          js: [`dist/contentScripts/${entry.directory}/${entry.name}`],
+        };
+      }),
+    )),
+  ];
+  const contentScriptsByScope = Object.groupBy(contentScripts, (item) =>
+    item.matches.includes('<all_urls>' as `*://${string}`) ? 'broad' : 'other',
+  );
+  const websitePatterns = Array.from(
+    new Set(contentScriptsByScope.other?.flatMap((item) => item.matches) || []),
+  );
 
   contentScriptsByScope.broad?.forEach((item) => {
-    item.matches = websitePatterns
-  })
+    item.matches = websitePatterns;
+  });
 
   const manifest: Manifest.WebExtensionManifest = {
     manifest_version: 3,
@@ -66,12 +75,12 @@ export async function getManifest() {
     },
     permissions: [
       'storage',
-      ...isFirefox ? [] : ['sidePanel'],
+      ...(isFirefox ? [] : ['sidePanel']),
       'notifications',
       'unlimitedStorage',
     ],
     host_permissions: [
-      ...isDev ? [`http://localhost:${port}/*`] : [],
+      ...(isDev ? [`http://localhost:${port}/*`] : []),
       'https://github.com/cedya77/anime-offline-database/*',
       'https://github.com/athanasso/anime-offline-database/*',
       'https://release-assets.githubusercontent.com/*',
@@ -87,17 +96,18 @@ export async function getManifest() {
         ],
         matches: [
           'https://anilist.co/*',
-          ...websitePatterns.filter(item => item.endsWith('/*')),
+          ...websitePatterns.filter((item) => item.endsWith('/*')),
         ],
       },
     ],
     content_security_policy: {
-      extension_pages: isDev && !isFirefox
-        // this is required on dev for Vite script to load
-        ? `script-src 'self' http://localhost:${port}; object-src 'self'`
-        : `script-src 'self'; object-src 'self'`,
+      extension_pages:
+        isDev && !isFirefox
+          ? // this is required on dev for Vite script to load
+            `script-src 'self' http://localhost:${port}; object-src 'self'`
+          : `script-src 'self'; object-src 'self'`,
     },
-  }
+  };
 
   if (isFirefox) {
     Object.assign(manifest, {
@@ -110,31 +120,34 @@ export async function getManifest() {
           strict_min_version: '112.0',
         },
       },
-    })
-  }
-  else {
+    });
+  } else {
     Object.assign(manifest, {
       side_panel: {
         default_path: 'dist/sidepanel/index.html',
       },
-    })
+    });
   }
 
   // FIXME: not work in MV3
+  // eslint-disable-next-line no-constant-condition -- turned off until it works in MV3
   if (isDev && false) {
     // for content script, as browsers will cache them for each reload,
     // we use a background script to always inject the latest version
     // see src/background/contentScriptHMR.ts
-    delete manifest.content_scripts
-    manifest.permissions?.push('webNavigation')
+    delete manifest.content_scripts;
+    manifest.permissions?.push('webNavigation');
   }
 
-  return manifest
+  return manifest;
 }
 
 if (argv.writeManifest) {
   getManifest().then(async (manifest) => {
-    await Bun.write(r('extension/manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-    log('PRE', 'Manifest written to extension/manifest.json')
-  })
+    await Bun.write(
+      r('extension/manifest.json'),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+    );
+    log('PRE', 'Manifest written to extension/manifest.json');
+  });
 }

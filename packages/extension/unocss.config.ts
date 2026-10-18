@@ -1,7 +1,13 @@
-import { presetAttributify, presetIcons, presetWind3, transformerDirectives, transformerVariantGroup } from 'unocss'
-import presetAnimations from 'unocss-preset-animations'
-import { presetKobalte } from 'unocss-preset-primitives'
-import { defineConfig } from 'unocss/vite'
+import {
+  presetAttributify,
+  presetIcons,
+  presetWind3,
+  transformerDirectives,
+  transformerVariantGroup,
+} from 'unocss';
+import presetAnimations from 'unocss-preset-animations';
+import { presetKobalte } from 'unocss-preset-primitives';
+import { defineConfig } from 'unocss/vite';
 
 export default defineConfig({
   presets: [
@@ -16,10 +22,7 @@ export default defineConfig({
     presetAnimations(),
     presetKobalte(),
   ],
-  transformers: [
-    transformerVariantGroup(),
-    transformerDirectives(),
-  ],
+  transformers: [transformerVariantGroup(), transformerDirectives()],
   rules: [
     ['animate-accordion-down', { animation: 'accordion-down 0.2s ease-out' }],
     ['animate-accordion-up', { animation: 'accordion-up 0.2s ease-out' }],
@@ -95,4 +98,4 @@ export default defineConfig({
       sm: 'calc(var(--radius) - 4px)',
     },
   },
-})
+});

@@ -1,112 +1,143 @@
-import type { Component, FlowComponent, ParentComponent } from 'solid-js'
-import type { EpisodeCard, ListingPage } from '../../../site/base'
-import type { fetchDetails } from '~/background/logic/fetchDetails'
-import clsx from 'clsx'
-import { createEffect, createMemo, createSignal, For, Match, on, onMount, Show, Switch } from 'solid-js'
-import AntDesignTagsFilled from '~icons/ant-design/tags-filled'
-import DeviconPlainPlaywright from '~icons/devicon-plain/playwright'
-import MdiHeart from '~icons/mdi/heart'
-import MdiHeartMinus from '~icons/mdi/heart-minus'
-import MdiHeartPlusOutline from '~icons/mdi/heart-plus-outline'
-import StreamlineFreehandServerError404NotFound from '~icons/streamline-freehand/server-error-404-not-found'
-import SvgSpinners3DotsMove from '~icons/svg-spinners/3-dots-move'
-import { toColorEntries, useSettingsStore } from '~/logic'
-import { isTrending } from '~/utils/isTrending'
-import { AnimeInfoCard } from './AnimeInfo'
-import styles from './CardDetail.module.scss'
-import { Chip } from './Chip'
-import '~/styles'
+import clsx from 'clsx';
+import type { Component, FlowComponent, ParentComponent } from 'solid-js';
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  Match,
+  on,
+  onMount,
+  Show,
+  Switch,
+} from 'solid-js';
+import AntDesignTagsFilled from '~icons/ant-design/tags-filled';
+import DeviconPlainPlaywright from '~icons/devicon-plain/playwright';
+import MdiHeart from '~icons/mdi/heart';
+import MdiHeartMinus from '~icons/mdi/heart-minus';
+import MdiHeartPlusOutline from '~icons/mdi/heart-plus-outline';
+import StreamlineFreehandServerError404NotFound from '~icons/streamline-freehand/server-error-404-not-found';
+import SvgSpinners3DotsMove from '~icons/svg-spinners/3-dots-move';
 
-const SubDetail: FlowComponent<{ title: string }> = props => (
+import type { fetchDetails } from '~/background/logic/fetchDetails';
+import { toColorEntries, useSettingsStore } from '~/logic';
+import { isTrending } from '~/utils/isTrending';
+
+import type { EpisodeCard, ListingPage } from '../../../site/base';
+import { AnimeInfoCard } from './AnimeInfo';
+import { Chip } from './Chip';
+
+import styles from './CardDetail.module.scss';
+import '~/styles';
+
+const SubDetail: FlowComponent<{ title: string }> = (props) => (
   <div
     title={props.title}
     class={clsx('align-self text-sm', styles.subDetail)}
-    style={{ 'align-self': 'start', 'line-height': '1.5em', 'font-size': '0.8em' }}
+    style={{
+      'align-self': 'start',
+      'line-height': '1.5em',
+      'font-size': '0.8em',
+    }}
   >
     {props.children}
   </div>
-)
+);
 
 const TagContainer: ParentComponent<{
-  class?: string
-}> = props => (
-  <div class={clsx(props.class)}>
-    {props.children}
-  </div>
-)
+  class?: string;
+}> = (props) => <div class={clsx(props.class)}>{props.children}</div>;
 
 interface Props {
-  card: EpisodeCard
-  page: ListingPage
-  store: { anime: NonNullable<Awaited<ReturnType<typeof fetchDetails>>> }
-  index: number
-  onRender?: () => Promise<void>
+  card: EpisodeCard;
+  page: ListingPage;
+  store: { anime: NonNullable<Awaited<ReturnType<typeof fetchDetails>>> };
+  index: number;
+  onRender?: () => Promise<void>;
 }
 
 export const CardDetail: Component<Props> = (props) => {
-  let containerRef!: HTMLDivElement
-  const settingsStore = useSettingsStore()
-  const [isMakingFavorite, setMakingFavorite] = createSignal<boolean>(false)
-  const [isFavorite, setFavorite] = createSignal<boolean>(false)
-  const [softFavoriteAdditionCount, setSoftFavoriteAdditionCount] = createSignal(0)
-  const details = createMemo(() => props.store.anime[props.card.title]!)
-  const tags = createMemo(() => toColorEntries(settingsStore.data().tagColor).reduce((acc, entry) => {
-    if (entry.name && entry.color) {
-      acc[entry.name] = entry.color
-    }
-    return acc
-  }, {} as Record<string, string>))
-  const [heartHovered, setHeartHovered] = createSignal(false)
-  const genreSettings = createMemo(() => toColorEntries(settingsStore.data().genreColor).reduce((acc, entry) => {
-    if (entry.name && entry.color) {
-      acc[entry.name] = entry.color
-    }
-    return acc
-  }, {} as Record<string, string>))
+  let containerRef!: HTMLDivElement;
+  const settingsStore = useSettingsStore();
+  const [isMakingFavorite, setMakingFavorite] = createSignal<boolean>(false);
+  const [isFavorite, setFavorite] = createSignal<boolean>(false);
+  const [softFavoriteAdditionCount, setSoftFavoriteAdditionCount] =
+    createSignal(0);
+  const details = createMemo(() => props.store.anime[props.card.title]!);
+  const tags = createMemo(() =>
+    toColorEntries(settingsStore.data().tagColor).reduce(
+      (acc, entry) => {
+        if (entry.name && entry.color) {
+          acc[entry.name] = entry.color;
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
+    ),
+  );
+  const [heartHovered, setHeartHovered] = createSignal(false);
+  const genreSettings = createMemo(() =>
+    toColorEntries(settingsStore.data().genreColor).reduce(
+      (acc, entry) => {
+        if (entry.name && entry.color) {
+          acc[entry.name] = entry.color;
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
+    ),
+  );
 
   const handleFavoriteClick = async (event: MouseEvent) => {
-    event.preventDefault()
-    event.stopPropagation()
+    event.preventDefault();
+    event.stopPropagation();
 
-    const id = details()?.id
+    const id = details()?.id;
 
     if (isMakingFavorite() || id == null) {
-      return
+      return;
     }
 
     try {
-      setMakingFavorite(true)
+      setMakingFavorite(true);
 
-      const { error } = await window.messageGateway.sendMessage('make-anime-favorite', id as number)
+      const { error } = await window.messageGateway.sendMessage(
+        'make-anime-favorite',
+        id as number,
+      );
 
       if (!error) {
-        setFavorite(!isFavorite())
-        setSoftFavoriteAdditionCount(
-          count => isFavorite() ? count + 1 : count - 1,
-        )
+        setFavorite(!isFavorite());
+        setSoftFavoriteAdditionCount((count) =>
+          isFavorite() ? count + 1 : count - 1,
+        );
       }
+    } finally {
+      setMakingFavorite(false);
     }
-    finally {
-      setMakingFavorite(false)
-    }
-  }
+  };
 
   onMount(() => {
-    void props.onRender?.()
-  })
+    void props.onRender?.();
+  });
 
-  createEffect(on(details, (anime) => {
-    if (!anime)
-      return
+  createEffect(
+    on(details, (anime) => {
+      if (!anime) return;
 
-    setFavorite(Boolean(anime?.isFavourite))
-  }))
+      setFavorite(Boolean(anime?.isFavourite));
+    }),
+  );
 
-  createEffect(on(details, (anime) => {
-    const isWatching = Boolean(anime?.mediaListEntry)
+  createEffect(
+    on(details, (anime) => {
+      const isWatching = Boolean(anime?.mediaListEntry);
 
-    props.page.getShimmeringElement?.(props.card)?.classList.toggle('ani-score-watching', isWatching)
-  }))
+      props.page
+        .getShimmeringElement?.(props.card)
+        ?.classList.toggle('ani-score-watching', isWatching);
+    }),
+  );
 
   return (
     <div
@@ -134,13 +165,15 @@ export const CardDetail: Component<Props> = (props) => {
             <Show when={details()?.favourites != null}>
               <Chip
                 emoji={
-                  isFavorite()
-                    ? (
-                        heartHovered()
-                          ? <MdiHeartMinus class="text-red-500" />
-                          : <MdiHeart class="text-red-500" />
-                      )
-                    : <MdiHeartPlusOutline class="text-red-500" />
+                  isFavorite() ? (
+                    heartHovered() ? (
+                      <MdiHeartMinus class="text-red-500" />
+                    ) : (
+                      <MdiHeart class="text-red-500" />
+                    )
+                  ) : (
+                    <MdiHeartPlusOutline class="text-red-500" />
+                  )
                 }
                 class="text-foreground decoration-none hover:decoration-underline"
                 loading={isMakingFavorite()}
@@ -150,10 +183,7 @@ export const CardDetail: Component<Props> = (props) => {
               />
             </Show>
             <Show when={details()?.startDate != null && isTrending(details()!)}>
-              <Chip
-                emoji="⚡"
-                title="Trending"
-              />
+              <Chip emoji="⚡" title="Trending" />
             </Show>
             <Show when={details()?.mediaListEntry}>
               <Chip
@@ -162,10 +192,7 @@ export const CardDetail: Component<Props> = (props) => {
                 title="Watching"
               >
                 <SubDetail title="Total released episodes">
-                  {`/ ${Math.max(
-                    details()?.episodes || 0,
-                    details()?.nextAiringEpisode?.episode || 0,
-                  )}`}
+                  {`/ ${Math.max(details()?.episodes || 0, details()?.nextAiringEpisode?.episode || 0)}`}
                 </SubDetail>
               </Chip>
             </Show>
@@ -177,10 +204,8 @@ export const CardDetail: Component<Props> = (props) => {
             <TagContainer class={clsx(styles.row, styles.genres)}>
               <DeviconPlainPlaywright />
               <For each={details()!.genres}>
-                {genre => (
-                  <div style={{ color: genreSettings()[genre!] }}>
-                    {genre}
-                  </div>
+                {(genre) => (
+                  <div style={{ color: genreSettings()[genre!] }}>{genre}</div>
                 )}
               </For>
             </TagContainer>
@@ -188,7 +213,11 @@ export const CardDetail: Component<Props> = (props) => {
           <Show when={details()?.tags?.length}>
             <TagContainer class={clsx(styles.row, styles.genres)}>
               <AntDesignTagsFilled />
-              <For each={details()!.tags!.filter(item => item != null).slice(0, 5)}>
+              <For
+                each={details()!
+                  .tags!.filter((item) => item != null)
+                  .slice(0, 5)}
+              >
                 {({ name }) => (
                   <div style={{ color: tags()[name.toLowerCase()] }}>
                     {name}
@@ -200,5 +229,5 @@ export const CardDetail: Component<Props> = (props) => {
         </Match>
       </Switch>
     </div>
-  )
-}
+  );
+};

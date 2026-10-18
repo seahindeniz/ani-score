@@ -1,1 +1,1 @@
-export const outputDirectory = './release'
+export const outputDirectory = './release';

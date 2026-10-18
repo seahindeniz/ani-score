@@ -2,8 +2,9 @@
   "recommendations": [
     "antfu.iconify",
     "antfu.unocss",
-    "dbaeumer.vscode-eslint",
     "csstools.postcss",
-    "editorconfig.editorconfig"
+    "editorconfig.editorconfig",
+    "emeraldwalk.runonsave",
+    "oven.bun-vscode"
   ]
 }

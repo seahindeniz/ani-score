@@ -1,28 +1,28 @@
-import type { ResolvedTheme, Theme } from '~/logic/setTheme'
+import type { ResolvedTheme, Theme } from '~/logic/setTheme';
 
 export interface Meta {
-  urlPatterns: `*://${string}`[]
+  urlPatterns: `*://${string}`[];
 }
 
 export interface EpisodeCard {
-  element: HTMLElement
-  render: (container: HTMLDivElement) => void
-  title: string
-  episodeNumber: number
+  element: HTMLElement;
+  render: (container: HTMLDivElement) => void;
+  title: string;
+  episodeNumber: number;
 }
 
 export interface ListingPage {
-  isValidPage: () => boolean
-  episodeCards: () => (EpisodeCard | undefined | null)[]
-  reInit?: (next: () => void) => void
+  isValidPage: () => boolean;
+  episodeCards: () => (EpisodeCard | undefined | null)[];
+  reInit?: (next: () => void) => void;
   /**
    * Element within the episode card to apply "watching" state styles to.
    */
-  getShimmeringElement?: (card: EpisodeCard) => HTMLElement | null
+  getShimmeringElement?: (card: EpisodeCard) => HTMLElement | null;
 }
 
 export interface SiteBaseConfig {
-  listingPages: ListingPage[]
+  listingPages: ListingPage[];
   /**
    * Normally, AniScore adapts to the system theme by default.
    * You can override this behavior by specifying a theme here.
@@ -32,9 +32,9 @@ export interface SiteBaseConfig {
    *
    * @default 'system'
    */
-  theme?: Theme | ((set: (theme: ResolvedTheme) => void) => void)
+  theme?: Theme | ((set: (theme: ResolvedTheme) => void) => void);
 }
 
 export interface InternalSiteBaseConfig extends SiteBaseConfig {
-  scope: string
+  scope: string;
 }
