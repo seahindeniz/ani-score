@@ -117,7 +117,16 @@ export async function getManifest() {
       browser_specific_settings: {
         gecko: {
           id: `@${pkg.name}.${pkg.author.name}`,
-          strict_min_version: '112.0',
+          // Firefox's built-in data collection consent needs 140+
+          strict_min_version: '140.0',
+          // Shown at install: card titles are sent to AniList, and so is the AniList sign-in token
+          data_collection_permissions: {
+            required: ['websiteContent', 'authenticationInfo'],
+          },
+        },
+        // Firefox for Android supports the data collection consent from 142
+        gecko_android: {
+          strict_min_version: '142.0',
         },
       },
     });
