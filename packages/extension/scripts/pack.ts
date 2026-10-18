@@ -3,6 +3,8 @@ import { mkdirSync, renameSync, statSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
+import webExt from 'web-ext';
+
 import { outputDirectory } from './constants';
 import { argv, log, r } from './utils';
 
@@ -55,7 +57,7 @@ try {
       WEB_EXT_SOURCE_DIR: './extension',
       WEB_EXT_FILENAME: `extension-${version}.xpi`,
       WEB_EXT_OVERWRITE_DEST: 'true',
-      WEB_EXT_CHANNEL: 'unlisted',
+      WEB_EXT_CHANNEL: 'unlisted' as const,
     };
 
     log('PACK', 'linting Firefox build');
@@ -63,7 +65,21 @@ try {
 
     if (process.env.WEB_EXT_API_KEY && process.env.WEB_EXT_API_SECRET) {
       log('PACK', 'signing Firefox build');
-      execSync(`web-ext sign`, { stdio: 'inherit', env });
+      // Through web-ext's API rather than its CLI: on Bun the CLI prints its errors without their message
+      await webExt.cmd
+        .sign(
+          {
+            sourceDir: r('extension'),
+            artifactsDir: env.WEB_EXT_ARTIFACTS_DIR,
+            apiKey: process.env.WEB_EXT_API_KEY,
+            apiSecret: process.env.WEB_EXT_API_SECRET,
+            channel: env.WEB_EXT_CHANNEL,
+          },
+          { shouldExitProgram: false },
+        )
+        .catch((error: Error) => {
+          throw new Error(`signing failed: ${error.message}`);
+        });
 
       const file = Array.from(
         new Bun.Glob(`${outputDirectory}/*.xpi`).scanSync({ absolute: true }),
