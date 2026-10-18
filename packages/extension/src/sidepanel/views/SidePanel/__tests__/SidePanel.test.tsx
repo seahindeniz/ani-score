@@ -1,4 +1,12 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'bun:test';
 
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library';
 
@@ -16,10 +24,12 @@ beforeAll(() => {
     })) as unknown as typeof fetch;
 });
 
-afterEach(() => {
-  cleanup();
+// Signed out unless a test signs in; other test files share the token store
+beforeEach(() => {
   useTokenStore().setData({ anilist: '' });
 });
+
+afterEach(cleanup);
 
 afterAll(() => {
   globalThis.fetch = originalFetch;

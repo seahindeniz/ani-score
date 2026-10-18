@@ -45,16 +45,18 @@ describe('messageGateway', () => {
   });
 
   it('ignores failed pings, e.g. while the background restarts', async () => {
-    sendMessage.mockImplementation(async () => {
+    sendMessage.mockImplementationOnce(async () => {
       throw new Error('Could not establish connection');
     });
     fakeBrowser.runtime.sendMessage.mockImplementationOnce(async () => {
       throw new Error('Could not establish connection');
     });
+    // Counted from here, since the other tests' timer ticks ping too
+    const pings = sendMessage.mock.calls.length;
 
     jest.advanceTimersByTime(5000);
     await Promise.resolve();
 
-    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(sendMessage).toHaveBeenCalledTimes(pings + 1);
   });
 });

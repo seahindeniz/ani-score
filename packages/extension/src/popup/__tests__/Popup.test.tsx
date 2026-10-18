@@ -7,7 +7,11 @@ import { useStorageComposable } from '~/logic';
 import { fakeBrowser } from '../../../test/fake-browser';
 import Popup from '../Popup';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // The store is shared by every test file in the run
+  useStorageComposable().setData('Storage Demo');
+});
 
 describe('popup', () => {
   it('opens the options page', () => {

@@ -1,15 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import * as logic from '..';
-import {
-  toColorEntries,
-  useAnimeDatabaseSearchCacheStore,
-  useAnimeDatabaseStore,
-  useSettingsStore,
-  useStorageComposable,
-  useThemeStore,
-  useTokenStore,
-} from '../storage';
+import { toColorEntries, useTokenStore } from '../storage';
 
 describe('toColorEntries', () => {
   it('returns entry arrays as they are', () => {
@@ -29,17 +21,24 @@ describe('toColorEntries', () => {
 });
 
 describe('stores', () => {
-  it('default to empty settings and tokens', () => {
-    expect(useTokenStore().data()).toEqual({ anilist: '' });
-    expect(useSettingsStore().data()).toEqual({ genreColor: [], tagColor: [] });
-    expect(useAnimeDatabaseStore().data()).toEqual({
+  it('default to empty settings and tokens', async () => {
+    // A fresh copy of the module: other test files in the run change the shared stores
+    const fresh = '../storage.ts?case=defaults';
+    const stores = (await import(fresh)) as typeof import('../storage');
+
+    expect(stores.useTokenStore().data()).toEqual({ anilist: '' });
+    expect(stores.useSettingsStore().data()).toEqual({
+      genreColor: [],
+      tagColor: [],
+    });
+    expect(stores.useAnimeDatabaseStore().data()).toEqual({
       lastUpdate: '',
       source: '',
       data: '',
     });
-    expect(useAnimeDatabaseSearchCacheStore().data()).toEqual({});
-    expect(useThemeStore().data()).toBe('system');
-    expect(useStorageComposable().data()).toBe('Storage Demo');
+    expect(stores.useAnimeDatabaseSearchCacheStore().data()).toEqual({});
+    expect(stores.useThemeStore().data()).toBe('system');
+    expect(stores.useStorageComposable().data()).toBe('Storage Demo');
   });
 
   it('are re-exported from the logic entry point', () => {
