@@ -1,7 +1,5 @@
 import { beforeEach, expect, test } from 'bun:test';
 
-import { createRoot } from 'solid-js';
-
 import { useTokenStore } from '~/logic';
 
 import { fakeBrowser } from '../../../../test/fake-browser';
@@ -13,11 +11,19 @@ beforeEach(async () => {
   await tokenStore.dataReady;
 });
 
-test('leaves the badge alone when the viewer is signed in', async () => {
+function expectBadge(text: string, color: string) {
+  expect(fakeBrowser.action.setBadgeText).toHaveBeenLastCalledWith({ text });
+  expect(fakeBrowser.action.setBadgeBackgroundColor).toHaveBeenLastCalledWith({
+    color,
+  });
+}
+
+test('shows no badge when the viewer is signed in', async () => {
   tokenStore.setData({ anilist: 'token' });
 
   await checkAnilistAuthorization();
 
+  expectBadge('', '');
   expect(fakeBrowser.action.setBadgeText).not.toHaveBeenCalledWith({
     text: 'Login',
   });
@@ -26,21 +32,20 @@ test('leaves the badge alone when the viewer is signed in', async () => {
 test('asks the viewer to sign in, and clears the badge once they do', async () => {
   tokenStore.setData({ anilist: '' });
 
-  await createRoot(() => checkAnilistAuthorization());
+  await checkAnilistAuthorization();
 
-  expect(fakeBrowser.action.setBadgeText).toHaveBeenLastCalledWith({
-    text: 'Login',
-  });
-  expect(fakeBrowser.action.setBadgeBackgroundColor).toHaveBeenLastCalledWith({
-    color: '#DD0303',
-  });
+  expectBadge('Login', '#DD0303');
 
   tokenStore.setData({ anilist: 'token' });
 
-  expect(fakeBrowser.action.setBadgeText).toHaveBeenLastCalledWith({
-    text: '',
-  });
-  expect(fakeBrowser.action.setBadgeBackgroundColor).toHaveBeenLastCalledWith({
-    color: '',
-  });
+  expectBadge('', '');
+});
+
+test('asks the viewer to sign in again after they sign out', async () => {
+  tokenStore.setData({ anilist: 'token' });
+
+  await checkAnilistAuthorization();
+  tokenStore.setData({ anilist: '' });
+
+  expectBadge('Login', '#DD0303');
 });

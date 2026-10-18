@@ -222,3 +222,41 @@ test('leaves pages that are not episode listings alone', async ({
   await expect(page.locator('.ani-score')).toHaveCount(0);
   expect(recorded.lookups).toEqual([]);
 });
+
+test('asks to sign in on the toolbar badge again after signing out', async ({
+  context,
+  page,
+  background,
+  extensionId,
+  setStorage,
+}) => {
+  await mockNetwork(context, {
+    media: [frieren],
+    pages: {
+      [newEpisodesURL]: anizmNewEpisodesPage([
+        { title: 'Sousou no Frieren', episode: 5 },
+      ]),
+    },
+  });
+  await setStorage({ token: { anilist: 'test-token' } });
+
+  // Visiting a supported site starts the background's work, including the badge
+  await page.goto(newEpisodesURL);
+  await expect(
+    cardDetails(page, 'Sousou no Frieren').getByTitle('Add Favorite'),
+  ).toHaveText('1234');
+
+  const badge = async () =>
+    (await background.evaluate(() => chrome.action.getBadgeText({}))).trim();
+
+  await expect.poll(badge).toBe('');
+
+  const sidePanel = await context.newPage();
+
+  await sidePanel.goto(
+    `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
+  );
+  await sidePanel.getByRole('button', { name: 'Sign out of AniList' }).click();
+
+  await expect.poll(badge).toBe('Login');
+});
