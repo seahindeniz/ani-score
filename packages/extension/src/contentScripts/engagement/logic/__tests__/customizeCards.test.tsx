@@ -116,6 +116,22 @@ describe('createCardCustomizer', () => {
     await wait(100);
 
     expect(requestsFor('Disposed')).toBe(1);
+
+    // Nor when the answer comes after
+    sendMessage.mockImplementation(async () => {
+      await wait(30);
+
+      return undefined;
+    });
+
+    const waiting = createCardCustomizer('', { retryDelay: 5 });
+
+    waiting.update([episodeCard('Answered late', 1)]);
+    await wait(5);
+    waiting.dispose();
+    await wait(100);
+
+    expect(requestsFor('Answered late')).toBe(1);
   });
 
   it("asks the background for every card's details once", async () => {
@@ -194,7 +210,7 @@ describe('createCardCustomizer', () => {
     favorite.click();
     await wait(10);
 
-    expect(sendMessage).toHaveBeenLastCalledWith('fetch-details', {
+    expect(sendMessage).toHaveBeenCalledWith('fetch-details', {
       cards: [{ title: 'Frieren', episodeNumber: 5 }],
       maxAge: 0,
     });
