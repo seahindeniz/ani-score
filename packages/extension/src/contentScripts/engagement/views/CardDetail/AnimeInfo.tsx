@@ -13,6 +13,10 @@ import { Chip } from './Chip';
 
 interface AnimeInfoCardProps {
   anime: AnimeDetails;
+  /**
+   * When the details open, so they can be brought up to date.
+   */
+  onOpen?: () => void;
 }
 
 function cleanDescription(html: string) {
@@ -46,6 +50,8 @@ export const AnimeInfoCard: Component<AnimeInfoCardProps> = (props) => {
   const refStore = useRefStore();
 
   const handleChange = (isOpen: boolean) => {
+    if (isOpen) props.onOpen?.();
+
     if (isOpen && popoverRef !== refStore.activeAnimeInfoPopoverRef) {
       refStore.activeAnimeInfoPopoverRef?.close();
 

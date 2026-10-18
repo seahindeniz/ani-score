@@ -1,6 +1,8 @@
 import { afterEach, expect, test } from 'bun:test';
 
 import { anilistURL, mockFetch } from '../../__tests__/network';
+import { cacheDetails, readCachedDetails } from '../detailsCache';
+import type { AnimeDetails } from '../fetchDetails';
 import { makeAnimeFavorite } from '../makeAnimeFavorite';
 
 let fetchMock: ReturnType<typeof mockFetch> | undefined;
@@ -29,4 +31,31 @@ test('toggles the anime as a favorite on AniList', async () => {
   expect(bodies).toHaveLength(1);
   expect(bodies[0].query).toContain('ToggleFavourite');
   expect(bodies[0].variables).toEqual({ animeId: 154587 });
+});
+
+test('drops what the extension kept for the anime, but not when AniList refused', async () => {
+  const kept = (id: number) => ({ id }) as AnimeDetails;
+  let fail = true;
+
+  fetchMock = mockFetch({
+    [anilistURL]: () =>
+      fail
+        ? Response.json({ errors: [{ message: 'Unauthorized', status: 401 }] })
+        : Response.json({
+            data: { ToggleFavourite: { anime: { pageInfo: { total: 1 } } } },
+          }),
+  });
+  cacheDetails({ Frieren: kept(154587), Dandadan: kept(171018) });
+
+  await makeAnimeFavorite(154587);
+
+  expect(readCachedDetails(['Frieren']).missing).toEqual([]);
+
+  fail = false;
+  await makeAnimeFavorite(154587);
+
+  expect(readCachedDetails(['Frieren', 'Dandadan'])).toEqual({
+    found: { Dandadan: kept(171018) },
+    missing: ['Frieren'],
+  });
 });

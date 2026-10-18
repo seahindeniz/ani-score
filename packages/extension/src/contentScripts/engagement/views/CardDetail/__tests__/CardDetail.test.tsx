@@ -37,7 +37,7 @@ function anime(overrides: Partial<AnimeDetails> = {}) {
 
 function setup(
   details: AnimeDetails | null | undefined,
-  { withShimmer = true } = {},
+  { withShimmer = true, onRefresh = mock() } = {},
 ) {
   const shimmering = document.createElement('div');
   const card: EpisodeCard = {
@@ -52,9 +52,9 @@ function setup(
   }) as {
     anime: Record<string, AnimeDetails>;
   };
-  render(() => <CardDetail card={card} store={store} />);
+  render(() => <CardDetail card={card} store={store} onRefresh={onRefresh} />);
 
-  return { store, shimmering };
+  return { store, shimmering, onRefresh };
 }
 
 beforeEach(() => {
@@ -172,6 +172,30 @@ describe('card detail', () => {
     fireEvent.click(remove);
 
     expect((await screen.findByTitle('Add Favorite')).textContent).toBe('10');
+  });
+
+  it("asks for AniList's details again after a toggle, which replace the count it kept", async () => {
+    const { store, onRefresh } = setup(anime());
+
+    fireEvent.click(screen.getByTitle('Add Favorite'));
+
+    expect((await screen.findByTitle('Remove Favorite')).textContent).toBe(
+      '11',
+    );
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+
+    store.anime.Frieren = anime({ isFavourite: true, favourites: 11 });
+
+    expect(screen.getByTitle('Remove Favorite').textContent).toBe('11');
+  });
+
+  it('asks for the details again when the user opens them', async () => {
+    const { onRefresh } = setup(anime({ popularity: 250_000 }));
+
+    fireEvent.mouseMove(screen.getByTitle('Popularity [Visit AniList]'));
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1), {
+      timeout: 1000,
+    });
   });
 
   it('starts as a favorite when AniList says so', () => {

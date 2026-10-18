@@ -50,6 +50,10 @@ const TagContainer: ParentComponent<{
 interface Props {
   card: EpisodeCard;
   store: { anime: NonNullable<Awaited<ReturnType<typeof fetchDetails>>> };
+  /**
+   * Asks AniList for the card's details again, past what the extension keeps.
+   */
+  onRefresh?: () => void;
 }
 
 export const CardDetail: Component<Props> = (props) => {
@@ -107,6 +111,8 @@ export const CardDetail: Component<Props> = (props) => {
         setSoftFavoriteAdditionCount((count) =>
           isFavorite() ? count + 1 : count - 1,
         );
+        // AniList's count comes back with the change, replacing the one counted here
+        props.onRefresh?.();
       }
     } finally {
       setMakingFavorite(false);
@@ -118,6 +124,7 @@ export const CardDetail: Component<Props> = (props) => {
       if (!anime) return;
 
       setFavorite(Boolean(anime?.isFavourite));
+      setSoftFavoriteAdditionCount(0);
     }),
   );
 
@@ -190,7 +197,7 @@ export const CardDetail: Component<Props> = (props) => {
               </Chip>
             </Show>
             <Show when={details()?.popularity}>
-              <AnimeInfoCard anime={details()!} />
+              <AnimeInfoCard anime={details()!} onOpen={props.onRefresh} />
             </Show>
           </div>
           <Show when={details()?.genres?.length}>

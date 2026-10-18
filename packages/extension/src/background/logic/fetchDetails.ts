@@ -13,10 +13,15 @@ import { wait } from '~/utils/wait';
 
 import { anilistClient } from '../client/anilist';
 import { batchTemplate, singleAnimeQuery } from '../gql-queries/anilist';
+import { cacheDetails, forgetDetails, readCachedDetails } from './detailsCache';
 import { searchAnimeByTitle } from './loadDatabase';
 
 interface Props {
   cards: Pick<EpisodeCard, 'title' | 'episodeNumber'>[];
+  /**
+   * Asks AniList again rather than using what's kept, e.g. after the user changed the anime there.
+   */
+  fresh?: boolean;
 }
 
 const maxAnimePerQuery = 5;
@@ -205,10 +210,16 @@ export async function fetchDetails(props: Props) {
     return undefined;
   }
 
-  logger.log('Fetching details for titles:', uniqueTitles);
+  if (props.fresh) forgetDetails((title) => uniqueTitles.includes(title));
+
+  const { found, missing } = readCachedDetails(uniqueTitles);
+
+  if (missing.length === 0) return found;
+
+  logger.log('Fetching details for titles:', missing);
 
   try {
-    const dbResult = findAnimeListInDatabase(uniqueTitles);
+    const dbResult = findAnimeListInDatabase(missing);
     const queries = generateBatchQuery(dbResult);
     const queryPromises = [];
 
@@ -277,17 +288,21 @@ export async function fetchDetails(props: Props) {
       >,
     );
 
-    return uniqueTitles.reduce(
-      (map, title, index) => {
-        const alias = createAlias(title, index);
-        const animeData = mergedData[alias];
+    const fetched: Record<string, AnimeDetails | null> = {};
+    const answered: Record<string, AnimeDetails | null> = {};
 
-        map[title] = animeData?.results[0] || null;
+    missing.forEach((title, index) => {
+      const alias = createAlias(title, index);
 
-        return map;
-      },
-      {} as Record<string, AnimeDetails | null>,
-    );
+      fetched[title] = mergedData[alias]?.results[0] || null;
+
+      // A failed batch is asked for again next time
+      if (alias in mergedData) answered[title] = fetched[title];
+    });
+
+    cacheDetails(answered);
+
+    return { ...found, ...fetched };
   } catch (error) {
     logger.error('Error fetching anime details:', error);
 

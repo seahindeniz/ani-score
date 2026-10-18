@@ -28,7 +28,7 @@ const signatureOf = (card: EpisodeCard) =>
 /**
  * Keeps the details of the cards on the page: `update` renders details into new cards and cards that now show
  * another episode, puts them back when the site removed them, and removes them from cards that are gone. Details are
- * fetched once per title.
+ * fetched once per title (the background keeps them a while), and again for a card whose anime the user changed.
  */
 export function createCardCustomizer(siteStyles: string) {
   const logger = createLogger('customizeCards');
@@ -65,6 +65,16 @@ export function createCardCustomizer(siteStyles: string) {
     Object.assign(store.anime, animeMap);
   }
 
+  // After the user changed the anime on AniList (e.g. made it a favourite), or opened its details
+  async function refresh({ title, episodeNumber }: EpisodeCard) {
+    const animeMap = await window.messageGateway.sendMessage('fetch-details', {
+      cards: [{ title, episodeNumber }],
+      fresh: true,
+    });
+
+    if (animeMap) Object.assign(store.anime, animeMap);
+  }
+
   function renderCard(card: EpisodeCard, reinjections: number): RenderedCard {
     const { container, root, shadowDOM } = createEncapsulatedContainer();
 
@@ -73,7 +83,13 @@ export function createCardCustomizer(siteStyles: string) {
     card.render(container);
 
     const dispose = render(
-      () => <CardDetail card={card} store={store} />,
+      () => (
+        <CardDetail
+          card={card}
+          store={store}
+          onRefresh={() => void refresh(card)}
+        />
+      ),
       root,
     );
 

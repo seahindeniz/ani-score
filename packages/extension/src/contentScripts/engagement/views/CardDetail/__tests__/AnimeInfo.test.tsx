@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it, mock } from 'bun:test';
 
 import {
   cleanup,
@@ -121,10 +121,14 @@ describe('anime info card', () => {
     expect(bubbled).toHaveLength(0);
   });
 
-  it('shows the details popover on hover', async () => {
-    render(() => <AnimeInfoCard anime={anime()} />);
+  it('shows the details popover on hover, and says so to bring them up to date', async () => {
+    const onOpen = mock();
+
+    render(() => <AnimeInfoCard anime={anime()} onOpen={onOpen} />);
 
     await openPopover(screen.getByTitle('Popularity [Visit AniList]'));
+
+    expect(onOpen).toHaveBeenCalledTimes(1);
 
     expect(
       screen.getByRole('heading', { name: 'Frieren', level: 3 }),

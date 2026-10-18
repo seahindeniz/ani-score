@@ -112,6 +112,44 @@ describe('createCardCustomizer', () => {
     customizer.dispose();
   });
 
+  it('asks again past what the background keeps after the user made the anime a favorite', async () => {
+    const frieren = episodeCard('Frieren', 5);
+    const details = { id: 1, favourites: 10, isFavourite: false };
+    const { customizer, sendMessage } = setUp({ Frieren: details });
+
+    customizer.update([frieren]);
+    await wait(10);
+
+    const favorite = shadowOf(frieren).querySelector<HTMLElement>(
+      '[title="Add Favorite"]',
+    )!;
+
+    sendMessage.mockImplementation(async (id: string) =>
+      id === 'fetch-details'
+        ? { Frieren: { ...details, favourites: 11, isFavourite: true } }
+        : {},
+    );
+    favorite.click();
+    await wait(10);
+
+    expect(sendMessage).toHaveBeenLastCalledWith('fetch-details', {
+      cards: [{ title: 'Frieren', episodeNumber: 5 }],
+      fresh: true,
+    });
+    expect(
+      shadowOf(frieren).querySelector('[title="Remove Favorite"]')!.textContent,
+    ).toBe('11');
+
+    // Nothing to show when the background has no answer
+    sendMessage.mockImplementation(async () => undefined);
+    shadowOf(frieren)
+      .querySelector<HTMLElement>('[title="Remove Favorite"]')!
+      .click();
+    await wait(10);
+
+    customizer.dispose();
+  });
+
   it('keeps waiting when the background has no answer', async () => {
     const frieren = episodeCard('Frieren', 5);
     const { customizer } = setUp(undefined);
