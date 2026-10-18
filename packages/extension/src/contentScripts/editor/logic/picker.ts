@@ -13,15 +13,20 @@ export interface PickOptions {
    * Elements that are never picked, like the editor itself.
    */
   ignore: (element: Element) => boolean;
+  /**
+   * Stops picking, like Escape does.
+   */
+  signal?: AbortSignal;
 }
 
 /**
  * Lets the user point at an element of the page and click it. Resolves with the element, or `undefined` when they press
- * Escape. The click doesn't reach the site, so links don't navigate.
+ * Escape or `signal` aborts. The click doesn't reach the site, so links don't navigate.
  */
 export function pickElement({
   resolve = (element) => element,
   ignore,
+  signal,
 }: PickOptions) {
   return new Promise<Element | undefined>((done) => {
     let hovered: Element | null = null;
@@ -57,6 +62,7 @@ export function pickElement({
       document.removeEventListener('pointerdown', block, true);
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('keydown', onKey, true);
+      signal?.removeEventListener('abort', onAbort);
       done(element);
     };
 
@@ -73,6 +79,15 @@ export function pickElement({
       if (event.key === 'Escape') finish(undefined);
     };
 
+    const onAbort = () => finish(undefined);
+
+    if (signal?.aborted) {
+      done(undefined);
+
+      return;
+    }
+
+    signal?.addEventListener('abort', onAbort);
     document.addEventListener('mouseover', onMove, true);
     document.addEventListener('mousedown', block, true);
     document.addEventListener('pointerdown', block, true);

@@ -1,0 +1,298 @@
+import type { Component } from 'solid-js';
+import { createEffect, createMemo, Index, onCleanup, Show } from 'solid-js';
+
+import { Button as UiButton } from '~/components/ui/button';
+import { Choice, ChoiceGroup } from '~/components/ui/choice-group';
+import type { SiteCard, SitePage } from '~/sites/schema';
+
+import { containerLayout, posterOf } from '../../logic/detect';
+import { elementSelector, relativeSelector } from '../../logic/selectors';
+import { useEditor } from '../context';
+import {
+  Advanced,
+  Button,
+  Field,
+  NumberInput,
+  Range,
+  Select,
+  TextInput,
+} from '../controls';
+import { createCardPicker } from './pick';
+import type { CardPartProps, Summary } from './types';
+
+type Layout = NonNullable<SitePage['layout']>[number];
+
+type Glow = 'poster' | 'card' | 'other' | 'none';
+
+function glowOf(card: SiteCard, poster: string | undefined): Glow {
+  if (!card.shimmer) return 'none';
+  if (!card.shimmer.selector) return 'card';
+
+  return card.shimmer.selector === poster ? 'poster' : 'other';
+}
+
+const glowNames: Record<Glow, string> = {
+  poster: 'The poster',
+  card: 'The whole card',
+  other: 'Another part',
+  none: 'No highlight',
+};
+
+const posterSelector = (first: HTMLElement | undefined) => {
+  const poster = first && posterOf(first);
+
+  return poster && relativeSelector(first, poster);
+};
+
+/**
+ * The element around the cards, and the layout entry for it, if the page has one.
+ */
+function spacingOf(page: SitePage, elements: HTMLElement[]) {
+  const container = elements[0]?.parentElement;
+
+  if (!container) return undefined;
+
+  const selector = elementSelector(container);
+
+  return {
+    selector,
+    site: containerLayout(container),
+    entry: page.layout?.find((layout) => layout.container === selector),
+  };
+}
+
+export function highlightSummary(
+  card: SiteCard,
+  page: SitePage,
+  elements: HTMLElement[],
+): Summary {
+  const gap = spacingOf(page, elements)?.entry?.gap;
+
+  return {
+    text: `${glowNames[glowOf(card, posterSelector(elements[0]))]}, ${gap == null ? "site's own spacing" : `${gap} px apart`}`,
+    status: 'none',
+  };
+}
+
+const LayoutFields: Component<{
+  page: SitePage;
+  onChange: (layout: Layout[] | undefined) => void;
+}> = (props) => {
+  const layout = () => props.page.layout ?? [];
+  const set = (list: Layout[]) =>
+    props.onChange(list.length ? list : undefined);
+
+  return (
+    <Index each={layout()}>
+      {(item, index) => {
+        const update = (changes: Partial<Layout>) =>
+          set(
+            layout().map((entry, at) =>
+              at === index ? { ...entry, ...changes } : entry,
+            ),
+          );
+
+        return (
+          <div class="flex flex-col gap-1">
+            <div class="flex gap-1">
+              <TextInput
+                aria-label="Container"
+                value={item().container}
+                onValue={(container) => update({ container })}
+              />
+              <Select
+                aria-label="Layout"
+                value={item().mode}
+                options={[
+                  { value: 'grid', label: 'Grid' },
+                  { value: 'flex', label: 'Row' },
+                ]}
+                onValue={(mode) => update({ mode })}
+              />
+              <Button
+                aria-label="Remove spacing"
+                onClick={() => set(layout().filter((_, at) => at !== index))}
+              >
+                ✕
+              </Button>
+            </div>
+            <div class="grid grid-cols-2 gap-1">
+              <Field label="Gap (px)">
+                <NumberInput
+                  value={item().gap}
+                  onValue={(gap) => update({ gap })}
+                />
+              </Field>
+              <Field label="Card width (px)">
+                <NumberInput
+                  value={item().minCardWidth}
+                  onValue={(minCardWidth) => update({ minCardWidth })}
+                />
+              </Field>
+            </div>
+          </div>
+        );
+      }}
+    </Index>
+  );
+};
+
+/**
+ * The part of each card that glows while the anime is on the user's list, and the space between the cards, which the
+ * glow needs so it doesn't run into the next card.
+ */
+export const HighlightPart: Component<
+  CardPartProps & {
+    page: SitePage;
+    onPageChange: (changes: Partial<SitePage>) => void;
+  }
+> = (props) => {
+  const editor = useEditor();
+  const pickInCard = createCardPicker(() => props.elements());
+  const poster = createMemo(() => {
+    editor.pageVersion();
+
+    return posterSelector(props.elements()[0]);
+  });
+  const glow = () => glowOf(props.card, poster());
+  const spacing = createMemo(() => {
+    editor.pageVersion();
+
+    return spacingOf(props.page, props.elements());
+  });
+  const gap = () => spacing()?.entry?.gap ?? spacing()?.site.gap ?? 0;
+  const setShimmer = (shimmer: SiteCard['shimmer']) =>
+    props.onChange({ ...props.card, shimmer });
+
+  async function pickOther() {
+    const picked = await pickInCard();
+
+    if (picked) setShimmer({ selector: picked.selector || undefined });
+  }
+
+  function choose(choice: string) {
+    if (choice === 'poster') setShimmer({ selector: poster() });
+    if (choice === 'card') setShimmer({});
+    if (choice === 'other') void pickOther();
+    if (choice === 'none') setShimmer(undefined);
+  }
+
+  function setGap(value: number | undefined) {
+    const current = spacing()!;
+    const others = (props.page.layout ?? []).filter(
+      (layout) => layout !== current.entry,
+    );
+    const entry: Layout = {
+      ...current.entry,
+      container: current.selector,
+      mode: current.entry?.mode ?? current.site.mode,
+      gap: value,
+    };
+    const keep = entry.gap != null || entry.minCardWidth != null;
+
+    props.onPageChange({
+      layout:
+        keep || others.length
+          ? [...others, ...(keep ? [entry] : [])]
+          : undefined,
+    });
+  }
+
+  // As if the first two anime were on the user's list
+  createEffect(() =>
+    onCleanup(
+      editor.mark({
+        glow: props.card.shimmer
+          ? props
+              .elements()
+              .slice(0, 2)
+              .flatMap((element) => {
+                const target = props.card.shimmer!.selector
+                  ? element.querySelector(props.card.shimmer!.selector)
+                  : element;
+
+                return target ? [target] : [];
+              })
+          : [],
+      }),
+    ),
+  );
+
+  return (
+    <>
+      <ChoiceGroup label="What glows" value={glow()} onChange={choose}>
+        <Show when={poster()}>
+          <Choice value="poster" label="The poster" />
+        </Show>
+        <Choice value="card" label="The whole card" />
+        <Choice
+          value="other"
+          label="Another part"
+          description={
+            glow() === 'other'
+              ? props.card.shimmer!.selector
+              : 'Click it on the page'
+          }
+        />
+        <Choice value="none" label="Don't highlight" />
+      </ChoiceGroup>
+      <Show when={glow() !== 'none'}>
+        <p class="m-0 text-[13px] text-muted-foreground">
+          In this preview, the first two cards glow.
+        </p>
+      </Show>
+      <Show when={spacing()}>
+        <div class="flex flex-col gap-2 border-t border-t-solid border-border pt-4">
+          <Range
+            label="Space between cards"
+            min={0}
+            max={60}
+            step={2}
+            value={gap()}
+            valueText={
+              spacing()!.entry?.gap == null
+                ? `Site's own, ${gap()} px`
+                : `${gap()} px`
+            }
+            onValue={setGap}
+          />
+          <p class="m-0 text-[13px] leading-normal text-muted-foreground">
+            {glow() === 'none'
+              ? 'Add space if the score makes the cards look cramped.'
+              : 'If the glow runs into the next card, add space until it stands alone.'}
+          </p>
+          <Show when={spacing()!.entry?.gap != null}>
+            <UiButton
+              variant="link"
+              size="inline"
+              class="self-start px-0 text-violet-400"
+              onClick={() => setGap(undefined)}
+            >
+              Use the site's spacing
+            </UiButton>
+          </Show>
+        </div>
+      </Show>
+      <Show when={props.advanced}>
+        <Advanced>
+          <Field
+            label="Glowing element"
+            hint="Inside the card; empty means the card itself"
+          >
+            <TextInput
+              placeholder="The card itself"
+              value={props.card.shimmer?.selector ?? ''}
+              onValue={(selector) =>
+                setShimmer({ selector: selector || undefined })
+              }
+            />
+          </Field>
+          <LayoutFields
+            page={props.page}
+            onChange={(layout) => props.onPageChange({ layout })}
+          />
+        </Advanced>
+      </Show>
+    </>
+  );
+};

@@ -34,15 +34,19 @@ something the schema can't express, add it to the extension: a named transform i
 
 Users build configs on the site itself: the context menu's "Integrate this site with AniScore"
 (`background/logic/editorEntry.ts`) asks for access to the site, then injects `contentScripts/editor/main.js` (built,
-but not in the manifest; see `injectedScriptPaths`). The editor is a panel in a shadow root. Picking outlines the
-element under the pointer and keeps clicks from the site (`logic/picker.ts`). `logic/selectors.ts` turns picks into
-selectors that skip generated class names. While it's open, the engagement script pauses (`window.aniScoreEngagement`)
-and the editor previews the draft with the same runtime. Drafts are kept per host under `siteDrafts`, and saving
-writes to `userSites`.
+but not in the manifest; see `injectedScriptPaths`). The editor is a floating panel in a shadow root (`views/App.tsx`).
+On a site without a setup it runs the guided setup (`views/Setup.tsx`), one step at a time; on a site with one it asks
+first (`views/AlreadySetUp.tsx`), then opens the editor (`views/Checklist.tsx`) or starts the setup over. Both show the
+same parts (`views/parts/`): the guided controls, plus each part's "Advanced" settings in the editor. Picking outlines
+the element under the pointer and keeps clicks from the site (`logic/picker.ts`); `logic/selectors.ts` turns picks into
+selectors that skip generated class names, and `logic/detect.ts` guesses the episode format, the poster and the page's
+colors. While it's open, the engagement script pauses (`window.aniScoreEngagement`) and the editor previews the draft
+with the same runtime. Drafts (`{ config, step? }`) are kept per host under `siteDrafts`, and saving writes to
+`userSites`.
 
 ## Sharing
 
-"Share" (the editor's Save tab, and the side panel for the user's own configs) opens the repository's "Site
+"Share" (after the guided setup saves, the editor's menu, and the side panel for the user's own configs) opens the repository's "Site
 integration" issue form (`.github/ISSUE_TEMPLATE/site-integration.yml`) filled in by `share.ts`; a config too long for
 the link goes to the clipboard. A maintainer reviews it and adds the `site-integration: approved` label, and
 `.github/workflows/site-integration.yml` runs `scripts/site-config-from-issue.ts`: it validates the config, writes

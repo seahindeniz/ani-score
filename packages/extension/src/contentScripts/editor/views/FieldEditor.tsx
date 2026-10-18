@@ -224,7 +224,7 @@ const ExtractEditor: Component<{
             event.currentTarget.value = '';
           }}
         >
-          <option value="" disabled>
+          <option value="" disabled selected>
             Add a step…
           </option>
           <For each={stepPresets}>

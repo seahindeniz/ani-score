@@ -100,4 +100,22 @@ describe('pickElement', () => {
 
     expect(await picked).toBeUndefined();
   });
+
+  it('stops when its signal aborts, also before it started', async () => {
+    const { title } = page();
+    const controller = new AbortController();
+    const picked = pickElement({
+      ignore: ignoreEditor,
+      signal: controller.signal,
+    });
+
+    title.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    controller.abort();
+
+    expect(await picked).toBeUndefined();
+    expect(title.hasAttribute(hoverAttribute)).toBe(false);
+    expect(
+      await pickElement({ ignore: ignoreEditor, signal: controller.signal }),
+    ).toBeUndefined();
+  });
 });

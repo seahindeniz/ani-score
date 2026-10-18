@@ -8,26 +8,33 @@ AniScore, bölüm kartlarının nerede olduğunu bildiği her anime sitesinde ç
 
 ## Hazır bir siteyi açma
 
-Bazı siteler AniScore ile birlikte gelir ama siz açana kadar kapalı kalır: AniScore'un yan panelini açın ve sitenin yanındaki **Turn on** düğmesine tıklayın. Tarayıcınız AniScore'un o siteye erişip erişemeyeceğini sorar; AniScore açmadığınız sitelere hiçbir zaman erişmez.
+Bazı siteler AniScore ile birlikte gelir ama siz açana kadar kapalı kalır: AniScore'un yan panelini açın ve siteyi **Add a site** listesinden seçin. Tarayıcınız AniScore'un o siteye erişip erişemeyeceğini sorar; AniScore açmadığınız sitelere hiçbir zaman erişmez. **On** listesindeki **Turn off** düğmesi siteyi yeniden kapatır.
 
 ## Yeni bir site tanıtma
 
 1. Sitenin bölümleri listeleyen bir sayfasını açın, örneğin son bölümler sayfasını.
 2. Sayfaya (veya AniScore'un araç çubuğu düğmesine) sağ tıklayıp **Integrate this site with AniScore** seçeneğini seçin. Tarayıcınız sorduğunda erişime izin verin; böylece kaydettikten sonra da AniScore orada çalışmaya devam eder.
-3. Açılan düzenleyicide, **Pages** sekmesinde:
-   - Bir bölüm kartını **Pick** ile seçin. AniScore benzer tüm kartları bulur; sayıyı kontrol edin, çerçeve kartın yalnızca bir kısmını kapsıyorsa **Wider** düğmesini kullanın.
-   - **Başlığın** ve **bölüm** numarasının yerini seçin. İkisi _Frieren 2. Sezon 5. Bölüm_ gibi tek bir metindeyse _"12. Bölüm" → 12_ veya _Text before "2. Sezon"_ gibi hazır bir adım ekleyin. Site sezonu ayrı gösteriyorsa **sezonu** da ekleyin.
-   - Ayrıntıların nereye ekleneceğini ve isterseniz izlediğiniz animelerde **parlayacak** öğeyi seçin.
-   - **Spacing** bölümünde ayrıntılara yer açmak için kartların arasını ayarlayın.
-4. Canlı önizlemeyi izleyin: düzenledikçe AniScore'un ayrıntıları sayfada görünür. **What AniScore reads**, ilk kartların başlığını ve bölümünü listeler.
-5. **Save** sekmesinde **Save** düğmesine tıklayın. Site artık sizin için açık.
+3. Açılan kurulum paneli her adımda tek bir şey ister, çoğunlukla sayfada bir tıklama:
+   1. **Find the episode cards**: herhangi bir bölüme tıklayın. AniScore benzer kartları çerçeveler; çerçeve kartın yalnızca bir kısmını kapsıyorsa **Make bigger** düğmesini kullanın.
+   2. **Pick the anime's name**: kartlardan birinde animenin adına tıklayın.
+   3. **Pick the episode number**: bölüm numarasına tıklayın. AniScore yalnızca numarayı alır; kartlar _2. Sezon 5. Bölüm_ gibi sezonu da gösteriyorsa onu da okur. Bölüm numarası olmayan bir sitede **No episodes here** seçeneğini seçin.
+   4. **Choose where the score goes**: AniScore'un ayrıntıları artık sayfada görünür, sonucu hemen görürsünüz.
+   5. **Match the site's colors** (isteğe bağlı): koyu, açık ya da sitenin kendi açık/koyu düğmesi; düğmeyi bir kez değiştirdiğinizde AniScore hangisinin hangisi olduğunu öğrenir.
+   6. **Highlight anime on your list** (isteğe bağlı): anime AniList listenizdeyken kartın parlayan kısmı ve parlamanın yandaki karta taşmaması için kartlar arasındaki boşluk.
+   7. **Check and save**: AniScore'un okuduklarını gözden geçirin, puanların bu sayfaya benzeyen sayfalarda mı yoksa sitenin her sayfasında mı görüneceğini seçin ve **Save** düğmesine tıklayın.
 
-Kaydetmeden önce düzenleyiciyi kapatırsanız çalışmanız taslak olarak saklanır. Adresi değişmeyen bir sayfa için, örneğin sayfaları yerinde değiştiren tek sayfalık bir uygulamada, **+ Page** ile bir sayfa daha ekleyin veya **Only while this exists** alanını doldurun.
+Paneli başlığından sürükleyebilirsiniz. Kaydetmeden önce kapatırsanız çalışmanız taslak olarak saklanır.
+
+## Bir sitenin kurulumunu değiştirme
+
+Kurulumu olan bir sitede **Integrate this site with AniScore** seçeneğini yeniden seçtiğinizde AniScore, **Edit the setup** mı yoksa **Start from scratch** mı istediğinizi sorar. Düzenleyici aynı adımları, her birinin şu an ne okuduğuyla birlikte listeler ve ilgilenilmesi gerekenleri işaretler. Değiştirmek için birini açın. **Advanced** ayarları ardındaki ayrıntıları içerir: seçiciler, bir değeri okuyan kurallar (_"12. Bölüm" → 12_ gibi hazır olanlarla), yedekler, CSS ve sayfa adresleri.
+
+Sitenin başka bir sayfasını kurmak için düzenleyicinin sayfa listesinden **Add a page** seçeneğini seçin. Adresi değişmeyen bir sayfa için, örneğin sayfaları yerinde değiştiren tek sayfalık bir uygulamada, sayfanın gelişmiş ayarlarında **Only while this exists** alanını doldurun. İkinci bir kart türü olan bir sayfa için **Add another kind of card** düğmesini kullanın.
 
 ## Herkesle paylaşma
 
-Düzenleyicinin **Save** sekmesinde ya da yan paneldeki sitenizin yanında **Share** düğmesine tıklayın. Yapılandırmanız doldurulmuş bir GitHub konusu açılır. Bir geliştirici inceler; onaylandığında bir sonraki AniScore sürümüyle herkesin açabileceği şekilde yayınlanır.
+Kaydettikten sonra, düzenleyicinin menüsünde ya da yan paneldeki sitenizin yanında **Share** düğmesine tıklayın. Kurulumunuz doldurulmuş bir GitHub konusu açılır. Bir geliştirici inceler; onaylandığında bir sonraki AniScore sürümüyle herkesin açabileceği şekilde yayınlanır.
 
-## Bir siteyi düzenleme veya kaldırma
+## Bir siteyi kaldırma
 
-Yapılandırmayı değiştirmek için düzenleyiciyi sitede yeniden açın ya da yan paneli kullanın: **Export** bir yapılandırmayı indirir, **Import** altına yapıştırdığınız yapılandırma eklenir, **Delete** (veya düzenlediğiniz hazır bir site için **Reset to built-in**) sizinkini kaldırır.
+Düzenleyicinin menüsünden **Delete this setup** seçeneğini seçin ya da yan paneli kullanın: **Export** bir kurulumu indirir, **Import a config** bir kurulum ekler, **Delete** (veya düzenlediğiniz hazır bir site için **Reset to built-in**) sizinkini kaldırır.
