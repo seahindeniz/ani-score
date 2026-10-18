@@ -201,6 +201,12 @@ const CssSelector = v.pipe(
   ),
 );
 
+// "auto" lifts the site's limit, so the element fits what's in it
+const Size = v.union([
+  v.literal('auto'),
+  v.pipe(v.number(), v.minValue(0), v.maxValue(2000)),
+]);
+
 const Page = v.strictObject({
   name: v.optional(v.string()),
   match: v.strictObject({
@@ -248,19 +254,17 @@ const Page = v.strictObject({
       ),
     ),
   ),
-  heights: v.optional(
+  sizes: v.optional(
     v.pipe(
       v.array(
         v.strictObject({
           selector: CssSelector,
-          height: v.union([
-            v.literal('auto'),
-            v.pipe(v.number(), v.minValue(0), v.maxValue(2000)),
-          ]),
+          height: v.optional(Size),
+          width: v.optional(Size),
         }),
       ),
       v.description(
-        'Heights for elements in the cards whose fixed height leaves the details no room: "auto" to fit their content, or pixels; applied while this page applies',
+        'Sizes for elements in the cards whose fixed height or width leaves the details no room: "auto" to lift the limit, or pixels; applied while this page applies',
       ),
     ),
   ),

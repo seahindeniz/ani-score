@@ -55,8 +55,12 @@ export function renderInEditor(
     };
   });
 
+  let pointed: Element[] = [];
+  const point = mock((elements: Element[]) => {
+    pointed = elements;
+  });
   const result = render(() => (
-    <EditorContext.Provider value={{ pick, picking, pageVersion, mark }}>
+    <EditorContext.Provider value={{ pick, picking, pageVersion, mark, point }}>
       {view()}
     </EditorContext.Provider>
   ));
@@ -69,6 +73,10 @@ export function renderInEditor(
      * What the view points out on the page now.
      */
     marks: () => marks,
+    /**
+     * What a setting outlines on the page now.
+     */
+    pointed: () => pointed,
     /**
      * Queues the elements the next picks return.
      */

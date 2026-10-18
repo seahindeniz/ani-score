@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { detectSpacing, fixedBoxes, inCards } from '../spacing';
+import { boxesAround, cutsOff, detectSpacing, inCards } from '../spacing';
 
 const list = (container: string, cell: string, inner = '<b>Card</b>') => {
   document.body.innerHTML = `<div class="list" style="${container}"><div class="cell" style="${cell}">${inner}</div><div class="cell" style="${cell}">${inner}</div></div>`;
@@ -69,28 +69,52 @@ describe('inCards', () => {
   });
 });
 
-describe('fixedBoxes', () => {
-  it('finds the elements too short for the details, from the details up to the card', () => {
+describe('boxesAround', () => {
+  it('lists the elements from the details up to the card, and where they are too small', () => {
     document.body.innerHTML = ['One', 'Two', 'Three']
       .map(
         (name) =>
-          `<div class="card"><div class="info" style="height: 70px"><h3>${name}</h3><div class="ani-score"></div></div></div>`,
+          `<div class="card" style="height: 300px; width: 180px"><div class="info" style="height: 70px; width: 150px"><h3>${name}</h3><div class="ani-score"></div></div></div>`,
       )
       .join('');
 
     const cards = Array.from(document.querySelectorAll('.card'));
+    const size = (element: Element, sizes: Record<string, number>) =>
+      Object.defineProperties(
+        element,
+        Object.fromEntries(
+          Object.entries(sizes).map(([name, value]) => [name, { value }]),
+        ),
+      );
 
-    for (const [index, info] of document.querySelectorAll('.info').entries()) {
-      // The last card's details fit
-      Object.defineProperties(info, {
-        scrollHeight: { value: index < 2 ? 120 : 70 },
-        clientHeight: { value: 70 },
+    for (const [index, card] of cards.entries()) {
+      // The first two cards are too short there, the first one too narrow as well
+      size(card.querySelector('.info')!, {
+        scrollHeight: index < 2 ? 120 : 70,
+        clientHeight: 70,
+        scrollWidth: index < 1 ? 200 : 150,
+        clientWidth: 150,
       });
     }
 
-    expect(fixedBoxes(cards, '.card')).toEqual([
-      { selector: ':is(.card) div.info', height: 70, cards: 2 },
+    expect(boxesAround(cards, '.card')).toEqual([
+      {
+        selector: ':is(.card) div.info',
+        height: 70,
+        width: 150,
+        short: 2,
+        narrow: 1,
+      },
+      { selector: '.card', height: 300, width: 180, short: 0, narrow: 0 },
     ]);
-    expect(fixedBoxes([document.createElement('div')], '.card')).toEqual([]);
+    expect(boxesAround([document.createElement('div')], '.card')).toEqual([]);
+  });
+
+  it('tells the boxes that cut the details off', () => {
+    const box = { selector: '.a', height: 0, width: 0, short: 0, narrow: 0 };
+
+    expect(cutsOff(box)).toBe(false);
+    expect(cutsOff({ ...box, narrow: 1 })).toBe(true);
+    expect(cutsOff({ ...box, short: 1 })).toBe(true);
   });
 });

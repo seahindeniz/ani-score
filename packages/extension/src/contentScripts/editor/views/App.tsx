@@ -158,6 +158,7 @@ export const App: Component<AppProps> = (props) => {
         setPicking(false);
       }
     },
+    point: highlight.point,
     mark(shown) {
       const token = Symbol('marks');
 

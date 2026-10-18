@@ -64,19 +64,23 @@ describe('pageCss', () => {
     ).toBe('.a {}\n.b {\n  gap: 4px;\n}');
   });
 
-  it('lets elements in the cards fit their content, or sets their height', () => {
+  it('lifts the height or width limit of elements in the cards, or sets another', () => {
     expect(
       pageCss({
         ...page,
-        heights: [
+        sizes: [
           { selector: ':is(.card) .info', height: 'auto' },
-          { selector: '.card', height: 320 },
+          { selector: '.card', height: 320, width: 'auto' },
+          { selector: '.title', width: 180 },
+          // Nothing set, nothing written
+          { selector: '.empty' },
         ],
       }),
     ).toBe(
       [
         ':is(.card) .info {\n  height: auto !important;\n  max-height: none !important;\n}',
-        '.card {\n  height: 320px !important;\n  max-height: none !important;\n}',
+        '.card {\n  height: 320px !important;\n  max-height: none !important;\n  width: auto !important;\n  max-width: none !important;\n}',
+        '.title {\n  width: 180px !important;\n  max-width: none !important;\n}',
       ].join('\n'),
     );
   });

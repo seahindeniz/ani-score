@@ -1,13 +1,13 @@
 import { createMemo, createSignal, onCleanup } from 'solid-js';
 
-import { fixedBoxes } from '../../logic/spacing';
+import { boxesAround } from '../../logic/spacing';
 import { useEditor } from '../context';
 
 /**
- * The elements in the cards too short for AniScore's details, looked for again every second: the details grow as
- * they load, inside shadow roots the editor's page observer doesn't see.
+ * The elements from AniScore's details up to the card (see `boxesAround`), looked at again every second: the details
+ * grow as they load, inside shadow roots the editor's page observer doesn't see.
  */
-export function createFixedBoxes(
+export function createBoxes(
   cards: () => HTMLElement[],
   cardSelector: () => string,
 ) {
@@ -22,7 +22,7 @@ export function createFixedBoxes(
       tick();
       editor.pageVersion();
 
-      return fixedBoxes(cards(), cardSelector());
+      return boxesAround(cards(), cardSelector());
     },
     [],
     // The same boxes as a second ago aren't a change, which would draw them again

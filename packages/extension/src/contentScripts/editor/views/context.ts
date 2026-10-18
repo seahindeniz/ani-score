@@ -21,6 +21,10 @@ export interface EditorContextValue {
    * away again, unless others replaced them since.
    */
   mark: (marks: Marks) => () => void;
+  /**
+   * Outlines the elements a setting is about while the user points at it, or none.
+   */
+  point: (elements: Element[]) => void;
 }
 
 export const EditorContext = createContext<EditorContextValue>();

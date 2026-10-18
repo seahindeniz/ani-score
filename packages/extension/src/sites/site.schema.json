@@ -202,7 +202,7 @@
             },
             "description": "Spacing for the elements that hold the cards, so the details have room; applied while this page applies"
           },
-          "heights": {
+          "sizes": {
             "type": "array",
             "items": {
               "type": "object",
@@ -222,15 +222,26 @@
                       "maximum": 2000
                     }
                   ]
+                },
+                "width": {
+                  "anyOf": [
+                    {
+                      "const": "auto"
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 2000
+                    }
+                  ]
                 }
               },
               "required": [
-                "selector",
-                "height"
+                "selector"
               ],
               "additionalProperties": false
             },
-            "description": "Heights for elements in the cards whose fixed height leaves the details no room: \"auto\" to fit their content, or pixels; applied while this page applies"
+            "description": "Sizes for elements in the cards whose fixed height or width leaves the details no room: \"auto\" to lift the limit, or pixels; applied while this page applies"
           },
           "cards": {
             "type": "array",

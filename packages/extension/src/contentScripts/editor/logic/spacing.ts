@@ -48,19 +48,21 @@ export function detectSpacing(cell: Element): Spacing | undefined {
   return { mode, method: mode === 'block' ? 'margin' : 'gap', space: 0 };
 }
 
-export interface FixedBox {
+export interface Box {
   /**
-   * The element in every card, for the page's `heights`.
+   * The element in every card, for the page's `sizes`.
    */
   selector: string;
   /**
-   * Its CSS height on the first card that cuts its content off.
+   * Its CSS height and width on the first card.
    */
   height: number;
+  width: number;
   /**
-   * How many cards cut their content off there.
+   * How many cards cut the details off there: too short, or too narrow.
    */
-  cards: number;
+  short: number;
+  narrow: number;
 }
 
 /**
@@ -77,12 +79,12 @@ export function inCards(cardSelector: string, card: Element, element: Element) {
 }
 
 /**
- * The elements around AniScore's details in the cards that are too short for what's in them, now that the details are
- * there: a fixed height or a maximum height the site set, which cuts the details off or lets them run over what's
- * below. Each comes once, from the details up to the card.
+ * The elements from AniScore's details up to the card, the closest first, each with its size and the cards where it's
+ * too short or too narrow for what's in it now that the details are there: a fixed (or maximum) height or width the
+ * site set, which cuts the details off or lets them run over what's next to them.
  */
-export function fixedBoxes(cards: Element[], cardSelector: string) {
-  const found = new Map<string, FixedBox>();
+export function boxesAround(cards: Element[], cardSelector: string) {
+  const found = new Map<string, Box>();
 
   for (const card of cards.slice(0, 24)) {
     const details = card.querySelector(`.${__NAME__}`);
@@ -92,20 +94,31 @@ export function fixedBoxes(cards: Element[], cardSelector: string) {
       element && card.contains(element);
       element = element.parentElement
     ) {
-      if (element.scrollHeight <= element.clientHeight + 1) continue;
-
       const selector = inCards(cardSelector, card, element);
-      const box = found.get(selector);
+      let box = found.get(selector);
 
-      if (box) box.cards++;
-      else
-        found.set(selector, {
+      if (!box) {
+        const style = getComputedStyle(element);
+
+        box = {
           selector,
-          height: Math.round(px(getComputedStyle(element).height)),
-          cards: 1,
-        });
+          height: Math.round(px(style.height)),
+          width: Math.round(px(style.width)),
+          short: 0,
+          narrow: 0,
+        };
+        found.set(selector, box);
+      }
+
+      if (element.scrollHeight > element.clientHeight + 1) box.short++;
+      if (element.scrollWidth > element.clientWidth + 1) box.narrow++;
     }
   }
 
   return [...found.values()];
 }
+
+/**
+ * Whether the box cuts the details off on some card.
+ */
+export const cutsOff = (box: Box) => box.short > 0 || box.narrow > 0;

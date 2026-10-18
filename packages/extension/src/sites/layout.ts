@@ -45,18 +45,24 @@ export function compileLayout(layout: NonNullable<SitePage['layout']>) {
     .join('\n');
 }
 
+const length = (size: 'auto' | number) =>
+  size === 'auto' ? 'auto' : `${size}px`;
+
 /**
- * The CSS for a page's `heights`: elements in the cards that fit their content, or get another height. Sites often
- * set the height on the element itself, so it wins over that.
+ * The CSS for a page's `sizes`: elements in the cards freed of their height or width limit, or given another one.
+ * Sites often set these on the element itself, so it wins over that.
  */
-export const compileHeights = (heights: NonNullable<SitePage['heights']>) =>
-  heights
-    .map(({ selector, height }) =>
+export const compileSizes = (sizes: NonNullable<SitePage['sizes']>) =>
+  sizes
+    .map(({ selector, height, width }) =>
       rule(selector, [
-        `height: ${height === 'auto' ? 'auto' : `${height}px`} !important;`,
-        'max-height: none !important;',
+        height !== undefined && `height: ${length(height)} !important;`,
+        height !== undefined && 'max-height: none !important;',
+        width !== undefined && `width: ${length(width)} !important;`,
+        width !== undefined && 'max-width: none !important;',
       ]),
     )
+    .filter(Boolean)
     .join('\n');
 
 /**
@@ -66,7 +72,7 @@ export const pageCss = (page: SitePage) =>
   [
     page.css,
     page.layout && compileLayout(page.layout),
-    page.heights && compileHeights(page.heights),
+    page.sizes && compileSizes(page.sizes),
   ]
     .filter(Boolean)
     .join('\n');

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 
-import { createHighlight, glowAttribute, markAttribute } from '../highlight';
+import {
+  createHighlight,
+  glowAttribute,
+  markAttribute,
+  pointAttribute,
+} from '../highlight';
 
 describe('createHighlight', () => {
   it('marks the given elements, replacing the previous marks', () => {
@@ -34,8 +39,19 @@ describe('createHighlight', () => {
     expect(poster.hasAttribute(glowAttribute)).toBe(false);
     expect(other.getAttribute(markAttribute)).toBe('card');
 
+    // Pointing outlines on top of the marks, until it points elsewhere
+    highlight.point([card, title]);
+
+    expect(card.hasAttribute(pointAttribute)).toBe(true);
+    expect(other.getAttribute(markAttribute)).toBe('card');
+
+    highlight.point([title]);
+
+    expect(card.hasAttribute(pointAttribute)).toBe(false);
+
     highlight.dispose();
 
+    expect(title.hasAttribute(pointAttribute)).toBe(false);
     expect(other.hasAttribute(markAttribute)).toBe(false);
     expect(style.isConnected).toBe(false);
   });

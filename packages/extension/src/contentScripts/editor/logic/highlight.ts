@@ -10,6 +10,11 @@ import globalStyles from '~/contentScripts/engagement/global.css?raw';
 export const markAttribute = 'data-ani-score-mark';
 
 /**
+ * Marks the elements a setting in the editor is about while the user points at it.
+ */
+export const pointAttribute = 'data-ani-score-point';
+
+/**
  * Shows the "on your list" glow on an element, as if the anime were on the user's list.
  */
 export const glowAttribute = 'data-ani-score-glow';
@@ -36,6 +41,7 @@ export interface Marks {
 const css = `
 ${globalStyles}
 [${hoverAttribute}] { outline: 2px solid #8b5cf6 !important; outline-offset: -2px !important; cursor: crosshair !important; }
+[${pointAttribute}] { outline: 2px solid #8b5cf6 !important; outline-offset: -2px !important; background-color: rgb(139 92 246 / 0.15) !important; }
 [${markAttribute}="card"] { outline: 2px dashed #8b5cf6 !important; outline-offset: 2px !important; }
 [${markAttribute}="part"] { outline: 2px solid #8b5cf6 !important; outline-offset: -2px !important; background-color: rgb(139 92 246 / 0.2) !important; }
 [${markAttribute}="skipped"] { outline: 2px dashed #f59e0b !important; outline-offset: 2px !important; }
@@ -50,6 +56,7 @@ ${globalStyles}
 export function createHighlight() {
   const style = createStyle(css);
   let marked: Element[] = [];
+  let pointed: Element[] = [];
 
   document.head.append(style);
 
@@ -60,6 +67,15 @@ export function createHighlight() {
     }
 
     marked = [];
+  }
+
+  // Outlines the elements a setting is about, on top of the marks; nothing stops pointing
+  function point(elements: Element[]) {
+    for (const element of pointed) element.removeAttribute(pointAttribute);
+
+    pointed = elements;
+
+    for (const element of pointed) element.setAttribute(pointAttribute, '');
   }
 
   return {
@@ -78,8 +94,10 @@ export function createHighlight() {
         marked.push(element);
       }
     },
+    point,
     dispose() {
       clear();
+      point([]);
       style.remove();
     },
   };

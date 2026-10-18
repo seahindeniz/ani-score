@@ -1,12 +1,5 @@
 import type { Component } from 'solid-js';
-import {
-  createEffect,
-  createMemo,
-  For,
-  Index,
-  onCleanup,
-  Show,
-} from 'solid-js';
+import { createEffect, createMemo, Index, onCleanup, Show } from 'solid-js';
 
 import { Button as UiButton } from '~/components/ui/button';
 import { Choice, ChoiceGroup } from '~/components/ui/choice-group';
@@ -14,8 +7,7 @@ import type { SiteCard, SitePage } from '~/sites/schema';
 
 import { posterOf } from '../../logic/detect';
 import { elementSelector, relativeSelector } from '../../logic/selectors';
-import type { FixedBox } from '../../logic/spacing';
-import { detectSpacing, fixedBoxes } from '../../logic/spacing';
+import { boxesAround, cutsOff, detectSpacing } from '../../logic/spacing';
 import { useEditor } from '../context';
 import {
   Advanced,
@@ -25,15 +17,13 @@ import {
   Range,
   Select,
   TextInput,
-  Warning,
 } from '../controls';
-import { createFixedBoxes } from './fixedBoxes';
+import { createBoxes } from './boxes';
 import { createCardPicker } from './pick';
+import { SizesSection } from './SizesSection';
 import type { CardPartProps, Summary } from './types';
-import { cardCount } from './types';
 
 type Layout = NonNullable<SitePage['layout']>[number];
-type Height = NonNullable<SitePage['heights']>[number];
 
 type Glow = 'poster' | 'card' | 'other' | 'none';
 
@@ -87,7 +77,7 @@ export function highlightSummary(
 ): Summary {
   const gap = spacingOf(page, elements)?.entry?.gap;
 
-  if (fixedBoxes(elements, card.selector).length) {
+  if (boxesAround(elements, card.selector).some(cutsOff)) {
     return { text: 'Some cards cut the score off', status: 'issue' };
   }
 
@@ -173,120 +163,6 @@ const LayoutFields: Component<{
   );
 };
 
-type HeightChoice = 'site' | 'auto' | 'custom';
-
-/**
- * Elements in the cards whose fixed height cuts the details off, each with the height to give it instead.
- */
-const HeightsSection: Component<{
-  boxes: FixedBox[];
-  page: SitePage;
-  onPageChange: (changes: Partial<SitePage>) => void;
-}> = (props) => {
-  const heights = () => props.page.heights ?? [];
-  // What the site cuts off, and what the user set before (which no longer cuts anything off)
-  const listed = createMemo(
-    () => [
-      ...props.boxes.filter(
-        (box) => !heights().some((height) => height.selector === box.selector),
-      ),
-      ...heights().map((height) => {
-        const box = props.boxes.find(
-          (item) => item.selector === height.selector,
-        );
-
-        return {
-          selector: height.selector,
-          height:
-            box?.height
-            ?? (typeof height.height === 'number' ? height.height : 0),
-          cards: box?.cards ?? 0,
-        };
-      }),
-    ],
-    [],
-    // Drawn again only when they change, which would close an open dropdown
-    { equals: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
-  );
-  const setHeight = (
-    selector: string,
-    height: Height['height'] | undefined,
-  ) => {
-    const others = heights().filter((entry) => entry.selector !== selector);
-    const list =
-      height === undefined ? others : [...others, { selector, height }];
-
-    props.onPageChange({ heights: list.length ? list : undefined });
-  };
-  const choiceOf = (selector: string): HeightChoice => {
-    const set = heights().find((entry) => entry.selector === selector)?.height;
-
-    return set === undefined ? 'site' : set === 'auto' ? 'auto' : 'custom';
-  };
-
-  return (
-    <Show when={listed().length}>
-      <div class="flex flex-col gap-3 border-t border-t-solid border-border pt-4">
-        <Show when={props.boxes.length}>
-          <Warning>
-            Part of the cards has a fixed height, so the score doesn't fit in
-            it. Let it fit the score, or give it a height:
-          </Warning>
-        </Show>
-        <For each={listed()}>
-          {(box) => (
-            <div class="flex flex-col gap-1.5 text-[13px]">
-              <code class="break-all text-xs">{box.selector}</code>
-              <span class="text-muted-foreground">
-                {box.cards
-                  ? `${box.height} px, too short on ${cardCount(box.cards)}`
-                  : 'Height set here'}
-              </span>
-              <div class="flex gap-2">
-                <Select
-                  aria-label={`Height of ${box.selector}`}
-                  class="h-8 flex-1"
-                  value={choiceOf(box.selector)}
-                  options={[
-                    { value: 'site', label: "The site's height" },
-                    { value: 'auto', label: 'Fit the content' },
-                    { value: 'custom', label: 'Set a height' },
-                  ]}
-                  onValue={(choice) =>
-                    setHeight(
-                      box.selector,
-                      choice === 'site'
-                        ? undefined
-                        : choice === 'auto'
-                          ? 'auto'
-                          : box.height + 40,
-                    )
-                  }
-                />
-                <Show when={choiceOf(box.selector) === 'custom'}>
-                  <div class="w-24">
-                    <NumberInput
-                      aria-label={`Height of ${box.selector} in pixels`}
-                      value={
-                        heights().find(
-                          (entry) => entry.selector === box.selector,
-                        )?.height as number
-                      }
-                      onValue={(height) =>
-                        setHeight(box.selector, height ?? 'auto')
-                      }
-                    />
-                  </div>
-                </Show>
-              </div>
-            </div>
-          )}
-        </For>
-      </div>
-    </Show>
-  );
-};
-
 /**
  * The part of each card that glows while the anime is on the user's list, and the room the score needs: the space
  * between the cards, which the glow needs so it doesn't run into the next card, and the height of parts of the cards
@@ -300,7 +176,7 @@ export const HighlightPart: Component<
 > = (props) => {
   const editor = useEditor();
   const pickInCard = createCardPicker(() => props.elements());
-  const boxes = createFixedBoxes(
+  const boxes = createBoxes(
     () => props.elements(),
     () => props.card.selector,
   );
@@ -434,7 +310,7 @@ export const HighlightPart: Component<
           </Show>
         </div>
       </Show>
-      <HeightsSection
+      <SizesSection
         boxes={boxes()}
         page={props.page}
         onPageChange={props.onPageChange}

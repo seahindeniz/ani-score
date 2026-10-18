@@ -176,10 +176,10 @@ describe('HighlightPart', () => {
     ]);
   });
 
-  it('lets parts of the cards that are too short fit the score, or sets their height', async () => {
+  it('lists the parts of the cards around the score, and sizes them', () => {
     const cards = episodeGrid();
 
-    // Each card's name box is 70px high, and the details don't fit in it
+    // Each card's name box is 70px high and 150px wide, too small for the details
     for (const card of cards) {
       const box = card.querySelector('h3')!;
       const details = document.createElement('div');
@@ -187,63 +187,105 @@ describe('HighlightPart', () => {
       details.className = 'ani-score';
       box.append(details);
       box.style.height = '70px';
+      box.style.width = '150px';
       Object.defineProperties(box, {
         scrollHeight: { value: 120 },
         clientHeight: { value: 70 },
+        scrollWidth: { value: 200 },
+        clientWidth: { value: 150 },
       });
     }
 
-    const { page } = setUp(cellCard());
-    const height = () => screen.getByRole('combobox', { name: /^Height of/ });
+    const { page, pointed } = setUp(cellCard());
+    const sizes = screen.getByRole('region', { name: 'Room for the score' });
+    const height = () =>
+      screen.getByRole('combobox', { name: 'Height of :is(div.cell) h3' });
+    const width = () =>
+      screen.getByRole('combobox', { name: 'Width of :is(div.cell) h3' });
 
     expect(screen.getByRole('alert').textContent).toStartWith(
-      'Part of the cards has a fixed height',
+      'One part of the cards is too small for the score',
     );
-    expect(screen.getByText('70 px, too short on 5 cards')).toBeTruthy();
+    // From the closest to the whole card
+    expect(
+      Array.from(sizes.querySelectorAll('code'), (code) => code.textContent),
+    ).toEqual([':is(div.cell) h3', ':is(div.cell) article.card', 'div.cell']);
+    expect(
+      screen.getByText(
+        '150 × 70 px, too short on 5 cards, too narrow on 5 cards',
+      ),
+    ).toBeTruthy();
+
+    // Pointing at one outlines it on the page
+    const block = sizes.querySelector('code')!.parentElement!;
+
+    fireEvent.mouseEnter(block);
+
+    expect(pointed()).toEqual(cards.map((card) => card.querySelector('h3')!));
+
+    fireEvent.mouseLeave(block);
+
+    expect(pointed()).toEqual([]);
+
+    fireEvent.focusIn(block);
+    fireEvent.focusOut(block);
 
     chooseOption(height(), 'Fit the content');
+    chooseOption(width(), 'Set a width');
 
-    expect(page().heights).toEqual([
-      { selector: ':is(div.cell) h3', height: 'auto' },
+    expect(page().sizes).toEqual([
+      { selector: ':is(div.cell) h3', height: 'auto', width: 190 },
     ]);
 
-    chooseOption(height(), 'Set a height');
+    fireEvent.input(
+      screen.getByRole('spinbutton', {
+        name: 'Width of :is(div.cell) h3 in pixels',
+      }),
+      { target: { value: '' } },
+    );
 
-    expect(page().heights).toEqual([
-      { selector: ':is(div.cell) h3', height: 110 },
-    ]);
-
-    fireEvent.input(screen.getByRole('spinbutton', { name: /in pixels/ }), {
-      target: { value: '' },
-    });
-
-    expect(page().heights).toEqual([
-      { selector: ':is(div.cell) h3', height: 'auto' },
+    expect(page().sizes).toEqual([
+      { selector: ':is(div.cell) h3', height: 'auto', width: 'auto' },
     ]);
 
     chooseOption(height(), "The site's height");
+    chooseOption(width(), 'No limit');
 
-    expect(page().heights).toBeUndefined();
+    expect(page().sizes).toEqual([
+      { selector: ':is(div.cell) h3', width: 'auto' },
+    ]);
+
+    chooseOption(width(), "The site's width");
+
+    expect(page().sizes).toBeUndefined();
   });
 
-  it('keeps a height set before, also once it fits', () => {
+  it('keeps a size set before, also off this page', () => {
     episodeGrid();
-    setUp(cellCard(), {
-      heights: [
+
+    const { pointed } = setUp(cellCard(), {
+      sizes: [
         { selector: ':is(div.cell) h3', height: 140 },
-        { selector: ':is(div.cell) span', height: 'auto' },
+        { selector: 'div[', width: 'auto' },
       ],
     });
 
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getAllByText('Height set here')).toHaveLength(2);
+    expect(
+      screen.getAllByText('Not around the score on this page'),
+    ).toHaveLength(2);
     expect(
       (
         screen.getByRole('spinbutton', {
-          name: /in pixels/,
+          name: 'Height of :is(div.cell) h3 in pixels',
         }) as HTMLInputElement
       ).value,
     ).toBe('140');
+
+    // A selector being typed outlines nothing
+    fireEvent.mouseEnter(screen.getByText('div[').parentElement!);
+
+    expect(pointed()).toEqual([]);
   });
 
   it('has no spacing without cards', () => {
