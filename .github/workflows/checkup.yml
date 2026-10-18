@@ -13,17 +13,17 @@ concurrency:
 jobs:
   checkup:
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
-    timeout-minutes: 8
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
@@ -36,14 +36,11 @@ jobs:
           bun-version-file: package.json
 
       - name: Cache Bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: bun-${{ runner.os }}-
-
-      # - name: Install OS Dependencies for Playwright
-      #   run: bunx playwright install --with-deps
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -53,3 +50,37 @@ jobs:
 
       - name: Run tests
         run: bun run test
+
+      - name: Get Playwright version
+        id: playwright
+        run: echo "version=$(bun -e "console.log(require('@playwright/test/package.json').version)")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      # The tests launch full Chromium (headless shell can't load extensions), so the shell isn't downloaded
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: packages/extension
+        run: bunx --bun playwright install --with-deps --no-shell chromium
+
+      # System libraries aren't part of the cache
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: packages/extension
+        run: bunx --bun playwright install-deps chromium
+
+      - name: Run E2E tests
+        run: bun run --filter ani-score test:e2e
+
+      - name: Upload E2E results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-results
+          path: packages/extension/test-results
+          retention-days: 7

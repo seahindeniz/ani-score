@@ -41,7 +41,10 @@ function onChange(task: () => unknown, filter: (file: string) => boolean) {
   }
 }
 
-generateGraphQLTypes()
+// Set by E2E runs, which use the committed types instead of fetching AniList's schema
+if (!process.env.SKIP_GRAPHQL_CODEGEN)
+  generateGraphQLTypes()
+
 writeManifest()
 
 if (isDev) {
