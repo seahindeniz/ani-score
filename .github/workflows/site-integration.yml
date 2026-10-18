@@ -32,18 +32,21 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
+      # The steps below run code on the issue's content, so the token isn't left in the git config for them; only the
+      # pull request step gets it
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - name: Set up Git user
         run: |
           git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
           git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
 
+      # Pinned to a commit: this workflow holds the app's token, so a moved tag mustn't change the code it runs
       - name: Install Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           # `bun lint` and `bun fmt` are only in canary builds; switch back to `bun-version-file: package.json` once Bun 1.4.4 is released
           bun-version: canary
@@ -87,6 +90,7 @@ jobs:
           branch="site/${SITE_ID}-${ISSUE_NUMBER}"
           verb=$([ "$UPDATED" = true ] && echo update || echo add)
 
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git switch -c "$branch"
           git add packages/extension/src/sites
           git commit \
