@@ -31,3 +31,8 @@ export const isFirefox = targetBrowser === 'firefox';
 export function log(name: string, message: string) {
   console.log(styleText(['black', 'bgCyan'], ` ${name} `), message);
 }
+
+// stderr, since release-it shows only the stderr of a failed hook
+export function logError(name: string, message: string) {
+  console.error(styleText(['black', 'bgRed'], ` ${name} `), message);
+}

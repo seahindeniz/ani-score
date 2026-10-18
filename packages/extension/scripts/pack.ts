@@ -6,7 +6,7 @@ import process from 'node:process';
 import webExt from 'web-ext';
 
 import { outputDirectory } from './constants';
-import { argv, log, r } from './utils';
+import { argv, log, logError, r } from './utils';
 
 // `.env` is loaded by Bun itself
 const wantAll = Boolean(argv.pack) || (!argv.zip && !argv.crx && !argv.xpi);
@@ -16,7 +16,7 @@ const wantXpi = wantAll || Boolean(argv.xpi);
 const { version } = await Bun.file(r('package.json')).json();
 
 if (!version) {
-  log('PACK', 'error: version is not defined in package.json');
+  logError('PACK', 'version is not defined in package.json');
   process.exit(1);
 }
 
@@ -102,6 +102,6 @@ try {
   log('PACK', 'done');
   process.exit(0);
 } catch (err: any) {
-  log('PACK', `error: ${err.message || err}`);
+  logError('PACK', err.message || err);
   process.exit(1);
 }
