@@ -98,9 +98,22 @@ function createStorageArea(
 
 const extensionId = 'test-extension-id';
 
+interface RegisteredContentScript {
+  id: string;
+  matches?: string[];
+  excludeMatches?: string[];
+  js?: string[];
+  runAt?: string;
+}
+
 function createFakeBrowser() {
   const onChanged = createEvent();
+  const onPermissionsAdded = createEvent();
+  const onPermissionsRemoved = createEvent();
   let badgeText = '';
+  // Optional host permissions the user granted
+  const grantedOrigins = new Set<string>();
+  let registeredScripts: RegisteredContentScript[] = [];
 
   return {
     storage: {
@@ -120,6 +133,51 @@ function createFakeBrowser() {
       openOptionsPage: mock(async () => {}),
       onMessage: createEvent(),
       onInstalled: createEvent(),
+      onStartup: createEvent(),
+      getManifest: mock(() => ({
+        content_scripts: [
+          { matches: ['*://anizm.net/*'], js: ['dist/gateway.js'] },
+          { matches: ['*://anizm.net/*'], js: ['dist/engagement.js'] },
+        ],
+      })),
+    },
+    permissions: {
+      contains: mock(async ({ origins = [] }: { origins?: string[] }) =>
+        origins.every((origin) => grantedOrigins.has(origin)),
+      ),
+      // Like the user accepting the browser's prompt; a test can make it decline with `mockResolvedValueOnce(false)`
+      request: mock(async ({ origins = [] }: { origins?: string[] }) => {
+        origins.forEach((origin) => grantedOrigins.add(origin));
+        onPermissionsAdded.dispatch({ origins });
+
+        return true;
+      }),
+      remove: mock(async ({ origins = [] }: { origins?: string[] }) => {
+        origins.forEach((origin) => grantedOrigins.delete(origin));
+        onPermissionsRemoved.dispatch({ origins });
+
+        return true;
+      }),
+      onAdded: onPermissionsAdded,
+      onRemoved: onPermissionsRemoved,
+    },
+    scripting: {
+      getRegisteredContentScripts: mock(
+        async ({ ids }: { ids?: string[] } = {}) =>
+          registeredScripts.filter((script) => !ids || ids.includes(script.id)),
+      ),
+      registerContentScripts: mock(
+        async (scripts: RegisteredContentScript[]) => {
+          registeredScripts.push(...structuredClone(scripts));
+        },
+      ),
+      unregisterContentScripts: mock(
+        async ({ ids }: { ids?: string[] } = {}) => {
+          registeredScripts = registeredScripts.filter(
+            (script) => ids && !ids.includes(script.id),
+          );
+        },
+      ),
     },
     action: {
       getBadgeText: mock(async (_details: unknown) => badgeText),
@@ -150,6 +208,10 @@ function createFakeBrowser() {
     resetBadge: () => {
       badgeText = '';
     },
+    resetPermissions: () => {
+      grantedOrigins.clear();
+      registeredScripts = [];
+    },
   };
 }
 
@@ -174,17 +236,23 @@ export function resetFakeBrowser() {
     notifications,
     webNavigation,
     sidePanel,
+    permissions,
+    scripting,
   } = fakeBrowser;
 
   storage.local.reset();
   storage.sync.reset();
   fakeBrowser.resetBadge();
+  fakeBrowser.resetPermissions();
 
   for (const event of [
     storage.onChanged,
     runtime.onMessage,
     runtime.onInstalled,
+    runtime.onStartup,
     webNavigation.onCommitted,
+    permissions.onAdded,
+    permissions.onRemoved,
   ])
     event.clear();
 
@@ -200,6 +268,8 @@ export function resetFakeBrowser() {
     notifications,
     webNavigation.onCommitted,
     sidePanel,
+    permissions,
+    scripting,
   ]) {
     for (const value of Object.values(api)) {
       if (typeof value === 'function' && 'mockClear' in value)

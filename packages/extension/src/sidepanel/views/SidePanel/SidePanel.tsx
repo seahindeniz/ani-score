@@ -7,6 +7,7 @@ import SimpleIconsAnilist from '~icons/simple-icons/anilist';
 import { Button } from '~/components/ui/button';
 import { useTokenStore } from '~/logic';
 
+import { Sites } from './Sites/Sites';
 import { GenreColors } from './TagColors/GenreColors';
 import { TagColor } from './TagColors/TagColors';
 
@@ -45,6 +46,7 @@ export const SidePanel: Component = () => {
           </Button>
         </div>
       </Show>
+      <Sites />
     </main>
   );
 };

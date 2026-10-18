@@ -16,12 +16,11 @@ describe('createEncapsulatedContainer', () => {
     expect(container.className).toBe('ani-score');
     expect(shadowDOM).toBe(container.shadowRoot!);
     expect(Array.from(shadowDOM.childNodes)).toEqual([
-      expect.any(HTMLLinkElement),
+      expect.any(HTMLStyleElement),
       root,
     ]);
-    expect((shadowDOM.firstChild as HTMLLinkElement).getAttribute('href')).toBe(
-      'chrome-extension://test-extension-id/dist/contentScripts/engagement/style.css',
-    );
+    // The build writes the engagement CSS in its place
+    expect(shadowDOM.firstChild!.textContent).toBe('__ANI_SCORE_INLINE_CSS__');
   });
 
   it('closes the shadow root in production builds', () => {

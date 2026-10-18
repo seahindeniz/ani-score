@@ -137,3 +137,23 @@ export const useAnimeDatabaseSearchCacheStore = createPersistedStore(
     }
   >,
 );
+
+/**
+ * A site config the user made or imported. Stored as given and validated where it's used, so a config from an older
+ * schema version is migrated rather than lost.
+ */
+export interface UserSite {
+  config: unknown;
+  savedAt: number;
+  /**
+   * `siteFingerprint` of the bundled config this one was made from, to tell when the bundled one changed since.
+   */
+  basedOn?: string;
+}
+
+export const userSitesKey = 'userSites';
+
+export const useUserSitesStore = createPersistedStore(
+  userSitesKey,
+  [] as UserSite[],
+);

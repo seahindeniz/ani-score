@@ -1,7 +1,10 @@
 import bundledSites from 'virtual:ani-score/sites';
 
 import { liveInterval } from '~/constants/main';
+import type { UserSite } from '~/logic/storage';
+import { userSitesKey } from '~/logic/storage';
 import { matchesPattern } from '~/sites/matchPattern';
+import { resolveSites } from '~/sites/resolveSites';
 import type { SiteConfig } from '~/sites/schema';
 import { logger } from '~/utils/logger';
 
@@ -17,7 +20,7 @@ export function findSiteConfig(url: URL, sites: SiteConfig[]) {
  * Starts AniScore on the page when a site config matches its URL, and keeps the background awake while it's open.
  * Returns a function that stops it, or `undefined` when no config matches.
  */
-export function engage(url = new URL(location.href), sites = bundledSites) {
+export function engage(url: URL, sites: SiteConfig[]) {
   const site = findSiteConfig(url, sites);
 
   if (!site) {
@@ -38,4 +41,36 @@ export function engage(url = new URL(location.href), sites = bundledSites) {
   };
 }
 
-engage();
+async function userSites() {
+  const { [userSitesKey]: sites = [] } = (await browser.storage.local.get(
+    userSitesKey,
+  )) as { [userSitesKey]?: UserSite[] };
+
+  return sites;
+}
+
+/**
+ * Engages with the user's configs and the bundled ones, and starts over when the user's configs change. Runs once per
+ * page, also when both the manifest and a registration for an allowed site inject this script.
+ */
+export async function start() {
+  if (window.aniScoreStarted) return;
+
+  window.aniScoreStarted = true;
+
+  let stop: (() => void) | undefined;
+  const restart = async () => {
+    const sites = resolveSites(await userSites(), bundledSites).sites;
+
+    stop?.();
+    stop = engage(new URL(location.href), sites);
+  };
+
+  browser.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && userSitesKey in changes) void restart();
+  });
+
+  await restart();
+}
+
+void start();

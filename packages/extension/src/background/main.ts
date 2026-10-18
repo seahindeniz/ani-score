@@ -3,6 +3,7 @@ import { logger } from '~/utils/logger';
 import { connectToWS } from './logic/connectToWS';
 import { fetchCSS } from './logic/fetchCSS';
 import { listenMessages } from './logic/message';
+import { watchSites } from './logic/registerSites';
 
 // only on dev mode
 if (import.meta.hot) {
@@ -13,6 +14,7 @@ if (import.meta.hot) {
 }
 
 listenMessages();
+watchSites();
 fetchCSS();
 connectToWS();
 

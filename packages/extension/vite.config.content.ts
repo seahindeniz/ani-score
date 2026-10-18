@@ -2,6 +2,7 @@ import type { UserConfig } from 'vite';
 import { build, mergeConfig } from 'vite';
 
 import { isDev, mode, r } from './scripts/utils';
+import { inlineCss } from './scripts/vite-plugin-inline-css';
 import { contentScriptPaths } from './src/utils/contentScripts';
 import { sharedDOMConfig } from './vite.config.js';
 
@@ -18,6 +19,7 @@ await Promise.all(
           mode,
           // base: '/__dynamic_base__/',
           plugins: [
+            inlineCss(),
             // dynamicBase({
             //   // dynamic public path var string, default window.__dynamic_base__
             //   publicPath: `chrome.extension.getURL("${base}")`,

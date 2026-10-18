@@ -8,14 +8,17 @@ import { loadBundledSites } from './sites';
 export async function getManifest() {
   const pkg = (await Bun.file(r('package.json')).json()) as typeof PkgType;
 
+  const sites = loadBundledSites();
+  const patternsOf = (access: 'required' | 'optional') =>
+    Array.from(
+      new Set(
+        sites
+          .filter((site) => (site.access ?? 'optional') === access)
+          .flatMap((site) => site.matches),
+      ),
+    );
   // Sites the extension may access from install; the engagement script picks the config matching the page
-  const websitePatterns = Array.from(
-    new Set(
-      loadBundledSites()
-        .filter((site) => site.access === 'required')
-        .flatMap((site) => site.matches),
-    ),
-  );
+  const websitePatterns = patternsOf('required');
   const contentScripts = contentScriptPaths.map((entry) => ({
     matches: websitePatterns,
     js: [`dist/contentScripts/${entry.directory}/${entry.name}`],
@@ -53,7 +56,12 @@ export async function getManifest() {
       ...(isFirefox ? [] : ['sidePanel']),
       'notifications',
       'unlimitedStorage',
+      // Injects AniScore on the optional sites the user allows (`registerContentScripts`)
+      'scripting',
     ],
+    // Granted per site when the user turns it on, never at install. `*://*/*` grants nothing by itself: the browser
+    // only asks for a site that's declared here, so it lets users add sites that no bundled config lists.
+    optional_host_permissions: [...patternsOf('optional'), '*://*/*'],
     host_permissions: [
       ...(isDev ? [`http://localhost:${port}/*`] : []),
       'https://github.com/cedya77/anime-offline-database/*',
@@ -63,16 +71,12 @@ export async function getManifest() {
       ...websitePatterns,
     ],
     content_scripts: contentScripts,
+    // AniList's sign-in redirects back to the side panel. Content scripts carry their CSS inline, so web pages
+    // can't load (or probe for) anything from the extension.
     web_accessible_resources: [
       {
-        resources: [
-          'dist/contentScripts/**/*.css',
-          'dist/sidepanel/index.html',
-        ],
-        matches: [
-          'https://anilist.co/*',
-          ...websitePatterns.filter((item) => item.endsWith('/*')),
-        ],
+        resources: ['dist/sidepanel/index.html'],
+        matches: ['https://anilist.co/*'],
       },
     ],
     content_security_policy: {

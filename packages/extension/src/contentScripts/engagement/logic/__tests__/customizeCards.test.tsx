@@ -47,12 +47,12 @@ describe('createCardCustomizer', () => {
 
     customizer.update([frieren]);
 
-    expect(shadowOf(frieren).querySelector('link')!.getAttribute('href')).toBe(
-      'chrome-extension://test-extension-id/dist/contentScripts/engagement/style.css',
-    );
-    expect(shadowOf(frieren).querySelector('style')!.textContent).toBe(
-      '.site {}',
-    );
+    expect(
+      Array.from(
+        shadowOf(frieren).querySelectorAll('style'),
+        (style) => style.textContent,
+      ),
+    ).toEqual(['__ANI_SCORE_INLINE_CSS__', '.site {}']);
     customizer.dispose();
   });
 

@@ -9,8 +9,10 @@ import {
 } from 'bun:test';
 
 import type { SiteConfig } from '~/sites/schema';
+import { wait } from '~/utils/wait';
 
-import { engage, findSiteConfig } from '../main';
+import { fakeBrowser } from '../../../../test/fake-browser';
+import { engage, findSiteConfig, start } from '../main';
 import { useRefStore } from '../store/refStore';
 
 const example: SiteConfig = {
@@ -116,5 +118,66 @@ describe('engage', () => {
       'engage-with-time',
       expect.any(Number),
     );
+  });
+});
+
+describe('start', () => {
+  beforeEach(() => {
+    // Importing the script started it already; each test starts it afresh
+    window.aniScoreStarted = false;
+    fakeBrowser.storage.onChanged.clear();
+    window.messageGateway = {
+      sendMessage: mock(async () => undefined),
+    } as unknown as typeof window.messageGateway;
+  });
+
+  afterEach(async () => {
+    // Stops the site logic the test started
+    await fakeBrowser.storage.local.set({ userSites: [] });
+    await wait(10);
+    Reflect.deleteProperty(window, 'messageGateway');
+    useRefStore().portalRoot = null;
+  });
+
+  it("engages with the user's configs, and again when they change", async () => {
+    document.body.innerHTML = '<div class="card"><h3>Frieren</h3></div>';
+    await fakeBrowser.storage.local.set({
+      userSites: [{ config: example, savedAt: 1 }],
+    });
+    await start();
+
+    expect(document.querySelectorAll('.card .ani-score')).toHaveLength(1);
+
+    await fakeBrowser.storage.local.set({
+      userSites: [
+        {
+          config: { ...example, pages: [{ ...example.pages[0], css: '.x{}' }] },
+          savedAt: 2,
+        },
+      ],
+    });
+    await wait(10);
+
+    // Started over: one set of details, with the new page styles
+    expect(document.querySelectorAll('.card .ani-score')).toHaveLength(1);
+    expect(
+      Array.from(document.querySelectorAll('style')).some(
+        (style) => style.textContent === '.x{}',
+      ),
+    ).toBe(true);
+
+    // Other storage changes don't matter
+    fakeBrowser.storage.onChanged.dispatch({ userSites: {} }, 'sync');
+    await fakeBrowser.storage.local.set({ theme: 'dark' });
+    await wait(10);
+
+    expect(document.querySelectorAll('.card .ani-score')).toHaveLength(1);
+  });
+
+  it('runs once per page', async () => {
+    await start();
+    await start();
+
+    expect(fakeBrowser.storage.local.get).toHaveBeenCalledTimes(1);
   });
 });
