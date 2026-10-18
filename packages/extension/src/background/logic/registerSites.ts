@@ -1,8 +1,8 @@
 import bundledSites from 'virtual:ani-score/sites';
 
 import type { UserSite } from '~/logic/storage';
-import { userSitesKey } from '~/logic/storage';
-import { resolveSites } from '~/sites/resolveSites';
+import { turnedOffSitesKey, userSitesKey } from '~/logic/storage';
+import { resolveSites, turnedOn } from '~/sites/resolveSites';
 import { logger } from '~/utils/logger';
 
 export const sitesScriptId = 'ani-score-sites';
@@ -15,12 +15,14 @@ const requiredPatterns = new Set(
 );
 
 async function grantedPatterns() {
-  const { [userSitesKey]: userSites = [] } = (await browser.storage.local.get(
-    userSitesKey,
-  )) as { [userSitesKey]?: UserSite[] };
+  const { [userSitesKey]: userSites = [], [turnedOffSitesKey]: turnedOff } =
+    (await browser.storage.local.get([userSitesKey, turnedOffSitesKey])) as {
+      [userSitesKey]?: UserSite[];
+      [turnedOffSitesKey]?: string[];
+    };
   const patterns = new Set(
-    resolveSites(userSites, bundledSites)
-      .sites.flatMap((site) => site.matches)
+    turnedOn(resolveSites(userSites, bundledSites).sites, turnedOff)
+      .flatMap((site) => site.matches)
       .filter((pattern) => !requiredPatterns.has(pattern)),
   );
   const granted = await Promise.all(
@@ -65,8 +67,9 @@ async function sync() {
 let queue = Promise.resolve();
 
 /**
- * Injects AniScore on the optional sites (bundled or the user's) that the user allowed, and on no others. Runs again
- * whenever the allowed sites or the user's configs change; calls are queued, since each one replaces the registration.
+ * Injects AniScore on the optional sites (bundled or the user's) that the user allowed and didn't turn off, and on no
+ * others. Runs again whenever the allowed sites, the user's configs or the sites turned off change; calls are queued,
+ * since each one replaces the registration.
  */
 export function syncSiteScripts() {
   queue = queue.then(sync).catch((error: unknown) => logger.error(error));
@@ -80,7 +83,10 @@ export function watchSites() {
   browser.permissions.onAdded.addListener(() => void syncSiteScripts());
   browser.permissions.onRemoved.addListener(() => void syncSiteScripts());
   browser.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local' && userSitesKey in changes) {
+    if (
+      areaName === 'local'
+      && (userSitesKey in changes || turnedOffSitesKey in changes)
+    ) {
       void syncSiteScripts();
     }
   });

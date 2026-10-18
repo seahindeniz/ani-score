@@ -2,8 +2,8 @@ import bundledSites from 'virtual:ani-score/sites';
 
 import { liveInterval } from '~/constants/main';
 import type { UserSite } from '~/logic/storage';
-import { userSitesKey } from '~/logic/storage';
-import { findSiteConfig, resolveSites } from '~/sites/resolveSites';
+import { turnedOffSitesKey, userSitesKey } from '~/logic/storage';
+import { findSiteConfig, resolveSites, turnedOn } from '~/sites/resolveSites';
 import type { SiteConfig } from '~/sites/schema';
 import { logger } from '~/utils/logger';
 
@@ -34,16 +34,20 @@ export function engage(url: URL, sites: SiteConfig[]) {
   };
 }
 
-async function userSites() {
-  const { [userSitesKey]: sites = [] } = (await browser.storage.local.get(
-    userSitesKey,
-  )) as { [userSitesKey]?: UserSite[] };
+// The user's configs and the bundled ones, less the sites the user turned off
+async function sitesInEffect() {
+  const { [userSitesKey]: userSites = [], [turnedOffSitesKey]: turnedOff } =
+    (await browser.storage.local.get([userSitesKey, turnedOffSitesKey])) as {
+      [userSitesKey]?: UserSite[];
+      [turnedOffSitesKey]?: string[];
+    };
 
-  return sites;
+  return turnedOn(resolveSites(userSites, bundledSites).sites, turnedOff);
 }
 
 /**
- * Engages with the user's configs and the bundled ones, and starts over when the user's configs change. Runs once per
+ * Engages with the user's configs and the bundled ones, and starts over when the user's configs change or a site is
+ * turned on or off. Runs once per
  * page, also when both the manifest and a registration for an allowed site inject this script. While the editor is
  * open, it shows its own preview instead (see `window.aniScoreEngagement`).
  */
@@ -58,7 +62,7 @@ export async function start() {
     stop = undefined;
   };
   const restart = async () => {
-    const sites = resolveSites(await userSites(), bundledSites).sites;
+    const sites = await sitesInEffect();
 
     pause();
 
@@ -67,7 +71,12 @@ export async function start() {
 
   window.aniScoreEngagement = { pause, restart };
   browser.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local' && userSitesKey in changes) void restart();
+    if (
+      areaName === 'local'
+      && (userSitesKey in changes || turnedOffSitesKey in changes)
+    ) {
+      void restart();
+    }
   });
 
   await restart();

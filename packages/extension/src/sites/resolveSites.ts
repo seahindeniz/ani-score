@@ -61,3 +61,10 @@ export function findSiteConfig(url: URL, sites: SiteConfig[]) {
     site.matches.some((pattern) => matchesPattern(pattern, url)),
   );
 }
+
+/**
+ * The configs the user didn't turn off.
+ */
+export function turnedOn(sites: SiteConfig[], turnedOff: string[] = []) {
+  return sites.filter((site) => !turnedOff.includes(site.id));
+}

@@ -175,6 +175,27 @@ describe('start', () => {
     expect(document.querySelectorAll('.card .ani-score')).toHaveLength(1);
   });
 
+  it('leaves the sites the user turned off, and comes back when turned on', async () => {
+    document.body.innerHTML = '<div class="card"><h3>Frieren</h3></div>';
+    await fakeBrowser.storage.local.set({
+      userSites: [{ config: example, savedAt: 1 }],
+      turnedOffSites: ['example'],
+    });
+    await start();
+
+    expect(document.querySelector('.ani-score')).toBeNull();
+
+    await fakeBrowser.storage.local.set({ turnedOffSites: [] });
+    await wait(10);
+
+    expect(document.querySelectorAll('.card .ani-score')).toHaveLength(1);
+
+    await fakeBrowser.storage.local.set({ turnedOffSites: ['example'] });
+    await wait(10);
+
+    expect(document.querySelector('.ani-score')).toBeNull();
+  });
+
   it('runs once per page', async () => {
     await start();
     await start();

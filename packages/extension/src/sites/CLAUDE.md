@@ -20,6 +20,9 @@ content script (`contentScripts/engagement/main.tsx`) picks the config whose `ma
   `optional_host_permissions` (their patterns plus `*://*/*`, which grants nothing by itself).
 - `background/logic/registerSites.ts` registers the content scripts on the allowed optional sites with
   `scripting.registerContentScripts`, and syncs whenever permissions or `userSites` change.
+- Any site can be turned off from the side panel. The ids go to `turnedOffSites` in storage, which the engagement
+  script and `registerSites.ts` skip: the required sites' access can't be given back, so that list is what keeps
+  AniScore off them. Turning off another site also removes the access only it needed.
 - A user's config replaces the bundled one with the same id. It is validated where it's used, so a config from an
   older schema version is migrated instead of dropped.
 - Content scripts carry their CSS inline (`scripts/vite-plugin-inline-css.ts`), so pages never load extension files

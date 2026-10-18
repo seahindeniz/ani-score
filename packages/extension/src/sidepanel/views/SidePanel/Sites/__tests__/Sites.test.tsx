@@ -14,11 +14,12 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@solidjs/testing-library';
 import bundledSites from 'virtual:ani-score/sites';
 
 import type { UserSite } from '~/logic';
-import { useUserSitesStore } from '~/logic';
+import { useTurnedOffSitesStore, useUserSitesStore } from '~/logic';
 import { editorScript } from '~/logic/editor';
 import type { SiteConfig } from '~/sites/schema';
 
@@ -44,6 +45,7 @@ function config(id: string, overrides: Partial<SiteConfig> = {}): SiteConfig {
 }
 
 const store = useUserSitesStore();
+const turnedOff = useTurnedOffSitesStore();
 
 async function renderSites(userSites: UserSite[] = []) {
   await store.dataReady;
@@ -60,6 +62,9 @@ const button = (id: string, name: string) =>
     (item) => item.textContent === name,
   )!;
 
+// Read directly, as a closed menu left in the page hides the rest from role queries
+const status = () => document.querySelector('[role=status]')?.textContent;
+
 const group = (name: string) => screen.getByRole('region', { name });
 
 const idsIn = (name: string) =>
@@ -73,18 +78,28 @@ function press(element: HTMLElement) {
   fireEvent.click(element);
 }
 
+const menus = () =>
+  Array.from(document.querySelectorAll<HTMLElement>('[role=menu]'));
+
+// The open menu; in happy-dom, menus stay in the page once closed, and sometimes open after an action
+const openMenu = () =>
+  menus().find((menu) => !menu.hasAttribute('data-closed'))!;
+
 // The actions in a site's menu, which it leaves open
 async function menuOf(name: string) {
-  press(screen.getByRole('button', { name: `More for ${name}` }));
+  for (const menu of menus()) fireEvent.keyDown(menu, { key: 'Escape' });
 
-  return (await screen.findAllByRole('menuitem')).map(
-    (item) => item.textContent,
-  );
+  press(screen.getByRole('button', { name: `More for ${name}` }));
+  await waitFor(() => expect(openMenu()).toBeTruthy());
+
+  return within(openMenu())
+    .getAllByRole('menuitem')
+    .map((item) => item.textContent);
 }
 
 async function choose(name: string, action: string) {
   await menuOf(name);
-  press(screen.getByRole('menuitem', { name: action }));
+  press(within(openMenu()).getByRole('menuitem', { name: action }));
 }
 
 // The sites the "Add a site" dropdown offers, by name; it's left open
@@ -121,7 +136,9 @@ function paste(json: string) {
 
 beforeEach(async () => {
   await store.dataReady;
+  await turnedOff.dataReady;
   store.setData([]);
+  turnedOff.setData([]);
 });
 
 afterEach(cleanup);
@@ -131,11 +148,13 @@ describe('sites', () => {
     await renderSites();
 
     expect(idsIn('On')).toEqual(['anizm', 'tranimeizle']);
-    // Built-in sites need no badge, and the always-on ones have nothing in a menu
-    expect(row('anizm').textContent).toBe('AAnizmanizm.netAlways on');
+    // Built-in sites need no badge
+    expect(row('anizm').textContent).toBe('AAnizmanizm.net');
     expect(row('tranimeizle').textContent).toContain('tranimeizle.live');
     expect(screen.getByRole('button', { name: 'Edit Anizm' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'More for Anizm' })).toBeNull();
+    expect(await menuOf('Anizm')).toEqual(['Turn off']);
+    cleanup();
+    await renderSites();
     expect(row('openani')).toBeNull();
     expect(
       screen.queryByRole('region', { name: 'Your setups that are off' }),
@@ -168,7 +187,7 @@ describe('sites', () => {
     await renderSites();
     paste(JSON.stringify(config('kitsune')));
 
-    expect(screen.getByRole('status').textContent).toBe(
+    expect(status()).toBe(
       'Imported Kitsune. Turn it on to allow it on kitsune.me.',
     );
     expect(row('kitsune').textContent).toContain('Yours');
@@ -209,13 +228,11 @@ describe('sites', () => {
     await renderSites();
     paste('{ nope');
 
-    expect(screen.getByRole('status').textContent).toBe(
-      "That isn't valid JSON.",
-    );
+    expect(status()).toBe("That isn't valid JSON.");
 
     paste(JSON.stringify(config('kitsune', { schemaVersion: 9 as 1 })));
 
-    expect(screen.getByRole('status').textContent).toBe(
+    expect(status()).toBe(
       'This config needs a newer AniScore (schema version 9)',
     );
     expect(store.data()).toEqual([]);
@@ -233,7 +250,7 @@ describe('sites', () => {
       origins: ['*://kitsune.me/*'],
     });
     await waitFor(() => expect(idsIn('On')).toContain('kitsune'));
-    expect(screen.getByRole('status').textContent).toBe(
+    expect(status()).toBe(
       'Kitsune is on. Reload its open tabs to see ratings.',
     );
     expect(await offeredSites()).not.toContain('Kitsune');
@@ -256,15 +273,42 @@ describe('sites', () => {
     await waitFor(() => expect(idsIn('On')).toContain('kitsune'));
   });
 
+  it('turns off a site that is on from install, keeping the access it was given', async () => {
+    await renderSites();
+    await choose('Anizm', 'Turn off');
+
+    expect(turnedOff.data()).toEqual(['anizm']);
+    expect(fakeBrowser.permissions.remove).not.toHaveBeenCalled();
+    await waitFor(() => expect(idsIn('On')).toEqual(['tranimeizle']));
+    expect(await offeredSites()).toContain('Anizm');
+
+    cleanup();
+    await renderSites();
+    await addSite('Anizm');
+
+    // Back on, with no need to ask
+    expect(fakeBrowser.permissions.request).not.toHaveBeenCalled();
+    expect(turnedOff.data()).toEqual([]);
+    await waitFor(() => expect(idsIn('On')).toContain('anizm'));
+    expect(status()).toBe('Anizm is on.');
+  });
+
+  it('forgets that a setup of the user’s own was off once it’s deleted', async () => {
+    await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
+    turnedOff.setData(['kitsune', 'anizm']);
+    await choose('Kitsune', 'Delete');
+    fireEvent.click(button('kitsune', 'Delete'));
+
+    expect(turnedOff.data()).toEqual(['anizm']);
+  });
+
   it('stays off when the user declines access', async () => {
     fakeBrowser.permissions.request.mockResolvedValueOnce(false);
     await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
     await addSite('Kitsune');
 
     await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toBe(
-        'Kitsune stays off, since access was declined.',
-      ),
+      expect(status()).toBe('Kitsune stays off, since access was declined.'),
     );
   });
 
@@ -331,8 +375,8 @@ describe('sites', () => {
     expect(row('anizm').textContent).toContain(
       'The built-in version changed since you edited it.',
     );
-    // A user's setup is never on from install
-    expect(idsIn('Your setups that are off')).toEqual(['anizm']);
+    // AniScore reads the site from install, so the user's setup is on
+    await waitFor(() => expect(idsIn('On')).toContain('anizm'));
 
     await choose('My Anizm', 'Reset to built-in');
 
@@ -344,7 +388,7 @@ describe('sites', () => {
 
     expect(store.data()).toEqual([]);
     expect(fakeBrowser.permissions.remove).not.toHaveBeenCalled();
-    expect(row('anizm').textContent).toContain('Always on');
+    expect(row('anizm').textContent).toBe('AAnizmanizm.net');
   });
 
   it('lists setups that no longer validate, to delete them', async () => {
@@ -387,11 +431,11 @@ describe('sites', () => {
       'Export',
       'Delete',
     ]);
-    press(screen.getByRole('menuitem', { name: 'Share with everyone' }));
+    press(
+      within(openMenu()).getByRole('menuitem', { name: 'Share with everyone' }),
+    );
     await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toBe(
-        "Opened a GitHub issue with Kitsune's setup.",
-      ),
+      expect(status()).toBe("Opened a GitHub issue with Kitsune's setup."),
     );
 
     const [[{ url }]] = fakeBrowser.tabs.create.mock.calls as unknown as [
@@ -405,7 +449,7 @@ describe('sites', () => {
 
     await choose('Otakuden', 'Share with everyone');
     await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toBe(
+      expect(status()).toBe(
         "Otakuden's setup is too long for a link, so it's on your clipboard: paste it into the form's Config field.",
       ),
     );
@@ -531,7 +575,7 @@ describe('editing a site', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit Kitsune' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toBe(
+      expect(status()).toBe(
         'AniScore needs access to kitsune.me to open its editor there.',
       ),
     );
@@ -541,7 +585,7 @@ describe('editing a site', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit Kitsune' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toBe(
+      expect(status()).toBe(
         "The editor didn't open on kitsune.me. Open one of its pages, then try again.",
       ),
     );

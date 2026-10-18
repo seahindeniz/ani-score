@@ -43,7 +43,7 @@ import {
   SelectValue,
 } from '~/components/ui/select';
 import type { UserSite } from '~/logic';
-import { useUserSitesStore } from '~/logic';
+import { useTurnedOffSitesStore, useUserSitesStore } from '~/logic';
 import { editSite } from '~/logic/editor';
 import { matchPatternFormat } from '~/sites/matchPattern';
 import { resolveSites, siteFingerprint } from '~/sites/resolveSites';
@@ -53,11 +53,16 @@ import { shareLink } from '~/sites/share';
 
 const bundledById = new Map(bundledSites.map((site) => [site.id, site]));
 
+// Granted at install, and the browser can't take them back
 const requiredPatterns = new Set(
   bundledSites
     .filter((site) => site.access === 'required')
     .flatMap((site) => site.matches),
 );
+
+// The addresses whose access the user grants; the required ones come with the extension
+const grantable = (site: SiteConfig) =>
+  site.matches.filter((pattern) => !requiredPatterns.has(pattern));
 
 const idOf = (entry: UserSite) => (entry.config as { id?: unknown } | null)?.id;
 
@@ -88,11 +93,13 @@ function download(name: string, data: unknown) {
 type Message = { kind: 'success' | 'error'; text: string };
 
 /**
- * The sites AniScore works on: bundled ones, some always on and others turned on by the user, and the user's own
- * setups. Turning a site on asks the browser for access to it, and editing one opens the editor on the site.
+ * The sites AniScore works on: bundled ones, some on from install and others turned on by the user, and the user's
+ * own setups. Any of them can be turned off. Turning a site on asks the browser for access to it when AniScore has
+ * none, and editing one opens the editor on the site.
  */
 export const Sites: Component = () => {
   const store = useUserSitesStore();
+  const turnedOff = useTurnedOffSitesStore();
   const resolved = createMemo(() => resolveSites(store.data(), bundledSites));
   const [permissionChanges, setPermissionChanges] = createSignal(0);
   const [allowed] = createResource(
@@ -101,11 +108,15 @@ export const Sites: Component = () => {
       new Set(
         (
           await Promise.all(
-            sites.map(async (site) =>
-              (await browser.permissions.contains({ origins: site.matches }))
-                ? site.id
-                : undefined,
-            ),
+            sites
+              .filter((site) => grantable(site).length)
+              .map(async (site) =>
+                (await browser.permissions.contains({
+                  origins: grantable(site),
+                }))
+                  ? site.id
+                  : undefined,
+              ),
           )
         ).filter((id) => id != null),
       ),
@@ -135,11 +146,28 @@ export const Sites: Component = () => {
         ),
     );
 
-  function turnOn(site: SiteConfig) {
+  const setOff = (id: string, off: boolean) =>
+    turnedOff.setData([
+      ...turnedOff.data().filter((item) => item !== id),
+      ...(off ? [id] : []),
+    ]);
+
+  function turnOn(row: ReturnType<typeof rowOf>) {
+    const { site } = row;
+
+    // A site AniScore can still read comes back on its open tabs too
+    if (row.readable) {
+      setOff(site.id, false);
+      setMessage({ kind: 'success', text: `${site.name} is on.` });
+      return;
+    }
+
     // Must run right in the click handler: browsers only prompt in response to the user
     void browser.permissions
       .request({ origins: site.matches })
       .then((granted) => {
+        if (granted) setOff(site.id, false);
+
         setMessage(
           granted
             ? {
@@ -155,7 +183,11 @@ export const Sites: Component = () => {
   }
 
   function turnOff(site: SiteConfig) {
-    void browser.permissions.remove({ origins: unusedPatterns(site) });
+    const unused = unusedPatterns(site);
+
+    setOff(site.id, true);
+
+    if (unused.length) void browser.permissions.remove({ origins: unused });
   }
 
   function remove(site: SiteConfig) {
@@ -166,6 +198,10 @@ export const Sites: Component = () => {
     );
 
     store.setData(remaining);
+    setConfirmingId(undefined);
+
+    // A built-in site stays as the user left it; their own setup is gone
+    if (!bundledById.has(site.id)) setOff(site.id, false);
 
     if (unused.length) void browser.permissions.remove({ origins: unused });
   }
@@ -230,9 +266,12 @@ export const Sites: Component = () => {
 
   const rowOf = (site: SiteConfig) => {
     const entry = store.data().find((item) => idOf(item) === site.id);
-    const required = !entry && site.access === 'required';
+    // Known right away for the sites AniScore reads from install, so they don't flash as off
+    const readable =
+      !grantable(site).length || Boolean(allowed()?.has(site.id));
+    const on = readable && !turnedOff.data().includes(site.id);
 
-    return { site, entry, required, on: required || allowed()?.has(site.id) };
+    return { site, entry, readable, on };
   };
   const rows = createMemo(() =>
     resolved()
@@ -241,6 +280,10 @@ export const Sites: Component = () => {
   );
   const onRows = () => rows().filter((row) => row.on);
   const availableRows = () => rows().filter((row) => !row.on);
+  // Rows by id, so a row stays mounted (and its menu open) while storage and access checks redraw the list
+  const ids = (list: ReturnType<typeof rowOf>[]) =>
+    list.map((row) => row.site.id);
+  const rowById = (id: string) => rows().find((row) => row.site.id === id)!;
 
   // Opens the editor on the site, on its open tab or a new one; it asks for access right from the click
   function edit(site: SiteConfig) {
@@ -271,15 +314,13 @@ export const Sites: Component = () => {
       && bundled()
       && props.row.entry.basedOn !== siteFingerprint(bundled()!);
     const confirming = () => confirmingId() === site().id;
-    // A site that's always on and isn't the user's has nothing more to do
-    const hasMenu = () => !props.row.required || props.row.entry;
 
     return (
       <li class="flex flex-col gap-2 py-3" data-site={site().id}>
         <div class="flex items-center gap-3">
           <span
             aria-hidden="true"
-            class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-semibold text-muted-foreground"
+            class="flex size-8 shrink-0 cursor-default select-none items-center justify-center rounded-md bg-muted text-sm font-semibold text-muted-foreground"
           >
             {site().name.charAt(0).toUpperCase()}
           </span>
@@ -302,11 +343,6 @@ export const Sites: Component = () => {
               {hostsOf(site())[0]}
             </span>
           </div>
-          <Show when={props.row.required}>
-            <span class="shrink-0 text-xs text-muted-foreground">
-              Always on
-            </span>
-          </Show>
           <Button
             variant="ghost"
             size="icon"
@@ -317,70 +353,60 @@ export const Sites: Component = () => {
           >
             <LucidePencil aria-hidden="true" />
           </Button>
-          <Show
-            when={hasMenu()}
-            // Keeps the edit buttons of all rows in line
-            fallback={<span aria-hidden="true" class="size-8 shrink-0" />}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                as={Button}
-                variant="ghost"
-                size="icon"
-                class="size-8 shrink-0 text-muted-foreground"
-                aria-label={`More for ${site().name}`}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              as={Button}
+              variant="ghost"
+              size="icon"
+              class="size-8 shrink-0 text-muted-foreground"
+              aria-label={`More for ${site().name}`}
+            >
+              <LucideEllipsis aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <Show
+                when={props.row.on}
+                fallback={
+                  <DropdownMenuItem onSelect={() => turnOn(props.row)}>
+                    <LucidePower aria-hidden="true" />
+                    Turn on
+                  </DropdownMenuItem>
+                }
               >
-                <LucideEllipsis aria-hidden="true" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <Show when={!props.row.required}>
-                  <Show
-                    when={props.row.on}
-                    fallback={
-                      <DropdownMenuItem onSelect={() => turnOn(site())}>
-                        <LucidePower aria-hidden="true" />
-                        Turn on
-                      </DropdownMenuItem>
-                    }
-                  >
-                    <DropdownMenuItem onSelect={() => turnOff(site())}>
-                      <LucidePowerOff aria-hidden="true" />
-                      Turn off
+                <DropdownMenuItem onSelect={() => turnOff(site())}>
+                  <LucidePowerOff aria-hidden="true" />
+                  Turn off
+                </DropdownMenuItem>
+              </Show>
+              <Show when={props.row.entry}>
+                {(entry) => (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => void share(site())}>
+                      <LucideShare2 aria-hidden="true" />
+                      Share with everyone
                     </DropdownMenuItem>
-                  </Show>
-                </Show>
-                <Show when={props.row.entry}>
-                  {(entry) => (
-                    <>
-                      <Show when={!props.row.required}>
-                        <DropdownMenuSeparator />
-                      </Show>
-                      <DropdownMenuItem onSelect={() => void share(site())}>
-                        <LucideShare2 aria-hidden="true" />
-                        Share with everyone
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={() =>
-                          download(`${site().id}.json`, entry().config)
-                        }
-                      >
-                        <LucideDownload aria-hidden="true" />
-                        Export
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        destructive
-                        onSelect={() => setConfirmingId(site().id)}
-                      >
-                        <LucideTrash2 aria-hidden="true" />
-                        {bundled() ? 'Reset to built-in' : 'Delete'}
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </Show>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Show>
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        download(`${site().id}.json`, entry().config)
+                      }
+                    >
+                      <LucideDownload aria-hidden="true" />
+                      Export
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      destructive
+                      onSelect={() => setConfirmingId(site().id)}
+                    >
+                      <LucideTrash2 aria-hidden="true" />
+                      {bundled() ? 'Reset to built-in' : 'Delete'}
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </Show>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <Show when={outdated()}>
           <p class="m-0 pl-11 text-xs text-warning-foreground">
@@ -449,7 +475,9 @@ export const Sites: Component = () => {
           <section aria-label="On" class="flex flex-col">
             <h3 class={heading}>On</h3>
             <ul class="m-0 list-none divide-y divide-border p-0">
-              <For each={onRows()}>{(row) => <SiteRow row={row} />}</For>
+              <For each={ids(onRows())}>
+                {(id) => <SiteRow row={rowById(id)} />}
+              </For>
             </ul>
           </section>
         </Show>
@@ -462,7 +490,7 @@ export const Sites: Component = () => {
             optionTextValue={(row) => row.site.name}
             value={null}
             placeholder="Choose a site to turn on"
-            onChange={(row) => row && turnOn(row.site)}
+            onChange={(row) => row && turnOn(row)}
             itemComponent={(item) => (
               <SelectItem item={item.item}>
                 <span class="flex flex-col">
@@ -487,8 +515,8 @@ export const Sites: Component = () => {
           <section aria-label="Your setups that are off" class="flex flex-col">
             <h3 class={heading}>Your setups that are off</h3>
             <ul class="m-0 list-none divide-y divide-border p-0">
-              <For each={availableRows().filter((row) => row.entry)}>
-                {(row) => <SiteRow row={row} />}
+              <For each={ids(availableRows().filter((row) => row.entry))}>
+                {(id) => <SiteRow row={rowById(id)} />}
               </For>
             </ul>
           </section>

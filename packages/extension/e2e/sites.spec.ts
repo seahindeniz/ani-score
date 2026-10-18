@@ -65,6 +65,43 @@ test("follows the user's edited config, also when it changes on an open page", a
   ).toHaveText('1234');
 });
 
+test('side panel turns off a site that is on from install, and on again', async ({
+  context,
+  page,
+  extensionId,
+}) => {
+  await mockNetwork(context, {
+    media: [frieren],
+    pages: {
+      [newEpisodesURL]: anizmNewEpisodesPage([
+        { title: 'Sousou no Frieren', episode: 5 },
+      ]),
+    },
+  });
+  await page.goto(newEpisodesURL);
+  await expect(page.locator('.ani-score').first()).toBeVisible();
+
+  const panel = await context.newPage();
+
+  await panel.goto(
+    `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
+  );
+  await panel.getByRole('button', { name: 'More for Anizm' }).click();
+  await panel.getByRole('menuitem', { name: 'Turn off' }).click();
+
+  // The open tab lets go of it right away, and so does the next visit
+  await expect(page.locator('.ani-score')).toHaveCount(0);
+  await page.reload();
+  await page.waitForTimeout(2000);
+  await expect(page.locator('.ani-score')).toHaveCount(0);
+
+  await panel.getByRole('button', { name: /^Add a site/ }).click();
+  await panel.getByRole('option', { name: /^Anizm/ }).click();
+
+  await expect(panel.getByRole('status')).toHaveText('Anizm is on.');
+  await expect(page.locator('.ani-score').first()).toBeVisible();
+});
+
 test('side panel imports a setup, to be turned on', async ({
   page,
   extensionId,
@@ -78,9 +115,9 @@ test('side panel imports a setup, to be turned on', async ({
     `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
   );
 
-  const anizm = page.locator('[data-site="anizm"]');
-
-  await expect(anizm).toContainText('Always on');
+  await expect(
+    page.getByRole('region', { name: 'On' }).locator('[data-site="anizm"]'),
+  ).toBeVisible();
 
   await page.getByRole('button', { name: 'Import a setup' }).click();
   await page.getByLabel('Site setup').fill(JSON.stringify(config));

@@ -82,6 +82,22 @@ describe('syncSiteScripts', () => {
     expect(await registered()).toEqual([]);
   });
 
+  it('leaves out the sites the user turned off', async () => {
+    await fakeBrowser.storage.local.set({
+      userSites: [
+        userSite('openani', ['*://openani.me/*']),
+        userSite('animex', ['*://www.animex.club/*']),
+      ],
+      turnedOffSites: ['openani'],
+    });
+    await fakeBrowser.permissions.request({
+      origins: ['*://openani.me/*', '*://www.animex.club/*'],
+    });
+    await syncSiteScripts();
+
+    expect((await registered())[0].matches).toEqual(['*://www.animex.club/*']);
+  });
+
   it('keeps syncing after a failed sync', async () => {
     await fakeBrowser.storage.local.set({
       userSites: [userSite('openani', ['*://openani.me/*'])],
@@ -131,6 +147,9 @@ describe('watchSites', () => {
       fakeBrowser.permissions.remove({ origins: ['*://openani.me/*'] }),
     );
     await expectSync(() => fakeBrowser.storage.local.set({ userSites }));
+    await expectSync(() =>
+      fakeBrowser.storage.local.set({ turnedOffSites: ['openani'] }),
+    );
 
     // Other settings don't matter
     const before = syncs();
