@@ -1,0 +1,35 @@
+{
+  "$schema": "../site.schema.json",
+  "schemaVersion": 1,
+  "id": "tranimeizle",
+  "name": "TRanimeizle",
+  "matches": ["*://www.tranimeizle.live/", "*://www.tranimeizle.live/*"],
+  "access": "required",
+  "theme": {
+    "dark": { "localStorage": { "key": "temabuton", "equals": "dark" } }
+  },
+  "pages": [
+    {
+      "name": "Home and new episodes",
+      "match": { "path": "^/$|^/listeler/yenibolum/sayfa-\\d+/?$" },
+      "cards": [
+        {
+          "selector": ".flex-wrap-layout > .flx-block",
+          "title": {
+            "selector": ".bar h4",
+            "steps": [
+              { "match": "^(.*?)\\d+(?:[.,]\\d+)?\\.\\s*Bölüm\\s.*İzle$" },
+              { "preset": "tr-season-markers" }
+            ]
+          },
+          "episode": {
+            "selector": ".bar h4",
+            "steps": [{ "match": "(\\d+(?:[.,]\\d+)?)\\.\\s*Bölüm\\s.*İzle$" }]
+          },
+          "inject": { "selector": ".bar", "position": "before" },
+          "shimmer": { "selector": "a.news-image" }
+        }
+      ]
+    }
+  ]
+}

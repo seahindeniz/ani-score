@@ -103,7 +103,8 @@ You are an expert browser extension developer specializing in the AniScore proje
 ### Directory Structure
 
 - `src/background/` - Service worker, API clients, GraphQL queries
-- `src/contentScripts/site/` - Per-site configurations with `main.ts`, `meta.ts`, `global.scss`
+- `src/sites/` - Per-site configs: `site.json` (declarative `SiteConfig`) and an optional `style.css`; see `src/sites/CLAUDE.md`
+- `src/contentScripts/sites/` - Reads a config's cards from the page
 - `src/contentScripts/engagement/` - Content script logic, stores, views
 - `src/components/ui/` - Shared UI primitives
 - `src/gql/` - Generated GraphQL types (DO NOT EDIT manually)

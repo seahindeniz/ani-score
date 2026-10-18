@@ -43,7 +43,6 @@ export const contentScriptPaths = [
   ...findEntries('src/contentScripts/*/main.{ts,tsx}', (path) =>
     path.includes('/contentScripts/widget/'),
   ),
-  ...findEntries('src/contentScripts/site/*/main.{ts,tsx}'),
   ...findEntries('src/contentScripts/*.{ts,tsx}', (path) =>
     path.endsWith(`/${messageGatewayPath}`),
   ),

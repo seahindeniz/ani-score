@@ -7,7 +7,6 @@ import {
   For,
   Match,
   on,
-  onMount,
   Show,
   Switch,
 } from 'solid-js';
@@ -20,10 +19,10 @@ import StreamlineFreehandServerError404NotFound from '~icons/streamline-freehand
 import SvgSpinners3DotsMove from '~icons/svg-spinners/3-dots-move';
 
 import type { fetchDetails } from '~/background/logic/fetchDetails';
+import type { EpisodeCard } from '~/contentScripts/sites/types';
 import { toColorEntries, useSettingsStore } from '~/logic';
 import { isTrending } from '~/utils/isTrending';
 
-import type { EpisodeCard, ListingPage } from '../../../site/base';
 import { AnimeInfoCard } from './AnimeInfo';
 import { Chip } from './Chip';
 
@@ -50,10 +49,7 @@ const TagContainer: ParentComponent<{
 
 interface Props {
   card: EpisodeCard;
-  page: ListingPage;
   store: { anime: NonNullable<Awaited<ReturnType<typeof fetchDetails>>> };
-  index: number;
-  onRender?: () => Promise<void>;
 }
 
 export const CardDetail: Component<Props> = (props) => {
@@ -117,10 +113,6 @@ export const CardDetail: Component<Props> = (props) => {
     }
   };
 
-  onMount(() => {
-    void props.onRender?.();
-  });
-
   createEffect(
     on(details, (anime) => {
       if (!anime) return;
@@ -133,9 +125,10 @@ export const CardDetail: Component<Props> = (props) => {
     on(details, (anime) => {
       const isWatching = Boolean(anime?.mediaListEntry);
 
-      props.page
-        .getShimmeringElement?.(props.card)
-        ?.classList.toggle('ani-score-watching', isWatching);
+      props.card.shimmeringElement?.classList.toggle(
+        'ani-score-watching',
+        isWatching,
+      );
     }),
   );
 

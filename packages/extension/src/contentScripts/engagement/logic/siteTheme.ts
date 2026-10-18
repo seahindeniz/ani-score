@@ -1,10 +1,16 @@
-import type { SiteBaseConfig } from '~/contentScripts/site/base';
-import type { ResolvedTheme } from '~/logic/setTheme';
+import type { ResolvedTheme, Theme } from '~/logic/setTheme';
 import { applyTheme, watchTheme } from '~/logic/setTheme';
 
 // Each root sits in a closed shadow root, so every one of them gets the theme written to it
 const roots = new Set<HTMLElement>();
 let currentTheme: ResolvedTheme | undefined;
+
+/**
+ * A fixed theme (`'system'` by default), or a function that calls `set` with the site's current theme, then again whenever
+ * the site switches theme.
+ */
+export type SiteThemeSource =
+  Theme | ((set: (theme: ResolvedTheme) => void) => void) | undefined;
 
 function setSiteTheme(theme: ResolvedTheme) {
   currentTheme = theme;
@@ -24,7 +30,7 @@ function setSiteTheme(theme: ResolvedTheme) {
 /**
  * Resolves the site's theme once per page; roots added with `addThemeRoot` follow it.
  */
-export function initSiteTheme(theme: SiteBaseConfig['theme']) {
+export function initSiteTheme(theme: SiteThemeSource) {
   if (typeof theme !== 'function') {
     void watchTheme(setSiteTheme, theme);
 

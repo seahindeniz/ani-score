@@ -10,7 +10,7 @@ import {
 import { createMutable } from 'solid-js/store';
 
 import type { AnimeDetails } from '~/background/logic/fetchDetails';
-import type { EpisodeCard, ListingPage } from '~/contentScripts/site/base';
+import type { EpisodeCard } from '~/contentScripts/sites/types';
 import { useSettingsStore } from '~/logic';
 
 import { CardDetail } from '../CardDetail';
@@ -37,7 +37,7 @@ function anime(overrides: Partial<AnimeDetails> = {}) {
 
 function setup(
   details: AnimeDetails | null | undefined,
-  page: Partial<ListingPage> = {},
+  { withShimmer = true } = {},
 ) {
   const shimmering = document.createElement('div');
   const card: EpisodeCard = {
@@ -45,30 +45,16 @@ function setup(
     render: () => {},
     title: 'Frieren',
     episodeNumber: 1,
+    shimmeringElement: withShimmer ? shimmering : null,
   };
   const store = createMutable({
     anime: details === undefined ? {} : { Frieren: details },
   }) as {
     anime: Record<string, AnimeDetails>;
   };
-  const onRender = mock(async () => {});
+  render(() => <CardDetail card={card} store={store} />);
 
-  render(() => (
-    <CardDetail
-      card={card}
-      page={{
-        isValidPage: () => true,
-        episodeCards: () => [],
-        getShimmeringElement: () => shimmering,
-        ...page,
-      }}
-      store={store}
-      index={0}
-      onRender={onRender}
-    />
-  ));
-
-  return { store, shimmering, onRender };
+  return { store, shimmering };
 }
 
 beforeEach(() => {
@@ -81,10 +67,9 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('card detail', () => {
-  it('shows a spinner until details arrive, and asks for them on mount', async () => {
-    const { store, onRender } = setup(undefined);
+  it('shows a spinner until details arrive', async () => {
+    const { store } = setup(undefined);
 
-    expect(onRender).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Not Found')).toBeNull();
     expect(document.querySelector('[part="container"] svg')).toBeTruthy();
 
@@ -165,9 +150,7 @@ describe('card detail', () => {
   });
 
   it('works on pages without a shimmering element', () => {
-    setup(anime({ mediaListEntry: { progress: 1 } }), {
-      getShimmeringElement: undefined,
-    });
+    setup(anime({ mediaListEntry: { progress: 1 } }), { withShimmer: false });
 
     expect(screen.getByTitle('Watching')).toBeTruthy();
   });

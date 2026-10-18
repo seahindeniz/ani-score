@@ -53,7 +53,8 @@
     "@solidjs/router": "1.0.0",
     "@urql/core": "6.0.3",
     "minisearch": "7.2.0",
-    "solid-js": "^1.9.17"
+    "solid-js": "^1.9.17",
+    "valibot": "1.5.0"
   },
   "devDependencies": {
     "@babel/core": "7.29.0",
@@ -74,6 +75,7 @@
     "@types/webextension-polyfill": "^0.12.6",
     "@unocss/preset-rem-to-px": "^66.11.0",
     "@unocss/reset": "^66.11.0",
+    "@valibot/to-json-schema": "1.8.0",
     "babel-preset-solid": "1.9.16",
     "chrome-types": "0.1.457",
     "class-variance-authority": "0.7.1",

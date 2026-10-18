@@ -7,7 +7,12 @@ bun = true
 root = "src"
 preload = ["./test/preload.ts"]
 coverageSkipTestFiles = true
-coveragePathIgnorePatterns = ["src/gql/**", "src/**/__tests__/**", "test/**"]
+coveragePathIgnorePatterns = [
+  "src/gql/**",
+  "src/**/__tests__/**",
+  "test/**",
+  "scripts/**",
+]
 # Bun measures lines and functions (not branches)
 coverageThreshold = { lines = 1.0, functions = 1.0 }
 coverageReporter = ["text", "lcov"]

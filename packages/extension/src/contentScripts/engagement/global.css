@@ -1,15 +1,4 @@
-.v3-poster-rail {
-  gap: 30px;
-
-  & > :is(.v3-episode-card, .v3-series-card) {
-    flex-basis: 220px;
-  }
-}
-
-.v3-latest-grid {
-  gap: 30px;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
-}
+/* Page-level styles every site gets, before its own CSS */
 
 @keyframes ani-score-shimmer {
   0%,
@@ -30,12 +19,7 @@
   }
 }
 
-// Transparent full-page popunder click-catcher injected by an ad script; it swallows hover events meant for the cards
-#dontfoid {
-  pointer-events: none !important;
-}
-
-// Keep popovers above the fixed `.v3-sidebar` (z-index: 80)
+/* Keep popovers above the site's sticky elements */
 .ani-score-portal-root {
   position: absolute;
   top: 0;
@@ -46,5 +30,4 @@
 .ani-score-watching {
   position: relative;
   animation: ani-score-shimmer 3s ease-in-out infinite;
-  border-radius: 8px;
 }

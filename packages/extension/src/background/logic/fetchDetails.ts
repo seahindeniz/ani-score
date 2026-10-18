@@ -2,7 +2,7 @@ import type { TypedDocumentNode } from '@urql/core';
 import type { FieldNode } from 'graphql';
 import { Kind } from 'graphql';
 
-import type { EpisodeCard } from '~/contentScripts/site/base';
+import type { EpisodeCard } from '~/contentScripts/sites/types';
 import type {
   BatchAnimeTemplateQuery,
   BatchAnimeTemplateQueryVariables,

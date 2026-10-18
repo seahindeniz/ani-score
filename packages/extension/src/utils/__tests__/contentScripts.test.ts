@@ -37,13 +37,15 @@ describe('getContentScriptScope', () => {
 });
 
 describe('contentScriptPaths', () => {
-  it('lists the message gateway first, then the engagement and site scripts, without the widget', () => {
+  it('lists the message gateway first, then the engagement script, without the widget', () => {
     const directories = contentScriptPaths.map((script) => script.directory);
 
     expect(directories[0]).toBe('root/messageGateway');
     expect(directories).toContain('engagement');
-    expect(directories).toContain('site/anizm');
-    expect(directories).toContain('site/tranimeizle');
+    // Sites are configs, read by the engagement script rather than scripts of their own
+    expect(directories.some((directory) => directory.startsWith('site/'))).toBe(
+      false,
+    );
     expect(directories).not.toContain('widget');
   });
 });

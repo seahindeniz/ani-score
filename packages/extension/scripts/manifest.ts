@@ -1,50 +1,25 @@
-import { join } from 'node:path';
-
 import type { Manifest } from 'webextension-polyfill';
 
 import type PkgType from '../package.json';
 import { argv, isDev, isFirefox, log, port, r } from '../scripts/utils';
 import { contentScriptPaths } from '../src/utils/contentScripts';
+import { loadBundledSites } from './sites';
 
 export async function getManifest() {
   const pkg = (await Bun.file(r('package.json')).json()) as typeof PkgType;
 
-  const contentScripts = [
-    ...(await Promise.all(
-      contentScriptPaths.map(async (entry) => {
-        let config = {
-          urlPatterns: ['<all_urls>'] as unknown as `*://${string}`[],
-        };
-        const filePath = join('../', entry.relativeDir, 'meta')
-          .replace(/\.(ts|tsx)$/, '')
-          .replace(/\\/g, '/');
-
-        try {
-          const moduleContent = await import(filePath);
-
-          if (moduleContent?.meta) {
-            config = moduleContent.meta;
-          }
-        } catch {
-          //
-        }
-        return {
-          matches: config.urlPatterns,
-          js: [`dist/contentScripts/${entry.directory}/${entry.name}`],
-        };
-      }),
-    )),
-  ];
-  const contentScriptsByScope = Object.groupBy(contentScripts, (item) =>
-    item.matches.includes('<all_urls>' as `*://${string}`) ? 'broad' : 'other',
-  );
+  // Sites the extension may access from install; the engagement script picks the config matching the page
   const websitePatterns = Array.from(
-    new Set(contentScriptsByScope.other?.flatMap((item) => item.matches) || []),
+    new Set(
+      loadBundledSites()
+        .filter((site) => site.access === 'required')
+        .flatMap((site) => site.matches),
+    ),
   );
-
-  contentScriptsByScope.broad?.forEach((item) => {
-    item.matches = websitePatterns;
-  });
+  const contentScripts = contentScriptPaths.map((entry) => ({
+    matches: websitePatterns,
+    js: [`dist/contentScripts/${entry.directory}/${entry.name}`],
+  }));
 
   const manifest: Manifest.WebExtensionManifest = {
     manifest_version: 3,

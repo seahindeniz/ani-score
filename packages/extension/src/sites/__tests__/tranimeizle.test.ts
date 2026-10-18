@@ -1,14 +1,16 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 
+import sites from 'virtual:ani-score/sites';
+
+import { collectCards, pageMatches } from '~/contentScripts/sites/extract';
+import { toThemeSource } from '~/contentScripts/sites/theme';
+import type { EpisodeCard } from '~/contentScripts/sites/types';
 import type { ResolvedTheme } from '~/logic/setTheme';
 import { wait } from '~/utils/wait';
 
-import type { EpisodeCard } from '../base';
-import { config } from '../tranimeizle/main';
-import { meta } from '../tranimeizle/meta';
-
-const [listingPage] = config.listingPages;
-const followSiteTheme = config.theme as (
+const config = sites.find((site) => site.id === 'tranimeizle')!;
+const [listingPage] = config.pages;
+const followSiteTheme = toThemeSource(config.theme) as (
   set: (theme: ResolvedTheme) => void,
 ) => void;
 
@@ -19,25 +21,39 @@ function block(text: string | null) {
 function cardsFor(...texts: (string | null)[]) {
   document.body.innerHTML = `<div class="flex-wrap-layout">${texts.map(block).join('')}</div>`;
 
-  return listingPage
-    .episodeCards()
-    .map(
-      (item) =>
-        item && { title: item.title, episodeNumber: item.episodeNumber },
-    );
+  return collectCards([listingPage]).map(({ title, episodeNumber }) => ({
+    title,
+    episodeNumber,
+  }));
 }
 
 afterEach(() => {
   history.replaceState(null, '', '/');
   localStorage.clear();
+  document.body.className = '';
 });
 
 describe('tranimeizle', () => {
-  it('is injected on every www.tranimeizle.live page', () => {
-    expect(meta.urlPatterns).toEqual([
+  it('is injected on every www.tranimeizle.live page, from install', () => {
+    expect(config.matches).toEqual([
       '*://www.tranimeizle.live/',
       '*://www.tranimeizle.live/*',
     ]);
+    expect(config.access).toBe('required');
+  });
+
+  it('keeps its layout fixes', () => {
+    // The grid that moves the details below the poster, with the light and dark borders
+    expect(config.css).toContain(
+      '.flex-wrap-layout > .flx-block:has(> .ani-score) {',
+    );
+    expect(config.css).toContain(
+      'body.light-mode & > .ani-score::part(container) {',
+    );
+    expect(config.css).toContain("div[id^='up-c-'],");
+    expect(config.css).toContain(
+      '.theiaStickySidebar .post-body .flex-wrap-layout {',
+    );
   });
 
   it('applies to the home page and the paginated new episodes list', () => {
@@ -51,7 +67,7 @@ describe('tranimeizle', () => {
 
     for (const [path, valid] of cases) {
       history.replaceState(null, '', path);
-      expect(listingPage.isValidPage()).toBe(valid);
+      expect(pageMatches(listingPage, location)).toBe(valid);
     }
   });
 
@@ -83,17 +99,13 @@ describe('tranimeizle', () => {
   });
 
   it('skips cards without a readable episode or title', () => {
-    expect(cardsFor(null, 'Frieren Fragman İzle', '5. Bölüm İzle')).toEqual([
-      undefined,
-      undefined,
-      undefined,
-    ]);
+    expect(cardsFor(null, 'Frieren Fragman İzle', '5. Bölüm İzle')).toEqual([]);
   });
 
   it('renders details before the bar and shimmers the poster link', () => {
     cardsFor('Frieren 5. Bölüm İzle');
 
-    const [episodeCard] = listingPage.episodeCards() as EpisodeCard[];
+    const [episodeCard] = collectCards([listingPage]) as [EpisodeCard];
     const container = document.createElement('div');
 
     episodeCard.render(container);
@@ -101,8 +113,8 @@ describe('tranimeizle', () => {
     expect(container.nextElementSibling).toBe(
       episodeCard.element.querySelector('.bar'),
     );
-    expect(listingPage.getShimmeringElement!(episodeCard)).toBe(
-      episodeCard.element.querySelector('a.news-image'),
+    expect(episodeCard.shimmeringElement).toBe(
+      episodeCard.element.querySelector<HTMLElement>('a.news-image'),
     );
   });
 

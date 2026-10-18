@@ -6,6 +6,8 @@ import presetTypeScript from '@babel/preset-typescript';
 import presetSolid from 'babel-preset-solid';
 import type { BunPlugin } from 'bun';
 
+import { bundledSitesModule, sitesModuleId } from '../scripts/sites';
+
 const srcDir = join(import.meta.dir, '../src');
 
 const sourceFiles = Array.from(new Bun.Glob('**/*.{ts,tsx}').scanSync(srcDir))
@@ -60,6 +62,10 @@ export const viteCompatPlugin: BunPlugin = {
     }
 
     build.module('uno.css', () => ({ loader: 'js', contents: '' }));
+    build.module(sitesModuleId, () => ({
+      loader: 'js',
+      contents: bundledSitesModule(),
+    }));
     // Vite's HMR client, which only the dev server can serve; records the load so tests can check it
     build.module('/@vite/client', () => ({
       loader: 'js',

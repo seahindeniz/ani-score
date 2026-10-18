@@ -18,6 +18,7 @@ import {
   r,
   targetBrowser,
 } from './scripts/utils.ts';
+import { bundledSitesPlugin } from './scripts/vite-plugin-sites.ts';
 import unoConfig from './unocss.config.ts';
 
 // Vite runs on Bun through the `node` alias, where Bun doesn't load `.env` itself.
@@ -45,6 +46,7 @@ export const sharedConfig: UserConfig = {
     __TARGET_BROWSER__: JSON.stringify(targetBrowser),
   },
   plugins: [
+    bundledSitesPlugin(),
     solid({
       solid: {
         delegateEvents: false,

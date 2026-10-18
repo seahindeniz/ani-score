@@ -42,7 +42,7 @@ you get started with development.
 
 ## Project Structure
 
-- `src/contentScripts/site/` - Site-specific implementations
+- `src/sites/` - Site configs (one folder per supported site)
 - `src/background/` - Background script logic
 - `src/popup/` - Extension popup interface
 - `src/sidepanel/` - Side panel interface
@@ -51,22 +51,23 @@ you get started with development.
 
 To add support for a new anime streaming site or database:
 
-1. **Clone the existing implementation**
+A site is a config, not code: a folder in `packages/extension/src/sites/`.
+
+1. **Copy an existing config**
 
    ```bash
-   cp -r src/contentScripts/site/anizm src/contentScripts/site/your-site-name
+   cp -r packages/extension/src/sites/anizm packages/extension/src/sites/your-site-id
    ```
 
-2. **Update the site configuration**
-   - Modify `meta.ts` to match your target website's URL patterns
-   - Update `main.ts` to implement site-specific logic for finding anime cards
-   - Customize `global.scss` for any required styling
+2. **Edit `site.json`** (editors autocomplete it from `site.schema.json`)
+   - `matches` - URL match patterns where the extension should activate
+   - `pages` - which pages have episode cards, and for each card type: the
+     card's selector, where its title, episode (and season) are read from,
+     where the details are inserted, and which element shimmers
+   - `theme` - a fixed theme, or a condition that tells when the site is dark
 
-3. **Key files to modify**:
-   - `meta.ts` - Define URL patterns where the extension should activate
-   - `main.ts` - Implement the `SiteBaseConfig` interface to identify anime
-     cards and episodes
-   - `global.scss` - Add any custom styling needed for the site
+3. **Edit `style.css`** (optional) for layout fixes, such as the gap between
+   cards. It's plain CSS with native nesting.
 
 4. **Testing your implementation**
    - Run `bun run dev` to start development mode

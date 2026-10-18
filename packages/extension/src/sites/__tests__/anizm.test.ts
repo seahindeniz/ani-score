@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 
-import { config } from '../anizm/main';
-import { meta } from '../anizm/meta';
-import type { EpisodeCard, ListingPage } from '../base';
+import sites from 'virtual:ani-score/sites';
 
-const [newEpisodesPage, homePage] = config.listingPages;
+import { collectCards, pageMatches } from '~/contentScripts/sites/extract';
+import type { EpisodeCard } from '~/contentScripts/sites/types';
+
+const config = sites.find((site) => site.id === 'anizm')!;
+const [newEpisodesPage, homePage] = config.pages;
 
 function card(
   title: string | null,
@@ -28,8 +30,14 @@ const unreadableCards = [
   card('', '2. Bölüm '),
 ].join('');
 
-function expectRendersAfterTitle(page: ListingPage) {
-  const [episodeCard] = page.episodeCards() as EpisodeCard[];
+const read = (page: typeof homePage) =>
+  collectCards([page]).map(({ title, episodeNumber }) => ({
+    title,
+    episodeNumber,
+  }));
+
+function expectRendersAfterTitle(page: typeof homePage) {
+  const [episodeCard] = collectCards([page]) as [EpisodeCard];
   const container = document.createElement('div');
 
   episodeCard.render(container);
@@ -37,8 +45,8 @@ function expectRendersAfterTitle(page: ListingPage) {
   expect(episodeCard.element.querySelector('h3')!.nextElementSibling).toBe(
     container,
   );
-  expect(page.getShimmeringElement!(episodeCard)).toBe(
-    episodeCard.element.querySelector('.v3-poster-frame'),
+  expect(episodeCard.shimmeringElement).toBe(
+    episodeCard.element.querySelector<HTMLElement>('.v3-poster-frame'),
   );
 }
 
@@ -47,34 +55,34 @@ afterEach(() => {
 });
 
 describe('anizm', () => {
-  it('is injected on every anizm.net page', () => {
-    expect(meta.urlPatterns).toEqual(['*://anizm.net/', '*://anizm.net/*']);
+  it('is injected on every anizm.net page, from install', () => {
+    expect(config.matches).toEqual(['*://anizm.net/', '*://anizm.net/*']);
+    expect(config.access).toBe('required');
   });
 
   it('uses the dark theme like the site', () => {
     expect(config.theme).toBe('dark');
   });
 
+  it('keeps its grid gaps, ad overlay fix and shimmer corners', () => {
+    expect(config.css).toContain('.v3-latest-grid {');
+    expect(config.css).toContain('#dontfoid {');
+    expect(config.css).toContain('border-radius: 8px;');
+  });
+
   describe('new episodes page', () => {
     it('only applies to /yeniler', () => {
       history.replaceState(null, '', '/yeniler');
-      expect(newEpisodesPage.isValidPage()).toBe(true);
+      expect(pageMatches(newEpisodesPage, location)).toBe(true);
 
       history.replaceState(null, '', '/');
-      expect(newEpisodesPage.isValidPage()).toBe(false);
+      expect(pageMatches(newEpisodesPage, location)).toBe(false);
     });
 
     it('reads title and episode number from each card', () => {
       document.body.innerHTML = `<div class="v3-latest-grid">${card('Sousou no Frieren', '5. Bölüm ')}${card('One Piece', '1120. Bölüm ')}</div>`;
 
-      expect(
-        newEpisodesPage
-          .episodeCards()
-          .map(
-            (item) =>
-              item && { title: item.title, episodeNumber: item.episodeNumber },
-          ),
-      ).toEqual([
+      expect(read(newEpisodesPage)).toEqual([
         { title: 'Sousou no Frieren', episodeNumber: 5 },
         { title: 'One Piece', episodeNumber: 1120 },
       ]);
@@ -83,13 +91,7 @@ describe('anizm', () => {
     it('skips cards it cannot read', () => {
       document.body.innerHTML = `<div class="v3-latest-grid">${unreadableCards}</div>`;
 
-      expect(newEpisodesPage.episodeCards()).toEqual([
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-      ]);
+      expect(read(newEpisodesPage)).toEqual([]);
     });
 
     it('renders details after the title and shimmers the poster', () => {
@@ -101,16 +103,16 @@ describe('anizm', () => {
 
   describe('home page', () => {
     it('only applies to /', () => {
-      expect(homePage.isValidPage()).toBe(true);
+      expect(pageMatches(homePage, location)).toBe(true);
 
       history.replaceState(null, '', '/yeniler');
-      expect(homePage.isValidPage()).toBe(false);
+      expect(pageMatches(homePage, location)).toBe(false);
     });
 
     it('reads episode and series cards from the poster rails', () => {
       document.body.innerHTML = `<div class="v3-poster-rail">${card('Frieren', '5. Bölüm ')}${card('Dandadan', '12. Bölüm ', 'article', 'v3-series-card')}${card('Other', '1. Bölüm ', 'div')}</div>`;
 
-      expect(homePage.episodeCards().map((item) => item?.title)).toEqual([
+      expect(read(homePage).map((item) => item.title)).toEqual([
         'Frieren',
         'Dandadan',
       ]);
@@ -119,13 +121,7 @@ describe('anizm', () => {
     it('skips cards it cannot read', () => {
       document.body.innerHTML = `<div class="v3-poster-rail">${unreadableCards}</div>`;
 
-      expect(homePage.episodeCards()).toEqual([
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-      ]);
+      expect(read(homePage)).toEqual([]);
     });
 
     it('renders details after the title and shimmers the poster', () => {
