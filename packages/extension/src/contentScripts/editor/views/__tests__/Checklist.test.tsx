@@ -196,7 +196,7 @@ describe('Checklist', () => {
     expect(row('Episode cards').textContent).toContain('None on this page');
 
     fireEvent.click(row('Pages and addresses'));
-    fireEvent.click(button('Remove this page'));
+    fireEvent.click(button("Delete this page's setup"));
 
     expect(config().pages).toHaveLength(1);
 

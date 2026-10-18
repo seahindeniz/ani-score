@@ -211,7 +211,12 @@ const Page = v.strictObject({
   name: v.optional(v.string()),
   match: v.strictObject({
     path: v.optional(
-      v.pipe(RegExpSource, v.description('Tested against location.pathname')),
+      v.pipe(
+        v.union([RegExpSource, v.pipe(v.array(RegExpSource), v.minLength(1))]),
+        v.description(
+          'Tested against location.pathname; a list applies to the paths any of them matches',
+        ),
+      ),
     ),
     search: v.optional(
       v.pipe(RegExpSource, v.description('Tested against location.search')),

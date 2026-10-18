@@ -220,6 +220,9 @@ describe('pageMatches', () => {
     expect(matches({})).toBe(true);
     expect(matches({ path: '^/episodes/latest/\\d+$' })).toBe(true);
     expect(matches({ path: '^/$' })).toBe(false);
+    // A list of paths applies where any of them matches
+    expect(matches({ path: ['^/$', '^/episodes/latest/\\d+$'] })).toBe(true);
+    expect(matches({ path: ['^/$', '^/series$'] })).toBe(false);
     expect(matches({ search: 'sort=new' })).toBe(true);
     expect(matches({ search: 'sort=old' })).toBe(false);
     expect(matches({ selector: 'main.episodes' })).toBe(true);

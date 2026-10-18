@@ -44,6 +44,11 @@ function setUp(match: SitePage['match'], advanced = true) {
 const radio = (name: RegExp) =>
   screen.getByRole('radio', { name }) as HTMLInputElement;
 const textbox = (name: RegExp) => screen.getByRole('textbox', { name });
+const addresses = () =>
+  Array.from(
+    screen.getByRole('list', { name: 'Addresses' }).children,
+    (item) => item.textContent,
+  );
 
 beforeEach(() => history.replaceState(null, '', '/yeniler/2'));
 
@@ -53,31 +58,61 @@ afterEach(() => {
 });
 
 describe('PagesPart', () => {
-  it('shows the scores on pages like this one, or on every page', () => {
+  it('shows the scores on some pages, or on every page', () => {
     const { page } = setUp({}, false);
 
     expect(screen.getByText('Show scores on')).toBeTruthy();
     expect(radio(/Every page on example.com/).checked).toBe(true);
-    expect(radio(/Pages like this one/).parentElement!.textContent).toContain(
-      'example.com/yeniler/2 and similar addresses',
-    );
+    expect(screen.queryByRole('list', { name: 'Addresses' })).toBeNull();
 
-    fireEvent.click(radio(/Pages like this one/));
+    fireEvent.click(radio(/Some pages/));
 
     expect(page().match).toEqual({ path: '^/yeniler/\\d+$' });
+    expect(addresses()).toEqual(['example.com/yeniler/#Includes this page']);
+    expect(screen.getByText('# stands for any number.')).toBeTruthy();
+    // The only address can't go: that would be every page
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
 
     fireEvent.click(radio(/Every page/));
 
     expect(page().match).toEqual({});
   });
 
-  it('keeps pages set up by hand, and warns when they leave out this one', () => {
-    setUp({ path: '^/other$' });
+  it('lists several addresses, adds this page to them, and removes them', () => {
+    const { page } = setUp({ path: ['^/$', '^/series/[a-z-]+$'] }, false);
 
-    expect(radio(/Pages you set up/).checked).toBe(true);
+    expect(addresses()).toEqual(['example.com/', '^/series/[a-z-]+$']);
+    expect(screen.queryByText('# stands for any number.')).toBeNull();
     expect(screen.getByRole('alert').textContent).toContain(
       "don't include the one you're on",
     );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add this page' }));
+
+    expect(page().match.path).toEqual([
+      '^/$',
+      '^/series/[a-z-]+$',
+      '^/yeniler/\\d+$',
+    ]);
+    expect(screen.queryByRole('button', { name: 'Add this page' })).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove ^/series/[a-z-]+$' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove example.com/' }),
+    );
+
+    // One address stays a string
+    expect(page().match.path).toBe('^/yeniler/\\d+$');
+  });
+
+  it('keeps pages set up by other means than their address', () => {
+    setUp({ selector: '.nothing' });
+
+    expect(radio(/Some pages/).checked).toBe(true);
+    expect(screen.queryByRole('list', { name: 'Addresses' })).toBeNull();
   });
 
   it('edits the page and the site under Advanced', async () => {
@@ -87,7 +122,16 @@ describe('PagesPart', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
     fireEvent.input(textbox(/^Page name/), { target: { value: 'Latest' } });
-    fireEvent.input(textbox(/^Path/), { target: { value: '^/yeniler' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add a path' }));
+    fireEvent.input(textbox(/^Path 1/), { target: { value: '^/yeniler' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add a path' }));
+    fireEvent.input(textbox(/^Path 2/), { target: { value: '^/[' } });
+
+    // An expression being typed includes nothing
+    expect(page().match.path).toEqual(['^/yeniler', '^/[']);
+    expect(screen.getAllByText('Includes this page')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove path 2' }));
     fireEvent.input(textbox(/^Query/), { target: { value: 'page=' } });
     fireEvent.input(textbox(/^Only while this exists/), {
       target: { value: 'main' },
@@ -108,7 +152,7 @@ describe('PagesPart', () => {
       matches: ['*://kitsune.me/*', '*://kitsune.tv/*'],
     });
 
-    for (const name of [/^Page name/, /^Path/, /^Query/, /^Only while/]) {
+    for (const name of [/^Page name/, /^Path 1/, /^Query/, /^Only while/]) {
       fireEvent.input(textbox(name), { target: { value: '' } });
     }
 
@@ -141,7 +185,11 @@ describe('pagesSummary', () => {
     const page = (match: SitePage['match']) => ({ ...site.pages[0], match });
 
     expect(pagesSummary(page({ path: '^/yeniler/\\d+$' }))).toEqual({
-      text: 'example.com/yeniler/2 and similar',
+      text: 'example.com/yeniler/#',
+      status: 'ok',
+    });
+    expect(pagesSummary(page({ path: ['^/$', '^/yeniler/\\d+$'] }))).toEqual({
+      text: 'example.com/ and 1 more',
       status: 'ok',
     });
     expect(pagesSummary(page({}))).toEqual({

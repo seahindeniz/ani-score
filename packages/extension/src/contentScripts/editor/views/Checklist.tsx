@@ -320,7 +320,7 @@ export const Checklist: Component<ChecklistProps> = (props) => {
             class="self-start"
             onClick={removePage}
           >
-            Remove this page
+            Delete this page's setup
           </Button>
         </Show>
       </Match>

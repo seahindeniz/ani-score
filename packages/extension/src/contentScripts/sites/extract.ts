@@ -135,7 +135,8 @@ export function pageMatches(page: SitePage, location: Location) {
   const { path, search, selector } = page.match;
 
   return (
-    (!path || regExp(path).test(location.pathname))
+    (!path
+      || [path].flat().some((source) => regExp(source).test(location.pathname)))
     && (!search || regExp(search).test(location.search))
     && (!selector || document.querySelector(selector) != null)
   );

@@ -134,9 +134,21 @@
             "type": "object",
             "properties": {
               "path": {
-                "type": "string",
-                "minLength": 1,
-                "description": "Tested against location.pathname"
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  }
+                ],
+                "description": "Tested against location.pathname; a list applies to the paths any of them matches"
               },
               "search": {
                 "type": "string",
