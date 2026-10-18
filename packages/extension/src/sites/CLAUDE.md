@@ -34,7 +34,8 @@ something the schema can't express, add it to the extension: a named transform i
 
 Users build configs on the site itself: the context menu's "Integrate this site with AniScore"
 (`background/logic/editorEntry.ts`) asks for access to the site, then injects `contentScripts/editor/main.js` (built,
-but not in the manifest; see `injectedScriptPaths`). The editor is a floating panel in a shadow root (`views/App.tsx`).
+but not in the manifest; see `injectedScriptPaths`). The side panel's edit button does the same through `editSite` in
+`logic/editor.ts`, on an open tab of the site or a new one. The editor is a floating panel in a shadow root (`views/App.tsx`).
 On a site without a setup it runs the guided setup (`views/Setup.tsx`), one step at a time; on a site with one it asks
 first (`views/AlreadySetUp.tsx`), then opens the editor (`views/Checklist.tsx`) or starts the setup over. Both show the
 same parts (`views/parts/`): the guided controls, plus each part's "Advanced" settings in the editor. Picking outlines

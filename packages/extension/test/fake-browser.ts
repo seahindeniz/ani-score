@@ -201,14 +201,35 @@ function createFakeBrowser() {
     tabs: {
       create: mock(async (properties: Record<string, unknown>) => ({
         id: 1,
+        windowId: 1,
+        status: 'loading',
         ...properties,
       })),
+      // Resolves with the open tabs; set them with `mockResolvedValueOnce`
+      query: mock(
+        async (
+          _query: Record<string, unknown>,
+        ): Promise<
+          { id: number; windowId: number; active: boolean; url?: string }[]
+        > => [],
+      ),
+      update: mock(async (id: number, properties: Record<string, unknown>) => ({
+        id,
+        ...properties,
+      })),
+      onUpdated: createEvent(),
       executeScript: mock(
         async (_tabId: number, _details: unknown): Promise<unknown[]> => [],
       ),
     },
     notifications: {
       create: mock(async (id: string, _options: unknown) => id),
+    },
+    windows: {
+      update: mock(async (id: number, properties: Record<string, unknown>) => ({
+        id,
+        ...properties,
+      })),
     },
     webNavigation: {
       onCommitted: createEvent(),
@@ -244,6 +265,7 @@ export function resetFakeBrowser() {
     runtime,
     action,
     tabs,
+    windows,
     notifications,
     webNavigation,
     sidePanel,
@@ -262,6 +284,7 @@ export function resetFakeBrowser() {
     runtime.onMessage,
     runtime.onInstalled,
     runtime.onStartup,
+    tabs.onUpdated,
     webNavigation.onCommitted,
     permissions.onAdded,
     permissions.onRemoved,
@@ -278,6 +301,7 @@ export function resetFakeBrowser() {
     runtime.onInstalled,
     action,
     tabs,
+    windows,
     notifications,
     webNavigation.onCommitted,
     sidePanel,

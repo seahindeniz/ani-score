@@ -4,13 +4,19 @@ import {
   createResource,
   createSignal,
   For,
-  Match,
   onCleanup,
   Show,
-  Switch,
 } from 'solid-js';
 import bundledSites from 'virtual:ani-score/sites';
 import browser from 'webextension-polyfill';
+import LucideDownload from '~icons/lucide/download';
+import LucideEllipsis from '~icons/lucide/ellipsis';
+import LucidePencil from '~icons/lucide/pencil';
+import LucidePower from '~icons/lucide/power';
+import LucidePowerOff from '~icons/lucide/power-off';
+import LucideShare2 from '~icons/lucide/share-2';
+import LucideTrash2 from '~icons/lucide/trash-2';
+import LucideUpload from '~icons/lucide/upload';
 
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
@@ -22,6 +28,13 @@ import {
   CardTitle,
 } from '~/components/ui/card';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '~/components/ui/dropdown-menu';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -31,6 +44,7 @@ import {
 } from '~/components/ui/select';
 import type { UserSite } from '~/logic';
 import { useUserSitesStore } from '~/logic';
+import { editSite } from '~/logic/editor';
 import { matchPatternFormat } from '~/sites/matchPattern';
 import { resolveSites, siteFingerprint } from '~/sites/resolveSites';
 import type { SiteConfig } from '~/sites/schema';
@@ -75,7 +89,7 @@ type Message = { kind: 'success' | 'error'; text: string };
 
 /**
  * The sites AniScore works on: bundled ones, some always on and others turned on by the user, and the user's own
- * configs. Turning a site on asks the browser for access to it.
+ * setups. Turning a site on asks the browser for access to it, and editing one opens the editor on the site.
  */
 export const Sites: Component = () => {
   const store = useUserSitesStore();
@@ -99,6 +113,8 @@ export const Sites: Component = () => {
   const [importing, setImporting] = createSignal(false);
   const [draft, setDraft] = createSignal('');
   const [message, setMessage] = createSignal<Message>();
+  // The site whose removal waits for confirmation; kept here, as the rows are drawn again when access changes
+  const [confirmingId, setConfirmingId] = createSignal<string>();
 
   const onPermissionsChanged = () => setPermissionChanges((count) => count + 1);
 
@@ -171,8 +187,8 @@ export const Sites: Component = () => {
     setMessage({
       kind: 'success',
       text: link.pasteConfig
-        ? `${site.name}'s config is too long for a link, so it's on your clipboard: paste it into the form's Config field.`
-        : `Opened a GitHub issue with ${site.name}'s config.`,
+        ? `${site.name}'s setup is too long for a link, so it's on your clipboard: paste it into the form's Config field.`
+        : `Opened a GitHub issue with ${site.name}'s setup.`,
     });
   }
 
@@ -226,6 +242,27 @@ export const Sites: Component = () => {
   const onRows = () => rows().filter((row) => row.on);
   const availableRows = () => rows().filter((row) => !row.on);
 
+  // Opens the editor on the site, on its open tab or a new one; it asks for access right from the click
+  function edit(site: SiteConfig) {
+    const [host] = hostsOf(site);
+
+    void editSite(site, `https://${host}/`)
+      .then((opened) => {
+        if (!opened) {
+          setMessage({
+            kind: 'error',
+            text: `AniScore needs access to ${host} to open its editor there.`,
+          });
+        }
+      })
+      .catch(() =>
+        setMessage({
+          kind: 'error',
+          text: `The editor didn't open on ${host}. Open one of its pages, then try again.`,
+        }),
+      );
+  }
+
   const SiteRow: Component<{ row: ReturnType<typeof rowOf> }> = (props) => {
     const site = () => props.row.site;
     const bundled = () => bundledById.get(site().id);
@@ -233,16 +270,27 @@ export const Sites: Component = () => {
       props.row.entry?.basedOn
       && bundled()
       && props.row.entry.basedOn !== siteFingerprint(bundled()!);
-    const [confirming, setConfirming] = createSignal(false);
+    const confirming = () => confirmingId() === site().id;
+    // A site that's always on and isn't the user's has nothing more to do
+    const hasMenu = () => !props.row.required || props.row.entry;
 
     return (
-      <li class="flex flex-col gap-1.5 py-2.5" data-site={site().id}>
+      <li class="flex flex-col gap-2 py-3" data-site={site().id}>
         <div class="flex items-center gap-3">
+          <span
+            aria-hidden="true"
+            class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-semibold text-muted-foreground"
+          >
+            {site().name.charAt(0).toUpperCase()}
+          </span>
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-1.5">
               <span class="truncate text-sm font-medium">{site().name}</span>
               <Show when={props.row.entry}>
-                <Badge variant="secondary" class="px-1.5 py-0 text-[10px]">
+                <Badge
+                  variant="secondary"
+                  class="shrink-0 px-1.5 py-0 text-[10px]"
+                >
                   {bundled() ? 'Edited' : 'Yours'}
                 </Badge>
               </Show>
@@ -254,93 +302,126 @@ export const Sites: Component = () => {
               {hostsOf(site())[0]}
             </span>
           </div>
-          <Switch>
-            <Match when={props.row.required}>
-              <span class="shrink-0 text-xs text-muted-foreground">
-                Always on
-              </span>
-            </Match>
-            <Match when={props.row.on}>
-              <Button
-                variant="quiet"
-                size="inline"
-                aria-label={`Turn off ${site().name}`}
-                onClick={() => turnOff(site())}
+          <Show when={props.row.required}>
+            <span class="shrink-0 text-xs text-muted-foreground">
+              Always on
+            </span>
+          </Show>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="size-8 shrink-0 text-muted-foreground"
+            aria-label={`Edit ${site().name}`}
+            title="Edit on the site"
+            onClick={() => edit(site())}
+          >
+            <LucidePencil aria-hidden="true" />
+          </Button>
+          <Show
+            when={hasMenu()}
+            // Keeps the edit buttons of all rows in line
+            fallback={<span aria-hidden="true" class="size-8 shrink-0" />}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                as={Button}
+                variant="ghost"
+                size="icon"
+                class="size-8 shrink-0 text-muted-foreground"
+                aria-label={`More for ${site().name}`}
               >
-                Turn off
-              </Button>
-            </Match>
-            <Match when={!props.row.on}>
-              <span class="shrink-0 text-xs text-muted-foreground">Off</span>
-            </Match>
-          </Switch>
+                <LucideEllipsis aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <Show when={!props.row.required}>
+                  <Show
+                    when={props.row.on}
+                    fallback={
+                      <DropdownMenuItem onSelect={() => turnOn(site())}>
+                        <LucidePower aria-hidden="true" />
+                        Turn on
+                      </DropdownMenuItem>
+                    }
+                  >
+                    <DropdownMenuItem onSelect={() => turnOff(site())}>
+                      <LucidePowerOff aria-hidden="true" />
+                      Turn off
+                    </DropdownMenuItem>
+                  </Show>
+                </Show>
+                <Show when={props.row.entry}>
+                  {(entry) => (
+                    <>
+                      <Show when={!props.row.required}>
+                        <DropdownMenuSeparator />
+                      </Show>
+                      <DropdownMenuItem onSelect={() => void share(site())}>
+                        <LucideShare2 aria-hidden="true" />
+                        Share with everyone
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          download(`${site().id}.json`, entry().config)
+                        }
+                      >
+                        <LucideDownload aria-hidden="true" />
+                        Export
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        destructive
+                        onSelect={() => setConfirmingId(site().id)}
+                      >
+                        <LucideTrash2 aria-hidden="true" />
+                        {bundled() ? 'Reset to built-in' : 'Delete'}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </Show>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Show>
         </div>
         <Show when={outdated()}>
-          <p class="m-0 text-xs text-warning-foreground">
+          <p class="m-0 pl-11 text-xs text-warning-foreground">
             The built-in version changed since you edited it.
           </p>
         </Show>
-        <Show when={props.row.entry}>
-          {(entry) => (
-            // Removing the user's own config can't be undone, so it takes a second click
-            <Show
-              when={confirming()}
-              fallback={
-                <div class="flex gap-3">
-                  <Button
-                    variant="quiet"
-                    size="inline"
-                    onClick={() => void share(site())}
-                  >
-                    Share
-                  </Button>
-                  <Button
-                    variant="quiet"
-                    size="inline"
-                    onClick={() =>
-                      download(`${site().id}.json`, entry().config)
-                    }
-                  >
-                    Export
-                  </Button>
-                  <Button
-                    variant="quiet"
-                    size="inline"
-                    onClick={() => setConfirming(true)}
-                  >
-                    {bundled() ? 'Reset to built-in' : 'Delete'}
-                  </Button>
-                </div>
-              }
-            >
-              <div class="flex flex-wrap items-center gap-x-3" role="group">
-                <span class="text-xs">
-                  {bundled()
-                    ? 'Drop your changes to this site?'
-                    : 'Delete your config for this site?'}
-                </span>
-                <Button
-                  variant="quiet"
-                  size="inline"
-                  class="text-destructive hover:text-destructive"
-                  onClick={() => remove(site())}
-                >
-                  {bundled() ? 'Reset' : 'Delete'}
-                </Button>
-                <Button
-                  variant="quiet"
-                  size="inline"
-                  onClick={() => setConfirming(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </Show>
-          )}
+        {/* Removing the user's own setup can't be undone, so it asks first */}
+        <Show when={confirming()}>
+          <div
+            role="group"
+            aria-label={`Confirm for ${site().name}`}
+            class="ml-11 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-solid border-border bg-muted/40 px-3 py-2"
+          >
+            <span class="flex-1 text-xs">
+              {bundled()
+                ? 'Drop your changes to this site?'
+                : 'Delete your setup for this site?'}
+            </span>
+            <div class="flex gap-1">
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => setConfirmingId(undefined)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="xs"
+                onClick={() => remove(site())}
+              >
+                {bundled() ? 'Reset' : 'Delete'}
+              </Button>
+            </div>
+          </div>
         </Show>
       </li>
     );
   };
+
+  const heading = 'm-0 text-xs font-medium text-muted-foreground';
 
   return (
     <Card class="w-full">
@@ -351,7 +432,7 @@ export const Sites: Component = () => {
           pages.
         </CardDescription>
       </CardHeader>
-      <CardContent class="flex flex-col gap-4">
+      <CardContent class="flex flex-col gap-5">
         <Show when={message()}>
           <p
             role="status"
@@ -365,8 +446,8 @@ export const Sites: Component = () => {
           </p>
         </Show>
         <Show when={onRows().length}>
-          <section aria-label="On">
-            <h3 class="m-0 text-xs font-medium text-muted-foreground">On</h3>
+          <section aria-label="On" class="flex flex-col">
+            <h3 class={heading}>On</h3>
             <ul class="m-0 list-none divide-y divide-border p-0">
               <For each={onRows()}>{(row) => <SiteRow row={row} />}</For>
             </ul>
@@ -375,11 +456,12 @@ export const Sites: Component = () => {
         <Show when={availableRows().length}>
           {/* Choosing a site turns it on; the choice is the click the browser needs to ask for access */}
           <Select<ReturnType<typeof rowOf>>
+            class="flex flex-col gap-2"
             options={availableRows()}
             optionValue={(row) => row.site.id}
             optionTextValue={(row) => row.site.name}
             value={null}
-            placeholder="Add a site"
+            placeholder="Choose a site to turn on"
             onChange={(row) => row && turnOn(row.site)}
             itemComponent={(item) => (
               <SelectItem item={item.item}>
@@ -392,7 +474,7 @@ export const Sites: Component = () => {
               </SelectItem>
             )}
           >
-            <SelectLabel class="sr-only">Add a site</SelectLabel>
+            <SelectLabel class={heading}>Add a site</SelectLabel>
             <SelectTrigger>
               {/* Nothing stays selected: a chosen site leaves this list for the one above */}
               <SelectValue />
@@ -400,12 +482,10 @@ export const Sites: Component = () => {
             <SelectContent class="max-h-72 overflow-y-auto" />
           </Select>
         </Show>
-        {/* The user's own configs that are off still need sharing, exporting and deleting */}
+        {/* The user's own setups that are off can still be edited, shared, exported and deleted */}
         <Show when={availableRows().some((row) => row.entry)}>
-          <section aria-label="Your configs">
-            <h3 class="m-0 text-xs font-medium text-muted-foreground">
-              Your configs
-            </h3>
+          <section aria-label="Your setups that are off" class="flex flex-col">
+            <h3 class={heading}>Your setups that are off</h3>
             <ul class="m-0 list-none divide-y divide-border p-0">
               <For each={availableRows().filter((row) => row.entry)}>
                 {(row) => <SiteRow row={row} />}
@@ -414,19 +494,17 @@ export const Sites: Component = () => {
           </section>
         </Show>
         <Show when={resolved().invalid.length}>
-          <section aria-label="Can't be used">
-            <h3 class="m-0 text-xs font-medium text-muted-foreground">
-              Can't be used
-            </h3>
+          <section aria-label="Can't be used" class="flex flex-col">
+            <h3 class={heading}>Can't be used</h3>
             <ul class="m-0 list-none divide-y divide-border p-0">
               <For each={resolved().invalid}>
                 {(invalid) => (
-                  <li class="flex flex-col gap-1 py-2.5">
+                  <li class="flex flex-col gap-1 py-3">
                     <span class="text-sm font-medium">
-                      {String(invalid.id ?? 'Unnamed config')}
+                      {String(invalid.id ?? 'Unnamed setup')}
                     </span>
                     <span class="text-xs text-error-foreground">
-                      It no longer matches the config format. Delete it, or
+                      It no longer matches the setup format. Delete it, or
                       import a fixed copy.
                     </span>
                     <details class="text-xs text-muted-foreground">
@@ -456,51 +534,55 @@ export const Sites: Component = () => {
             </ul>
           </section>
         </Show>
-        <Show
-          when={importing()}
-          fallback={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setImporting(true)}
-            >
-              Import a config
-            </Button>
-          }
-        >
-          <div class="flex flex-col gap-2">
-            <textarea
-              class="min-h-24 w-full rounded-md border border-input bg-transparent p-2 font-mono text-xs"
-              placeholder="Paste a site config (JSON)"
-              aria-label="Site config"
-              value={draft()}
-              onInput={(event) => setDraft(event.currentTarget.value)}
-            />
-            <div class="flex gap-2">
+        <div class="flex flex-col gap-3 border-t border-t-solid border-border pt-4">
+          <Show
+            when={importing()}
+            fallback={
               <Button
                 size="sm"
-                disabled={!draft().trim()}
-                onClick={importConfig}
+                variant="outline"
+                class="self-start"
+                onClick={() => setImporting(true)}
               >
-                Import
+                <LucideUpload aria-hidden="true" />
+                Import a setup
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setDraft('');
-                  setImporting(false);
-                }}
-              >
-                Cancel
-              </Button>
+            }
+          >
+            <div class="flex flex-col gap-2">
+              <textarea
+                class="min-h-24 w-full rounded-md border border-input bg-transparent p-2 font-mono text-xs"
+                placeholder="Paste a site setup (JSON)"
+                aria-label="Site setup"
+                value={draft()}
+                onInput={(event) => setDraft(event.currentTarget.value)}
+              />
+              <div class="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={!draft().trim()}
+                  onClick={importConfig}
+                >
+                  Import
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setDraft('');
+                    setImporting(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
-          </div>
-        </Show>
-        <p class="m-0 text-xs text-muted-foreground">
-          To add another site, right-click one of its pages and choose
-          “Integrate this site with AniScore”.
-        </p>
+          </Show>
+          <p class="m-0 text-xs leading-relaxed text-muted-foreground">
+            To add another site, right-click one of its pages and choose
+            “Integrate this site with AniScore”.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

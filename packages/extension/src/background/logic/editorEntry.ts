@@ -1,9 +1,7 @@
+import { injectEditor } from '~/logic/editor';
 import { logger } from '~/utils/logger';
 
 export const editorMenuId = 'ani-score-integrate-site';
-
-export const editorScript = 'dist/contentScripts/editor/main.js';
-export const gatewayScript = 'dist/contentScripts/root/messageGateway/main.js';
 
 /**
  * Opens the site editor on a tab. Called from a click, so it first asks for lasting access to the site, which the
@@ -17,19 +15,7 @@ export function openEditor(tabId: number, pageUrl: string) {
     .request({ origins: [`*://${hostname}/*`] })
     .catch((error: unknown) => logger.error(error));
 
-  return (async () => {
-    // The editor previews with AniScore's details, which talk to the background through the message gateway
-    const [{ result: hasGateway } = { result: false }] =
-      await browser.scripting.executeScript({
-        target: { tabId },
-        func: () => 'messageGateway' in window,
-      });
-
-    await browser.scripting.executeScript({
-      target: { tabId },
-      files: hasGateway ? [editorScript] : [gatewayScript, editorScript],
-    });
-  })().catch((error: unknown) => logger.error(error));
+  return injectEditor(tabId).catch((error: unknown) => logger.error(error));
 }
 
 /**

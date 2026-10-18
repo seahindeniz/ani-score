@@ -19,6 +19,7 @@ import bundledSites from 'virtual:ani-score/sites';
 
 import type { UserSite } from '~/logic';
 import { useUserSitesStore } from '~/logic';
+import { editorScript } from '~/logic/editor';
 import type { SiteConfig } from '~/sites/schema';
 
 import { fakeBrowser } from '../../../../../../test/fake-browser';
@@ -53,6 +54,7 @@ async function renderSites(userSites: UserSite[] = []) {
 const row = (id: string) =>
   document.querySelector<HTMLElement>(`[data-site="${id}"]`)!;
 
+// A button in the row, like the confirmation's
 const button = (id: string, name: string) =>
   Array.from(row(id).querySelectorAll('button')).find(
     (item) => item.textContent === name,
@@ -69,6 +71,20 @@ function press(element: HTMLElement) {
   fireEvent.pointerDown(element, { button: 0, pointerType: 'mouse' });
   fireEvent.pointerUp(element, { button: 0, pointerType: 'mouse' });
   fireEvent.click(element);
+}
+
+// The actions in a site's menu, which it leaves open
+async function menuOf(name: string) {
+  press(screen.getByRole('button', { name: `More for ${name}` }));
+
+  return (await screen.findAllByRole('menuitem')).map(
+    (item) => item.textContent,
+  );
+}
+
+async function choose(name: string, action: string) {
+  await menuOf(name);
+  press(screen.getByRole('menuitem', { name: action }));
 }
 
 // The sites the "Add a site" dropdown offers, by name; it's left open
@@ -93,11 +109,11 @@ async function addSite(name: string) {
 }
 
 function paste(json: string) {
-  const open = screen.queryByRole('button', { name: 'Import a config' });
+  const open = screen.queryByRole('button', { name: 'Import a setup' });
 
   if (open) fireEvent.click(open);
 
-  fireEvent.input(screen.getByLabelText('Site config'), {
+  fireEvent.input(screen.getByLabelText('Site setup'), {
     target: { value: json },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Import' }));
@@ -115,12 +131,15 @@ describe('sites', () => {
     await renderSites();
 
     expect(idsIn('On')).toEqual(['anizm', 'tranimeizle']);
-    // Built-in sites need no badge, and the always-on ones can't be turned off
-    expect(row('anizm').textContent).toBe('Anizmanizm.netAlways on');
+    // Built-in sites need no badge, and the always-on ones have nothing in a menu
+    expect(row('anizm').textContent).toBe('AAnizmanizm.netAlways on');
     expect(row('tranimeizle').textContent).toContain('tranimeizle.live');
-    expect(row('anizm').querySelector('button')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Edit Anizm' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'More for Anizm' })).toBeNull();
     expect(row('openani')).toBeNull();
-    expect(screen.queryByRole('region', { name: 'Your configs' })).toBeNull();
+    expect(
+      screen.queryByRole('region', { name: 'Your setups that are off' }),
+    ).toBeNull();
     expect(screen.queryByRole('region', { name: "Can't be used" })).toBeNull();
 
     expect(await offeredSites()).toEqual([
@@ -145,7 +164,7 @@ describe('sites', () => {
     expect(screen.queryByRole('button', { name: /^Add a site/ })).toBeNull();
   });
 
-  it('imports a config, to be turned on', async () => {
+  it('imports a setup, to be turned on', async () => {
     await renderSites();
     paste(JSON.stringify(config('kitsune')));
 
@@ -157,28 +176,28 @@ describe('sites', () => {
       { config: config('kitsune'), savedAt: expect.any(Number) },
     ]);
     // The import form closes once it's done
-    expect(screen.queryByLabelText('Site config')).toBeNull();
+    expect(screen.queryByLabelText('Site setup')).toBeNull();
   });
 
   it('closes the import form without importing', async () => {
     await renderSites();
-    fireEvent.click(screen.getByRole('button', { name: 'Import a config' }));
-    fireEvent.input(screen.getByLabelText('Site config'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Import a setup' }));
+    fireEvent.input(screen.getByLabelText('Site setup'), {
       target: { value: '{}' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByLabelText('Site config')).toBeNull();
+    expect(screen.queryByLabelText('Site setup')).toBeNull();
 
     // And starts empty next time
-    fireEvent.click(screen.getByRole('button', { name: 'Import a config' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Import a setup' }));
     expect(
-      (screen.getByLabelText('Site config') as HTMLTextAreaElement).value,
+      (screen.getByLabelText('Site setup') as HTMLTextAreaElement).value,
     ).toBe('');
     expect(store.data()).toEqual([]);
   });
 
-  it('replaces a config imported again', async () => {
+  it('replaces a setup imported again', async () => {
     await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
     paste(JSON.stringify(config('kitsune', { name: 'OpenAni' })));
 
@@ -186,7 +205,7 @@ describe('sites', () => {
     expect(row('kitsune').textContent).toContain('OpenAni');
   });
 
-  it('says why a config cannot be imported', async () => {
+  it('says why a setup cannot be imported', async () => {
     await renderSites();
     paste('{ nope');
 
@@ -205,9 +224,8 @@ describe('sites', () => {
   it("asks the browser for access to turn a site on, and drops access it doesn't need to turn it off", async () => {
     await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
 
-    // A config of the user's own that's off is still listed, to manage it
-    expect(idsIn('Your configs')).toEqual(['kitsune']);
-    expect(row('kitsune').textContent).toContain('Off');
+    // A setup of the user's own that's off is still listed, to manage it
+    expect(idsIn('Your setups that are off')).toEqual(['kitsune']);
 
     await addSite('Kitsune');
 
@@ -220,13 +238,22 @@ describe('sites', () => {
     );
     expect(await offeredSites()).not.toContain('Kitsune');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Turn off Kitsune' }));
+    cleanup();
+    render(() => <Sites />);
+    await waitFor(() => expect(idsIn('On')).toContain('kitsune'));
+    await choose('Kitsune', 'Turn off');
 
     expect(fakeBrowser.permissions.remove).toHaveBeenCalledWith({
       origins: ['*://kitsune.me/*'],
     });
-    await waitFor(() => expect(idsIn('Your configs')).toEqual(['kitsune']));
+    await waitFor(() =>
+      expect(idsIn('Your setups that are off')).toEqual(['kitsune']),
+    );
     expect(idsIn('On')).not.toContain('kitsune');
+
+    // And on again from its menu
+    await choose('Kitsune', 'Turn on');
+    await waitFor(() => expect(idsIn('On')).toContain('kitsune'));
   });
 
   it('stays off when the user declines access', async () => {
@@ -241,7 +268,7 @@ describe('sites', () => {
     );
   });
 
-  it('deletes a config with the access only it needed', async () => {
+  it('deletes a setup with the access only it needed, once confirmed', async () => {
     await fakeBrowser.permissions.request({
       origins: ['*://kitsune.me/*', '*://otakuden.me/*'],
     });
@@ -254,11 +281,11 @@ describe('sites', () => {
         savedAt: 2,
       },
     ]);
-    // A second click confirms
-    fireEvent.click(button('otakuden', 'Delete'));
+    await waitFor(() => expect(idsIn('On')).toContain('otakuden'));
+    await choose('Otakuden', 'Delete');
 
     expect(row('otakuden').textContent).toContain(
-      'Delete your config for this site?',
+      'Delete your setup for this site?',
     );
     expect(store.data()).toHaveLength(2);
 
@@ -271,7 +298,7 @@ describe('sites', () => {
       origins: ['*://otakuden.me/*'],
     });
 
-    fireEvent.click(button('kitsune', 'Delete'));
+    await choose('Kitsune', 'Delete');
     fireEvent.click(button('kitsune', 'Delete'));
 
     expect(fakeBrowser.permissions.remove).toHaveBeenCalledWith({
@@ -279,13 +306,13 @@ describe('sites', () => {
     });
   });
 
-  it('keeps a config when the user cancels deleting it', async () => {
+  it('keeps a setup when the user cancels deleting it', async () => {
     await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
-    fireEvent.click(button('kitsune', 'Delete'));
+    await choose('Kitsune', 'Delete');
     fireEvent.click(button('kitsune', 'Cancel'));
 
     expect(store.data()).toHaveLength(1);
-    expect(button('kitsune', 'Share')).toBeTruthy();
+    expect(row('kitsune').textContent).not.toContain('Delete your setup');
   });
 
   it('resets an edited built-in site, keeping its access, and says when the built-in one changed', async () => {
@@ -304,10 +331,10 @@ describe('sites', () => {
     expect(row('anizm').textContent).toContain(
       'The built-in version changed since you edited it.',
     );
-    // A user's config is never on from install
-    expect(idsIn('Your configs')).toEqual(['anizm']);
+    // A user's setup is never on from install
+    expect(idsIn('Your setups that are off')).toEqual(['anizm']);
 
-    fireEvent.click(button('anizm', 'Reset to built-in'));
+    await choose('My Anizm', 'Reset to built-in');
 
     expect(row('anizm').textContent).toContain(
       'Drop your changes to this site?',
@@ -320,7 +347,7 @@ describe('sites', () => {
     expect(row('anizm').textContent).toContain('Always on');
   });
 
-  it('lists configs that no longer validate, to delete them', async () => {
+  it('lists setups that no longer validate, to delete them', async () => {
     await renderSites([
       { config: { ...config('broken'), pages: [] }, savedAt: 1 },
       { config: null, savedAt: 2 },
@@ -329,9 +356,9 @@ describe('sites', () => {
     const broken = group("Can't be used");
 
     expect(screen.getByText('broken')).toBeTruthy();
-    expect(screen.getByText('Unnamed config')).toBeTruthy();
+    expect(screen.getByText('Unnamed setup')).toBeTruthy();
     expect(broken.textContent).toContain(
-      'It no longer matches the config format. Delete it, or import a fixed copy.',
+      'It no longer matches the setup format. Delete it, or import a fixed copy.',
     );
     // The details stay folded away
     expect(broken.querySelector('details pre')!.textContent).toContain('pages');
@@ -341,7 +368,7 @@ describe('sites', () => {
     expect(store.data()).toEqual([{ config: null, savedAt: 2 }]);
   });
 
-  it("shares the user's own configs through a prefilled GitHub issue", async () => {
+  it("shares the user's own setups through a prefilled GitHub issue", async () => {
     const writeText = mock(async (_text: string) => {});
 
     Object.defineProperty(navigator, 'clipboard', {
@@ -354,12 +381,16 @@ describe('sites', () => {
     ]);
 
     // Built-in sites are shared already
-    expect(button('anizm', 'Share')).toBeUndefined();
-
-    fireEvent.click(button('kitsune', 'Share'));
+    expect(await menuOf('Kitsune')).toEqual([
+      'Turn on',
+      'Share with everyone',
+      'Export',
+      'Delete',
+    ]);
+    press(screen.getByRole('menuitem', { name: 'Share with everyone' }));
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toBe(
-        "Opened a GitHub issue with Kitsune's config.",
+        "Opened a GitHub issue with Kitsune's setup.",
       ),
     );
 
@@ -372,10 +403,10 @@ describe('sites', () => {
       config('kitsune'),
     );
 
-    fireEvent.click(button('otakuden', 'Share'));
+    await choose('Otakuden', 'Share with everyone');
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toBe(
-        "Otakuden's config is too long for a link, so it's on your clipboard: paste it into the form's Config field.",
+        "Otakuden's setup is too long for a link, so it's on your clipboard: paste it into the form's Config field.",
       ),
     );
     expect(JSON.parse(writeText.mock.calls[0][0])).toEqual(
@@ -383,7 +414,7 @@ describe('sites', () => {
     );
   });
 
-  it('exports a config as a JSON file', async () => {
+  it('exports a setup as a JSON file', async () => {
     const createObjectURL = spyOn(URL, 'createObjectURL').mockReturnValue(
       'blob:config',
     );
@@ -396,7 +427,7 @@ describe('sites', () => {
     ).mockImplementation(() => {});
 
     await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
-    fireEvent.click(button('kitsune', 'Export'));
+    await choose('Kitsune', 'Export');
 
     const [[blob]] = createObjectURL.mock.calls as unknown as [[Blob]];
 
@@ -404,8 +435,6 @@ describe('sites', () => {
     expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe(
       'kitsune.json',
     );
-    // Built-in sites ship with AniScore, so they have nothing to export
-    expect(button('anizm', 'Export')).toBeUndefined();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:config');
 
     createObjectURL.mockRestore();
@@ -427,9 +456,94 @@ describe('sites', () => {
       },
     ]);
 
-    const host = row('kitsune').querySelector('[title]')!;
+    const host = row('kitsune').querySelector('span[title]')!;
 
     expect(host.textContent).toBe('kitsune.me');
     expect(host.getAttribute('title')).toBe('kitsune.me, kitsune.tv');
+  });
+});
+
+describe('editing a site', () => {
+  const injected = () =>
+    fakeBrowser.scripting.executeScript.mock.calls.flatMap(
+      ([injection]) => (injection.files as string[] | undefined) ?? [],
+    );
+
+  it("opens the editor on the site's open tab, the active one first, brought to the front", async () => {
+    fakeBrowser.tabs.query.mockResolvedValueOnce([
+      { id: 4, windowId: 2, active: false },
+      { id: 5, windowId: 3, active: true },
+    ]);
+    await renderSites();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Anizm' }));
+
+    await waitFor(() => expect(injected()).toContain(editorScript));
+    expect(fakeBrowser.permissions.request).toHaveBeenCalledWith({
+      origins: bundledSites.find((site) => site.id === 'anizm')!.matches,
+    });
+    expect(fakeBrowser.tabs.update).toHaveBeenCalledWith(5, { active: true });
+    expect(fakeBrowser.windows.update).toHaveBeenCalledWith(3, {
+      focused: true,
+    });
+    expect(fakeBrowser.scripting.executeScript).toHaveBeenLastCalledWith({
+      target: { tabId: 5 },
+      files: expect.arrayContaining([editorScript]),
+    });
+  });
+
+  it('opens the site in a new tab when none is open, once it loaded', async () => {
+    await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Kitsune' }));
+
+    await waitFor(() =>
+      expect(fakeBrowser.tabs.create).toHaveBeenCalledWith({
+        url: 'https://kitsune.me/',
+      }),
+    );
+    expect(injected()).toEqual([]);
+
+    // Other tabs, and other changes, don't count
+    fakeBrowser.tabs.onUpdated.dispatch(9, { status: 'complete' });
+    fakeBrowser.tabs.onUpdated.dispatch(1, { title: 'Kitsune' });
+
+    expect(injected()).toEqual([]);
+
+    fakeBrowser.tabs.onUpdated.dispatch(1, { status: 'complete' });
+
+    await waitFor(() => expect(injected()).toContain(editorScript));
+  });
+
+  it('opens it right away on a new tab that loaded already', async () => {
+    fakeBrowser.tabs.create.mockResolvedValueOnce({
+      id: 1,
+      windowId: 1,
+      status: 'complete',
+    });
+    await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Kitsune' }));
+
+    await waitFor(() => expect(injected()).toContain(editorScript));
+  });
+
+  it('says when the user declines access, or the editor fails to open', async () => {
+    fakeBrowser.permissions.request.mockResolvedValueOnce(false);
+    await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Kitsune' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe(
+        'AniScore needs access to kitsune.me to open its editor there.',
+      ),
+    );
+    expect(fakeBrowser.tabs.create).not.toHaveBeenCalled();
+
+    fakeBrowser.tabs.query.mockRejectedValueOnce(new Error('No access'));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Kitsune' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe(
+        "The editor didn't open on kitsune.me. Open one of its pages, then try again.",
+      ),
+    );
   });
 });

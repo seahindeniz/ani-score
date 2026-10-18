@@ -65,7 +65,7 @@ test("follows the user's edited config, also when it changes on an open page", a
   ).toHaveText('1234');
 });
 
-test('side panel imports a site config, to be turned on', async ({
+test('side panel imports a setup, to be turned on', async ({
   page,
   extensionId,
   getStorage,
@@ -82,8 +82,8 @@ test('side panel imports a site config, to be turned on', async ({
 
   await expect(anizm).toContainText('Always on');
 
-  await page.getByRole('button', { name: 'Import a config' }).click();
-  await page.getByLabel('Site config').fill(JSON.stringify(config));
+  await page.getByRole('button', { name: 'Import a setup' }).click();
+  await page.getByLabel('Site setup').fill(JSON.stringify(config));
   await page.getByRole('button', { name: 'Import', exact: true }).click();
 
   await expect(page.getByRole('status')).toHaveText(
@@ -95,11 +95,41 @@ test('side panel imports a site config, to be turned on', async ({
   await expect(kitsune).toContainText('Yours');
   // Off until the user adds it, which the dropdown offers
   await expect(
-    page.getByRole('region', { name: 'Your configs' }).locator(kitsune),
-  ).toContainText('Off');
+    page
+      .getByRole('region', { name: 'Your setups that are off' })
+      .locator(kitsune),
+  ).toBeVisible();
   await page.getByRole('button', { name: /^Add a site/ }).click();
   await expect(page.getByRole('option', { name: /^Kitsune/ })).toBeVisible();
   await expect
     .poll(() => getStorage('userSites'))
     .toEqual([{ config, savedAt: expect.any(Number) }]);
+});
+
+test('side panel opens the editor on the site, switching to its tab', async ({
+  context,
+  page,
+  extensionId,
+}) => {
+  await mockNetwork(context, {
+    media: [frieren],
+    pages: {
+      [newEpisodesURL]: anizmNewEpisodesPage([
+        { title: 'Sousou no Frieren', episode: 5 },
+      ]),
+    },
+  });
+  await page.goto(newEpisodesURL);
+
+  const panel = await context.newPage();
+
+  await panel.goto(
+    `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
+  );
+  await panel.getByRole('button', { name: 'Edit Anizm' }).click();
+
+  await expect(
+    page.getByRole('dialog', { name: 'anizm.net is already set up' }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => document.visibilityState)).toBe('visible');
 });

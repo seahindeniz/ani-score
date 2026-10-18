@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 
+import { editorScript, gatewayScript } from '~/logic/editor';
 import { wait } from '~/utils/wait';
 
 import { fakeBrowser } from '../../../../test/fake-browser';
-import {
-  addEditorEntry,
-  editorMenuId,
-  editorScript,
-  gatewayScript,
-  openEditor,
-} from '../editorEntry';
+import { addEditorEntry, editorMenuId, openEditor } from '../editorEntry';
 
 const injectedFiles = () =>
   fakeBrowser.scripting.executeScript.mock.calls.flatMap(
