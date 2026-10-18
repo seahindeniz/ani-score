@@ -6,7 +6,7 @@ import UnoCSS from 'unocss/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import Icons from 'unplugin-icons/vite';
 import type { UserConfig } from 'vite';
-import { defineConfig, mergeConfig } from 'vite';
+import { defineConfig, loadEnv, mergeConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 
 import packageJson from './package.json';
@@ -20,9 +20,12 @@ import {
 } from './scripts/utils';
 import unoConfig from './unocss.config';
 
+// Vite runs on Bun through the `node` alias, where Bun doesn't load `.env` itself.
+// Variables set in the environment (e.g. by CI) take precedence.
+const env = { ...loadEnv(mode, r(), ''), ...process.env };
 const ANILIST_TOKEN_URL = isFirefox
-  ? process.env.ANILIST_TOKEN_URL_FIREFOX
-  : process.env.ANILIST_TOKEN_URL;
+  ? env.ANILIST_TOKEN_URL_FIREFOX
+  : env.ANILIST_TOKEN_URL;
 
 export const sharedConfig: UserConfig = {
   root: r('src'),
