@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "serve": "vinxi serve --dir .output/public"
+    "serve": "vinxi serve --dir .output/public",
+    "lint": "bun check"
   },
   "dependencies": {
     "@fontsource-variable/figtree": "5.2.10",

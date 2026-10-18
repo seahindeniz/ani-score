@@ -18,7 +18,8 @@ bun run --filter ani-score codegen    # Generate GraphQL types from AniList sche
 Always use `bun run test` / `bun run build`. Bare `bun build` invokes Bun's bundler instead of the package script. Bare `bun test` lacks the `--conditions development --conditions browser` flags (bunfig can't set them), so Solid resolves to its server build and rendering fails.
 
 ### Bun runtime
-- `[run] bun = true` makes `node` and node-based CLIs (Vite, vinxi, ESLint, tsc) run on Bun. Bun reads `bunfig.toml` only from the current directory, so it is set in the root and in each package.
+- Type checking is `bun check` (`lint:type` in the extension, `lint` in the site), which bundles TypeScript 7. The `typescript` package stays on 5.x for ESLint's typed rules (typescript-eslint doesn't support 6+) and editors, so editor diagnostics can differ from `bun check` in rare cases.
+- `[run] bun = true` makes `node` and node-based CLIs (Vite, vinxi, ESLint) run on Bun. Bun reads `bunfig.toml` only from the current directory, so it is set in the root and in each package.
 - E2E runs Playwright on Bun, which needs `@playwright/test` ≥1.64 (older versions crash loading TS on Bun). The tests launch the full `chromium` channel because headless shell can't load extensions, so install it with `bunx playwright install chromium`.
 
 ### Unit tests

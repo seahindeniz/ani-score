@@ -39,7 +39,7 @@
     "clear": "bun scripts/clear.ts",
     "lint": "bun run --parallel \"lint:*\"",
     "lint:es": "eslint --cache .",
-    "lint:type": "tsc --noEmit --project tsconfig.node.json && tsc --noEmit --project tsconfig.app.json && tsc --noEmit --project tsconfig.test.json",
+    "lint:type": "bun check -b",
     "test": "bun test --conditions development --conditions browser --coverage && bun scripts/check-coverage.ts",
     "test:e2e": "playwright test",
     "codegen": "graphql-codegen",
