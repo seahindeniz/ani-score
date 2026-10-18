@@ -39,12 +39,7 @@ export function Chip<TagName extends keyof JSX.IntrinsicElements>(
     >
       <Show when={props.emoji}>
         <div class="relative">
-          <Show
-            when={typeof props.emoji === 'string'}
-            fallback={<>{props.emoji}</>}
-          >
-            <span>{props.emoji}</span>
-          </Show>
+          {props.emoji}
           <Show when={props.loading}>
             <SvgSpinnersPulseRing class="pointer-events-none absolute left-[calc(50%_+_1px)] top-[50%] h-[32px] w-[32px] translate-[-50%]" />
           </Show>

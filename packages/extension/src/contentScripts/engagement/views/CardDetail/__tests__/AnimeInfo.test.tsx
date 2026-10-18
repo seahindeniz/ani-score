@@ -116,7 +116,7 @@ describe('anime info card', () => {
     chip.dispatchEvent(click);
 
     expect(chip.getAttribute('href')).toBe('https://anilist.co/anime/154587');
-    expect(chip.textContent).toContain('250,000');
+    expect(chip.textContent).toContain('250K');
     // Clicking the chip shouldn't toggle the card around it
     expect(bubbled).toHaveLength(0);
   });
@@ -138,9 +138,13 @@ describe('anime info card', () => {
         .getAllByAltText('Frieren')
         .map((image) => image.getAttribute('src')),
     ).toEqual(['https://img/cover.jpg', 'https://img/frieren.jpg']);
-    expect(screen.getByText('Not Yet Released')).toBeTruthy();
-    expect(screen.getByText('28 Episodes')).toBeTruthy();
-    expect(screen.getByText('FALL 2023')).toBeTruthy();
+    expect(screen.getByText('Not yet released')).toBeTruthy();
+    expect(screen.getByText('TV')).toBeTruthy();
+    expect(screen.getByText('28 episodes')).toBeTruthy();
+    expect(screen.getByText('Fall 2023')).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: 'Frieren' }).querySelector('a')!.href,
+    ).toBe('https://anilist.co/anime/154587');
 
     const description = screen.getByText(
       /^A long journey begins\./,
@@ -150,31 +154,67 @@ describe('anime info card', () => {
     expect(description.endsWith('...')).toBe(true);
     expect(screen.getByText('Adventure')).toBeTruthy();
 
-    expect(
-      screen.getByRole('button', { name: /Tags \(\s*2\s*\)/ }),
-    ).toBeTruthy();
-    expect(screen.getByText('95')).toBeTruthy();
+    // Characters by first name, the full one on hover; entries without a character are left out
+    const frieren = screen.getByTitle('Frieren');
 
-    expect(
-      screen.getByRole('button', { name: /Relations \(\s*3\s*\)/ }),
-    ).toBeTruthy();
+    expect(frieren.getAttribute('href')).toBe('https://anilist.co/character/1');
+    expect(frieren.textContent).toBe('Frieren');
+    expect(screen.getAllByRole('listitem')).toHaveLength(4);
+    expect(screen.getByRole('link', { name: 'All' }).getAttribute('href')).toBe(
+      'https://anilist.co/anime/154587/characters',
+    );
+
     expect(
       screen.getByText('Frieren Mini').closest('a')?.getAttribute('href'),
     ).toBe('https://anilist.co/anime/2');
-    expect(screen.getByText('Side story')).toBeTruthy();
-    expect(screen.getByText('ONA')).toBeTruthy();
-    // An untitled relation links nowhere and shows its type once, since format matches
-    expect(screen.getAllByText('MANGA')).toHaveLength(1);
+    expect(screen.getByText('Side story (ONA)')).toBeTruthy();
+    // An untitled relation links nowhere, and goes by its format
+    expect(
+      screen
+        .getAllByText('Manga')
+        .map((label) => label.closest('a')?.getAttribute('href')),
+    ).toEqual(['#', '#']);
 
-    expect(
-      screen.getByRole('button', { name: /Characters \(\s*3\s*\)/ }),
-    ).toBeTruthy();
-    expect(screen.getByText('MAIN')).toBeTruthy();
-    expect(screen.getByText('Atsumi Tanezaki')).toBeTruthy();
-    expect(
-      screen.getByAltText('Atsumi Tanezaki').closest('a')?.getAttribute('href'),
-    ).toBe('https://anilist.co/staff/1');
-    expect(screen.getByText('SUPPORTING')).toBeTruthy();
+    expect(screen.getByText('Elf')).toBeTruthy();
+    expect(screen.getByText('Magic')).toBeTruthy();
+    expect(screen.queryByText(/more$/)).toBeNull();
+  });
+
+  it('shows the first five tags, and how many more there are', async () => {
+    render(() => (
+      <AnimeInfoCard
+        anime={anime({
+          tags: ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((name) => ({
+            name,
+            rank: 50,
+          })),
+          relations: {
+            edges: [
+              {
+                id: 1,
+                relationType: 'SEQUEL',
+                node: {
+                  siteUrl: null,
+                  title: { userPreferred: 'Frieren 2' },
+                  format: null,
+                  type: null,
+                  coverImage: null,
+                },
+              },
+            ],
+          },
+        })}
+      />
+    ));
+
+    await openPopover(screen.getByTitle('Popularity [Visit AniList]'));
+
+    expect(screen.getByText('E')).toBeTruthy();
+    expect(screen.queryByText('F')).toBeNull();
+    expect(screen.getByText('+2 more').getAttribute('href')).toBe(
+      'https://anilist.co/anime/154587',
+    );
+    expect(screen.getByText('Sequel')).toBeTruthy();
   });
 
   it('keeps short descriptions and skips empty sections', async () => {
@@ -199,8 +239,9 @@ describe('anime info card', () => {
 
     expect(screen.getByText('Short.')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 3 })).toBeNull();
-    expect(screen.queryByText(/Episodes/)).toBeNull();
-    expect(screen.queryByRole('button', { name: /Tags/ })).toBeNull();
+    expect(screen.queryByText(/episodes/)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Characters' })).toBeNull();
+    expect(screen.queryByText('Tags')).toBeNull();
   });
 
   it('treats a missing description as empty', async () => {
@@ -216,8 +257,9 @@ describe('anime info card', () => {
 
     await openPopover(screen.getByTitle('Popularity [Visit AniList]'));
 
-    expect(screen.getByRole('button', { name: /Tags/ })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Relations/ })).toBeNull();
+    expect(screen.getByText('Tags')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Related' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Characters' })).toBeNull();
   });
 
   it('keeps one popover open at a time and forgets it once closed', async () => {

@@ -39,11 +39,11 @@ test('matches Turkish season titles to the right database entry', async ({
   const season1 = cardDetails(page, 'The Apothecary Diaries 24. Bölüm');
 
   await expect(season3.getByTitle('Popularity [Visit AniList]')).toContainText(
-    '40,000',
+    '40K',
   );
   await expect(season3.getByTitle('Trending')).toBeVisible();
   await expect(season1.getByTitle('Popularity [Visit AniList]')).toContainText(
-    '180,000',
+    '180K',
   );
   await expect(season1.getByTitle('Trending')).toHaveCount(0);
 

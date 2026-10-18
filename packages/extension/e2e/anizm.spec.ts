@@ -34,7 +34,7 @@ test('shows AniList details on new episode cards', async ({
 
   await expect(details.getByTitle('Add Favorite')).toHaveText('1234');
   await expect(details.getByTitle('Popularity [Visit AniList]')).toContainText(
-    '250,000',
+    '250K',
   );
   await expect(
     details.getByTitle('Popularity [Visit AniList]'),
@@ -103,7 +103,7 @@ test('highlights anime the signed-in viewer is watching', async ({
   const card = episodeCard(page, 'Sousou no Frieren');
 
   await expect(card.locator('.ani-score').getByTitle('Watching')).toContainText(
-    '5/ 28',
+    '5/28',
   );
   await expect(card.locator('.v3-poster-frame')).toHaveClass(
     /\bani-score-watching\b/,

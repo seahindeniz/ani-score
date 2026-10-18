@@ -120,11 +120,11 @@ describe('card detail', () => {
     );
 
     expect(screen.getByTitle('Add Favorite').textContent).toBe('5000');
-    expect(screen.getByTitle('Trending').textContent).toBe('⚡');
-    expect(screen.getByTitle('Watching').textContent).toBe('👀3/ 14');
+    expect(screen.getByTitle('Trending').textContent).toBe('Trending');
+    expect(screen.getByTitle('Watching').textContent).toBe('3/14');
     expect(
       screen.getByTitle('Popularity [Visit AniList]').textContent,
-    ).toContain('1,234');
+    ).toContain('1.2K');
     expect(screen.getByText('Fantasy').style.color).toBe('#ff0000');
     expect(screen.getByText('Drama').style.color).toBe('');
     expect(screen.getByText('Magic').style.color).toBe('#0000ff');
@@ -146,7 +146,7 @@ describe('card detail', () => {
   it('counts unreleased episodes as zero', () => {
     setup(anime({ mediaListEntry: { progress: 0 }, episodes: null }));
 
-    expect(screen.getByTitle('Watching').textContent).toBe('👀0/ 0');
+    expect(screen.getByTitle('Watching').textContent).toBe('0/0');
   });
 
   it('works on pages without a shimmering element', () => {
