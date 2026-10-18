@@ -56,6 +56,68 @@ describe('createCardCustomizer', () => {
     customizer.dispose();
   });
 
+  it('tries a failed request again, a few times, and starts the background over if that failed', async () => {
+    const frieren = episodeCard('Frieren', 5);
+    // The background's answers in turn: a failed start, a start, no details, then the details
+    const answers: (() => unknown)[] = [
+      () => {
+        throw new Error('Restarting');
+      },
+      () => undefined,
+      () => undefined,
+      () => ({ Frieren: { id: 1, favourites: 10, isFavourite: false } }),
+    ];
+    const sendMessage = mock(async (_id: string) => answers.shift()!());
+
+    window.messageGateway = {
+      sendMessage,
+    } as unknown as typeof window.messageGateway;
+
+    const customizer = createCardCustomizer('', { retryDelay: 5 });
+
+    customizer.update([frieren]);
+    await wait(60);
+
+    expect(sendMessage.mock.calls.map(([id]) => id)).toEqual([
+      'initialize',
+      'initialize',
+      'fetch-details',
+      'fetch-details',
+    ]);
+    expect(
+      shadowOf(frieren).querySelector('[title="Add Favorite"]')!.textContent,
+    ).toBe('10');
+    customizer.dispose();
+  });
+
+  it('gives up after a few tries, and stops trying once disposed', async () => {
+    const { sendMessage } = setUp(undefined);
+    // Other test files' cards may retry through the same gateway, so this counts only its own titles
+    const requestsFor = (title: string) =>
+      sendMessage.mock.calls.filter(
+        (call) =>
+          call[0] === 'fetch-details'
+          && JSON.stringify(call[1 as never]).includes(title),
+      ).length;
+    const retrying = createCardCustomizer('', { retryDelay: 5 });
+
+    retrying.update([episodeCard('Given up', 1)]);
+    await wait(120);
+
+    // One request, then three more
+    expect(requestsFor('Given up')).toBe(4);
+    retrying.dispose();
+
+    const disposed = createCardCustomizer('', { retryDelay: 20 });
+
+    disposed.update([episodeCard('Disposed', 1)]);
+    await wait(5);
+    disposed.dispose();
+    await wait(100);
+
+    expect(requestsFor('Disposed')).toBe(1);
+  });
+
   it("asks the background for every card's details once", async () => {
     const cards = [episodeCard('Frieren', 5), episodeCard('Dandadan', 12)];
     const { sendMessage, customizer } = setUp({
@@ -134,7 +196,7 @@ describe('createCardCustomizer', () => {
 
     expect(sendMessage).toHaveBeenLastCalledWith('fetch-details', {
       cards: [{ title: 'Frieren', episodeNumber: 5 }],
-      fresh: true,
+      maxAge: 0,
     });
     expect(
       shadowOf(frieren).querySelector('[title="Remove Favorite"]')!.textContent,

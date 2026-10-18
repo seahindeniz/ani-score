@@ -26,12 +26,13 @@ const classTokens = (value: string | null) =>
 
 /**
  * Whether a change could matter to the cards. AniScore's own changes don't count: adding its details and styles, and
- * toggling the shimmer. A site removing the details does, so they're put back.
+ * toggling the shimmer. Anything removed does: cards the site took away, an element a page depends on, or the details,
+ * which are put back.
  */
 function isSiteMutation(record: MutationRecord) {
   if (record.type === 'childList') {
     return (
-      Array.from(record.removedNodes).some(isOwnElement)
+      record.removedNodes.length > 0
       || !Array.from(record.addedNodes).every(isOwnElement)
     );
   }
@@ -66,13 +67,14 @@ export function initSiteLogic(site: SiteConfig) {
   const pageStyles = new Map<SitePage, HTMLStyleElement>();
   const customizer = createCardCustomizer(siteStyles);
   const globals: Element[] = [];
+  const stopped = new AbortController();
 
   let injectGlobals = () => {
     injectGlobals = () => {};
 
     const refStore = useRefStore();
 
-    initSiteTheme(toThemeSource(site.theme));
+    initSiteTheme(toThemeSource(site.theme), stopped.signal);
 
     refStore.portalRoot = createEncapsulatedContainer();
 
@@ -110,23 +112,47 @@ export function initSiteLogic(site: SiteConfig) {
   const observer = new MutationObserver((records) => {
     if (records.some(isSiteMutation)) scheduleRun();
   });
+  let observed: Element | undefined;
 
-  scheduleRun();
-  observer.observe(
-    (site.observe && document.querySelector(site.observe)) || document.body,
-    {
+  // Watches the config's `observe` element, or the body until there is one. Returns whether that's another element
+  // than before, as when a framework draws the page anew
+  function observeRoot() {
+    const root =
+      (site.observe && document.querySelector(site.observe)) || document.body;
+
+    if (root === observed) return false;
+
+    observer.disconnect();
+    observed = root;
+    observer.observe(root, {
       childList: true,
       subtree: true,
       characterData: true,
       attributes: true,
       attributeOldValue: true,
       attributeFilter: watchedAttributes(site),
-    },
-  );
+    });
+
+    return true;
+  }
+
+  // Only elements coming and going, which is cheap to watch, to notice the `observe` element being replaced
+  const rootObserver = new MutationObserver(() => {
+    if (observeRoot()) scheduleRun();
+  });
+
+  scheduleRun();
+  observeRoot();
+
+  if (site.observe) {
+    rootObserver.observe(document.body, { childList: true, subtree: true });
+  }
 
   // Leaves the page as it was, e.g. to start again with an edited config
   return () => {
     observer.disconnect();
+    rootObserver.disconnect();
+    stopped.abort();
     scheduleRun.clear();
     customizer.dispose();
     [...globals, ...pageStyles.values()].forEach((element) => element.remove());

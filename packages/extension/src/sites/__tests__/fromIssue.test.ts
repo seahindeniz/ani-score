@@ -115,6 +115,15 @@ describe('configFromIssue', () => {
     expect(codeBlock('{}')).toBeUndefined();
   });
 
+  it('reads an issue edited on GitHub, which saves Windows line endings', () => {
+    const body = issueBody(JSON.stringify(config, null, 2)).replace(
+      /\n/g,
+      '\r\n',
+    );
+
+    expect(configFromIssue(body)).toMatchObject({ success: true, config });
+  });
+
   it('only takes a config that is the code block alone', () => {
     // GitHub hides the comment, so the reviewer would only see part of what's parsed
     const body = issueBody(JSON.stringify(config)).replace(

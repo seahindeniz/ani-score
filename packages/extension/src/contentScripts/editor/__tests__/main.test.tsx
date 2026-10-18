@@ -113,6 +113,37 @@ describe('openEditor', () => {
     expect(document.querySelectorAll('.card .ani-score')).toHaveLength(2);
   });
 
+  it('keeps a site the user turned off off, and follows them turning it on and off', async () => {
+    const details = () => document.querySelectorAll('.card .ani-score');
+
+    await fakeBrowser.storage.local.set({
+      userSites: [{ config: saved, savedAt: 1 }],
+      turnedOffSites: ['example'],
+    });
+    await open();
+    close();
+    await wait(50);
+
+    expect(details()).toHaveLength(0);
+
+    await fakeBrowser.storage.local.set({ turnedOffSites: [] });
+    await wait(50);
+
+    expect(details()).toHaveLength(2);
+
+    await fakeBrowser.storage.local.set({ turnedOffSites: ['example'] });
+    await wait(50);
+
+    expect(details()).toHaveLength(0);
+
+    // Nothing starts while the editor is open
+    await open();
+    await fakeBrowser.storage.local.set({ turnedOffSites: [] });
+    await wait(50);
+
+    expect(details()).toHaveLength(0);
+  });
+
   it("asks first on a site with a setup, and goes on with the user's draft", async () => {
     await fakeBrowser.storage.local.set({
       userSites: [{ config: saved, savedAt: Date.UTC(2026, 9, 12) }],
@@ -164,6 +195,21 @@ describe('openEditor', () => {
         >
       )['example.com'].config.pages[0].cards[0].selector,
     ).toBe('body > div.card');
+  });
+
+  it('keeps the last change as a draft when the editor closes right after it', async () => {
+    await open();
+    document.querySelector('h3')!.click();
+    await wait();
+    close();
+    await wait(10);
+
+    expect(fakeBrowser.storage.local.peek()[draftsKey]).toEqual({
+      'example.com': {
+        config: expect.objectContaining({ id: 'example' }),
+        step: 0,
+      },
+    });
   });
 
   it("saves to the user's sites, replacing the config with the same id", async () => {

@@ -1,6 +1,7 @@
 import { logger } from '~/utils/logger';
 
 import { connectToWS } from './logic/connectToWS';
+import { watchAccount } from './logic/detailsCache';
 import { addEditorEntry } from './logic/editorEntry';
 import { fetchCSS } from './logic/fetchCSS';
 import { listenMessages } from './logic/message';
@@ -16,6 +17,7 @@ if (import.meta.hot) {
 
 listenMessages();
 watchSites();
+watchAccount();
 addEditorEntry();
 fetchCSS();
 connectToWS();

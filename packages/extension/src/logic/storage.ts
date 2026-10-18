@@ -11,7 +11,9 @@ export const useThemeStore = createPersistedStore<'light' | 'dark' | 'system'>(
   { target: 'sync' },
 );
 
-export const useTokenStore = createPersistedStore('token', { anilist: '' });
+export const tokenKey = 'token';
+
+export const useTokenStore = createPersistedStore(tokenKey, { anilist: '' });
 
 export interface ColorEntry {
   id: string;

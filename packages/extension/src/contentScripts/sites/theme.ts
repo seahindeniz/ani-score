@@ -18,7 +18,7 @@ function holds(condition: Condition): boolean {
 
 /**
  * A config's theme in the form `initSiteTheme` takes. A condition is checked again whenever the `<html>` or `<body>`
- * attributes change (where theme toggles put their classes) and when another tab saves to storage.
+ * attributes change (where theme toggles put their classes) and when another tab saves to storage, until it's stopped.
  */
 export function toThemeSource(theme: SiteConfig['theme']): SiteThemeSource {
   if (typeof theme !== 'object') return theme;
@@ -31,5 +31,10 @@ export function toThemeSource(theme: SiteConfig['theme']): SiteThemeSource {
     observer.observe(document.documentElement, { attributes: true });
     observer.observe(document.body, { attributes: true });
     window.addEventListener('storage', sync);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('storage', sync);
+    };
   };
 }

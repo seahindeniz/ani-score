@@ -7,14 +7,20 @@ import { applyTheme, setTheme, watchTheme } from '../setTheme';
 import { useThemeStore } from '../storage';
 
 function stubColorScheme(prefersDark: boolean) {
-  const listeners: ((event: { matches: boolean }) => void)[] = [];
+  const listeners = new Set<(event: { matches: boolean }) => void>();
 
   window.matchMedia = mock(() => ({
     matches: prefersDark,
     addEventListener: (
       _type: string,
       listener: (event: { matches: boolean }) => void,
-    ) => listeners.push(listener),
+      options?: { signal?: AbortSignal },
+    ) => {
+      listeners.add(listener);
+      options?.signal?.addEventListener('abort', () =>
+        listeners.delete(listener),
+      );
+    },
   })) as unknown as typeof window.matchMedia;
 
   return {
@@ -88,6 +94,33 @@ describe('watchTheme', () => {
     await wait(250);
 
     expect(themes).toEqual(['dark']);
+  });
+
+  it('stops following the stored setting and the color scheme once aborted', async () => {
+    const colorScheme = stubColorScheme(false);
+    const themes: ResolvedTheme[] = [];
+    const stopped = new AbortController();
+
+    await watchTheme((theme) => themes.push(theme), 'system', stopped.signal);
+    colorScheme.change(true);
+    stopped.abort();
+    await wait(250);
+    colorScheme.change(true);
+    themeStore.setData('dark');
+    await wait(250);
+
+    expect(themes).toEqual(['light']);
+  });
+
+  it('does nothing when aborted before the stored setting loads', async () => {
+    const onChange = mock();
+    const stopped = new AbortController();
+    const watching = watchTheme(onChange, 'system', stopped.signal);
+
+    stopped.abort();
+    await watching;
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('stores "system" when no setting is stored', async () => {

@@ -13,15 +13,16 @@ import { wait } from '~/utils/wait';
 
 import { anilistClient } from '../client/anilist';
 import { batchTemplate, singleAnimeQuery } from '../gql-queries/anilist';
-import { cacheDetails, forgetDetails, readCachedDetails } from './detailsCache';
+import { cacheDetails, readCachedDetails } from './detailsCache';
 import { searchAnimeByTitle } from './loadDatabase';
 
 interface Props {
   cards: Pick<EpisodeCard, 'title' | 'episodeNumber'>[];
   /**
-   * Asks AniList again rather than using what's kept, e.g. after the user changed the anime there.
+   * Asks AniList again for details kept longer than this many milliseconds: 0 after the user changed the anime there,
+   * a little longer when they open its details.
    */
-  fresh?: boolean;
+  maxAge?: number;
 }
 
 const maxAnimePerQuery = 5;
@@ -210,9 +211,9 @@ export async function fetchDetails(props: Props) {
     return undefined;
   }
 
-  if (props.fresh) forgetDetails((title) => uniqueTitles.includes(title));
-
-  const { found, missing } = readCachedDetails(uniqueTitles);
+  const { found, missing } = readCachedDetails(uniqueTitles, {
+    maxAge: props.maxAge,
+  });
 
   if (missing.length === 0) return found;
 

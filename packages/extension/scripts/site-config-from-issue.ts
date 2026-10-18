@@ -50,7 +50,8 @@ export type IssueResult =
  * The config proposed in a "Site integration" issue, validated like any other.
  */
 export function configFromIssue(body: string): IssueResult {
-  const fields = issueFields(body);
+  // An issue edited in GitHub's web editor comes back with Windows line endings
+  const fields = issueFields(body.replace(/\r\n?/g, '\n'));
 
   if (!fields) {
     return {

@@ -208,7 +208,7 @@ describe('fetchDetails', () => {
     ]);
   });
 
-  test('keeps the details for 15 minutes, unless asked for fresh ones', async () => {
+  test('keeps the details for 15 minutes, or as long as asked', async () => {
     const cards = [{ title: 'Sousou no Frieren', episodeNumber: 1 }];
     const now = spyOn(Date, 'now');
 
@@ -221,14 +221,25 @@ describe('fetchDetails', () => {
     });
     expect(requests).toHaveLength(1);
 
-    await fetchDetails({ cards, fresh: true });
+    await fetchDetails({ cards, maxAge: 0 });
 
     expect(requests).toHaveLength(2);
 
-    now.mockReturnValue(2 * detailsTtl);
-    await fetchDetails({ cards });
+    // Kept since then: half a minute old is young enough, a minute and a half isn't
+    now.mockReturnValue(detailsTtl - 1 + 30_000);
+    await fetchDetails({ cards, maxAge: 60_000 });
+
+    expect(requests).toHaveLength(2);
+
+    now.mockReturnValue(detailsTtl - 1 + 90_000);
+    await fetchDetails({ cards, maxAge: 60_000 });
 
     expect(requests).toHaveLength(3);
+
+    now.mockReturnValue(3 * detailsTtl);
+    await fetchDetails({ cards });
+
+    expect(requests).toHaveLength(4);
 
     now.mockRestore();
   });

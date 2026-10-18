@@ -139,6 +139,22 @@ describe('initSiteLogic', () => {
     expect(card.classList.contains('ani-score-watching')).toBe(false);
   });
 
+  it('notices a card the site removed on its own', async () => {
+    const list = document.createElement('section');
+
+    document.body.append(list);
+
+    const card = addCard('Frieren', list);
+
+    stop = initSiteLogic(site());
+    await settle();
+    card.classList.add('ani-score-watching');
+    card.remove();
+    await settle();
+
+    expect(card.classList.contains('ani-score-watching')).toBe(false);
+  });
+
   it('puts back details the site removed, but not forever', async () => {
     const card = addCard('Frieren');
 
@@ -248,6 +264,47 @@ describe('initSiteLogic', () => {
 
     expect(detailsOf(outside)).toHaveLength(1);
     expect(detailsOf(inside)).toHaveLength(1);
+  });
+
+  it('watches the given element again when the site replaces it', async () => {
+    const list = document.createElement('section');
+
+    list.id = 'list';
+    document.body.append(list);
+    stop = initSiteLogic(site({ observe: '#list' }));
+    await settle();
+
+    const replaced = document.createElement('section');
+
+    replaced.id = 'list';
+    list.replaceWith(replaced);
+    await settle();
+
+    const card = addCard('Frieren', replaced);
+
+    await settle();
+
+    expect(detailsOf(card)).toHaveLength(1);
+  });
+
+  it("stops following the site's theme when stopped, so the next setup's theme holds", async () => {
+    const card = addCard('Frieren');
+    const themeOf = () =>
+      detailsOf(card)[0]
+        .shadowRoot!.querySelector('[data-kb-theme]')!
+        .getAttribute('data-kb-theme');
+
+    initSiteLogic(site({ theme: { dark: { selector: 'body.dark' } } }))();
+    stop = initSiteLogic(site({ theme: 'light' }));
+    await settle();
+
+    expect(themeOf()).toBe('light');
+
+    document.body.classList.add('dark');
+    await settle();
+
+    expect(themeOf()).toBe('light');
+    document.body.classList.remove('dark');
   });
 
   it('leaves the page as it was when stopped', async () => {

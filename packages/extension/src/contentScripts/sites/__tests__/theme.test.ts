@@ -6,17 +6,22 @@ import { wait } from '~/utils/wait';
 
 import { toThemeSource } from '../theme';
 
+type Source = (set: (theme: ResolvedTheme) => void) => () => void;
+
+const stops: (() => void)[] = [];
+
 function follow(theme: SiteConfig['theme']) {
   const themes: ResolvedTheme[] = [];
 
-  (toThemeSource(theme) as (set: (theme: ResolvedTheme) => void) => void)(
-    (resolved) => themes.push(resolved),
+  stops.push(
+    (toThemeSource(theme) as Source)((resolved) => themes.push(resolved)),
   );
 
   return themes;
 }
 
 afterEach(() => {
+  stops.splice(0).forEach((stop) => stop());
   document.documentElement.className = '';
   localStorage.clear();
 });
@@ -60,5 +65,17 @@ describe('toThemeSource', () => {
     window.dispatchEvent(new Event('storage'));
 
     expect(themes).toEqual(['light', 'dark']);
+  });
+
+  it('stops following once stopped', async () => {
+    const themes = follow({ dark: { selector: 'html.dark' } });
+
+    stops.pop()!();
+    document.documentElement.className = 'dark';
+    localStorage.setItem('theme', 'dark');
+    window.dispatchEvent(new Event('storage'));
+    await wait();
+
+    expect(themes).toEqual(['light']);
   });
 });

@@ -54,6 +54,8 @@ describe('siteTheme', () => {
     initSiteTheme((set) => {
       setSiteTheme = set;
       set('dark');
+
+      return () => {};
     });
 
     expect(root.getAttribute('data-kb-theme')).toBe('dark');
@@ -74,6 +76,8 @@ describe('siteTheme', () => {
     addThemeRoot(root);
     initSiteTheme((set) => {
       setSiteTheme = set;
+
+      return () => {};
     });
     await themeStore.dataReady;
     await Promise.resolve();
@@ -96,6 +100,8 @@ describe('siteTheme', () => {
     initSiteTheme((set) => {
       setSiteTheme = set;
       set('dark');
+
+      return () => {};
     });
     removed.remove();
     setSiteTheme('light');
@@ -107,5 +113,39 @@ describe('siteTheme', () => {
     setSiteTheme('light');
 
     expect(removed.getAttribute('data-kb-theme')).toBe('dark');
+  });
+
+  it('stops following the site and the stored setting once aborted', async () => {
+    const { addThemeRoot, initSiteTheme } = await freshSiteTheme();
+    const root = themedRoot();
+    const stopped = new AbortController();
+    let stop = 0;
+
+    addThemeRoot(root);
+    initSiteTheme(() => () => stop++, stopped.signal);
+    await themeStore.dataReady;
+    await Promise.resolve();
+    stopped.abort();
+
+    expect(stop).toBe(1);
+
+    themeStore.setData('dark');
+
+    expect(root.getAttribute('data-kb-theme')).toBe('light');
+  });
+
+  it('stops following the stored setting for a fixed theme once aborted', async () => {
+    const { addThemeRoot, initSiteTheme } = await freshSiteTheme();
+    const root = themedRoot();
+    const stopped = new AbortController();
+
+    addThemeRoot(root);
+    initSiteTheme('system', stopped.signal);
+    await themeStore.dataReady;
+    await Promise.resolve();
+    stopped.abort();
+    themeStore.setData('dark');
+
+    expect(root.getAttribute('data-kb-theme')).toBe('light');
   });
 });

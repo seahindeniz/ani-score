@@ -5,7 +5,7 @@ import { createEncapsulatedContainer } from '~/contentScripts/engagement/logic/c
 import { initSiteLogic } from '~/contentScripts/engagement/logic/loadSite';
 import { setTheme } from '~/logic/setTheme';
 import type { UserSite } from '~/logic/storage';
-import { userSitesKey } from '~/logic/storage';
+import { turnedOffSitesKey, userSitesKey } from '~/logic/storage';
 import {
   findSiteConfig,
   resolveSites,
@@ -27,14 +27,17 @@ async function read() {
   const items = (await browser.storage.local.get([
     userSitesKey,
     draftsKey,
+    turnedOffSitesKey,
   ])) as {
     [userSitesKey]?: UserSite[];
     [draftsKey]?: Drafts;
+    [turnedOffSitesKey]?: string[];
   };
 
   return {
     userSites: items[userSitesKey] ?? [],
     drafts: items[draftsKey] ?? {},
+    turnedOff: items[turnedOffSitesKey] ?? [],
   };
 }
 
@@ -102,18 +105,39 @@ async function deleteSetup(id: string) {
 }
 
 /**
- * Runs the saved config on a page where AniScore's content script isn't (a site set up just now), in its place: the
- * editor pauses it when it opens again.
+ * Runs the saved config on a page where AniScore's content script isn't (a site set up just now), in its place, unless
+ * the user turned the site off: the editor pauses it when it opens again, and it starts over when the setups or the
+ * sites turned off change, as the content script does.
  */
 async function keepRunning() {
   let stop = () => {};
   let paused = false;
+  let starts = 0;
   const start = async () => {
-    const saved = existingSetup((await read()).userSites);
+    const current = ++starts;
+    const { userSites, turnedOff } = await read();
+    const saved = existingSetup(userSites);
 
-    // A pause while the config loaded wins
-    if (saved && !paused) stop = initSiteLogic(saved.config);
+    // A pause, or a later start, while the config loaded wins
+    if (paused || current !== starts) return;
+
+    stop();
+    stop = () => {};
+
+    if (saved && !turnedOff.includes(saved.config.id)) {
+      stop = initSiteLogic(saved.config);
+    }
   };
+
+  browser.storage.onChanged.addListener((changes, areaName) => {
+    if (
+      areaName === 'local'
+      && !paused
+      && (userSitesKey in changes || turnedOffSitesKey in changes)
+    ) {
+      void start();
+    }
+  });
 
   window.aniScoreEngagement = {
     pause() {

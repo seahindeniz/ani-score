@@ -4,8 +4,9 @@
  * about the element, so they're left out or reduced to their stable part.
  */
 
-// `home_recent-card__WB7YR`: the CSS module's name and class, then a hash
-const cssModuleClass = /^(.+__)[A-Za-z0-9_-]{5}$/;
+// `home_recent-card__WB7YR`: the CSS module's name and class, then a hash. The hash has a digit or a capital letter,
+// which sets it apart from a BEM element of five letters (`anime-card__title`)
+const cssModuleClass = /^(.+__)(?=[\w-]*[A-Z0-9])[A-Za-z0-9_-]{5}$/;
 
 const generatedClass =
   /^(svelte-[a-z0-9]+|css-[a-z0-9]+|sc-[A-Za-z]+|jsx-\d+|ng-[a-z-]+|_[A-Za-z0-9_]{5,})$/;

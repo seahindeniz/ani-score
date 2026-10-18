@@ -29,13 +29,17 @@ import { Chip } from './Chip';
 import styles from './CardDetail.module.scss';
 import '~/styles';
 
+// Opening the details brings them up to date, but hovering one card after another doesn't ask AniList each time
+const detailsMaxAge = 60 * 1000;
+
 interface Props {
   card: EpisodeCard;
   store: { anime: NonNullable<Awaited<ReturnType<typeof fetchDetails>>> };
   /**
-   * Asks AniList for the card's details again, past what the extension keeps.
+   * Asks AniList for the card's details again when what the extension keeps is older than `maxAge` milliseconds (0, or
+   * left out, asks right away).
    */
-  onRefresh?: () => void;
+  onRefresh?: (maxAge?: number) => void;
 }
 
 export const CardDetail: Component<Props> = (props) => {
@@ -165,7 +169,10 @@ export const CardDetail: Component<Props> = (props) => {
               />
             </Show>
             <Show when={details()?.popularity}>
-              <AnimeInfoCard anime={details()!} onOpen={props.onRefresh} />
+              <AnimeInfoCard
+                anime={details()!}
+                onOpen={() => props.onRefresh?.(detailsMaxAge)}
+              />
             </Show>
             <Show when={details()?.mediaListEntry}>
               <Chip

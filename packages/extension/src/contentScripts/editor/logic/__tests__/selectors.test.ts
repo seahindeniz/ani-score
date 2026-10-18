@@ -37,6 +37,13 @@ describe('stableClasses', () => {
     expect(
       stableClasses(element('<a class="home_recent-card__WB7YR"></a>')),
     ).toEqual(['[class*="home_recent-card__"]']);
+    expect(
+      stableClasses(element('<a class="home_recent-card__a1b2c"></a>')),
+    ).toEqual(['[class*="home_recent-card__"]']);
+    // A BEM element of five letters is a name, not a hash
+    expect(stableClasses(element('<a class="anime-card__title"></a>'))).toEqual(
+      ['.anime-card__title'],
+    );
   });
 
   it('escapes what a selector would misread', () => {

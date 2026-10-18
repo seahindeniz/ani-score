@@ -1,7 +1,10 @@
 import { afterEach, expect, test } from 'bun:test';
 
+import { wait } from '~/utils/wait';
+
+import { fakeBrowser } from '../../../../test/fake-browser';
 import { anilistURL, mockFetch } from '../../__tests__/network';
-import { cacheDetails, readCachedDetails } from '../detailsCache';
+import { cacheDetails, readCachedDetails, watchAccount } from '../detailsCache';
 import type { AnimeDetails } from '../fetchDetails';
 import { makeAnimeFavorite } from '../makeAnimeFavorite';
 
@@ -58,4 +61,26 @@ test('drops what the extension kept for the anime, but not when AniList refused'
     found: { Dandadan: kept(171018) },
     missing: ['Frieren'],
   });
+});
+
+test("forgets everything kept once the user signs in, out or as someone else, since it's theirs", async () => {
+  // Storage changes still pending from the other tests
+  await wait(10);
+  watchAccount();
+  await fakeBrowser.storage.local.set({ token: { anilist: '' } });
+  await wait(0);
+  cacheDetails({ Frieren: { id: 1 } as AnimeDetails });
+
+  // Other settings, and writing the same token again, don't matter
+  await fakeBrowser.storage.local.set({ theme: 'dark' });
+  await fakeBrowser.storage.local.set({ token: { anilist: '' } });
+  fakeBrowser.storage.onChanged.dispatch({ token: {} }, 'sync');
+  await wait(0);
+
+  expect(readCachedDetails(['Frieren']).missing).toEqual([]);
+
+  await fakeBrowser.storage.local.set({ token: { anilist: 'other' } });
+  await wait(0);
+
+  expect(readCachedDetails(['Frieren']).missing).toEqual(['Frieren']);
 });

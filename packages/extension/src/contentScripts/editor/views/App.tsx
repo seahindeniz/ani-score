@@ -100,11 +100,32 @@ export const App: Component<AppProps> = (props) => {
   const [position, setPosition] = createSignal<Position>();
   const preview = createPreview();
   const highlight = createHighlight();
-  const saveDraft = debounce(
-    // eslint-disable-next-line solid/reactivity -- the callback is fixed for the editor's life
-    (draft: Draft | undefined) => props.onDraft(draft),
-    500,
-  );
+  // The draft waiting to be written: changes come quickly, so they're written once they pause, and right away when the
+  // editor closes or the page goes, so the last change isn't lost
+  let pendingDraft: { draft: Draft | undefined } | undefined;
+  const writeDraft = debounce(() => flushDraft(), 500);
+
+  function saveDraft(draft: Draft | undefined) {
+    pendingDraft = { draft };
+    writeDraft();
+  }
+
+  function flushDraft() {
+    writeDraft.clear();
+
+    if (!pendingDraft) return;
+
+    props.onDraft(pendingDraft.draft);
+    pendingDraft = undefined;
+  }
+
+  // Saving writes the setup itself, and drops the draft
+  function dropDraft() {
+    writeDraft.clear();
+    pendingDraft = undefined;
+  }
+
+  window.addEventListener('pagehide', flushDraft);
   // The editor and AniScore's details, also from inside their shadow roots
   const isOwn = (element: Element): boolean => {
     const root = element.getRootNode();
@@ -200,13 +221,14 @@ export const App: Component<AppProps> = (props) => {
 
   onCleanup(() => {
     pageObserver.disconnect();
-    saveDraft.clear();
+    window.removeEventListener('pagehide', flushDraft);
+    flushDraft();
     preview.dispose();
     highlight.dispose();
   });
 
   async function save(saved: SiteConfig) {
-    saveDraft.clear();
+    dropDraft();
     await props.onSave(saved);
     setExisting({ config: saved, source: 'yours', savedAt: Date.now() });
     setConfig(saved);

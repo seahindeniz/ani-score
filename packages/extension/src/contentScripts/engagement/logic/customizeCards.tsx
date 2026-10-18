@@ -12,6 +12,9 @@ import { createStyle } from './createStyle';
 // A site that keeps removing the details from an unchanged card won't win the fight forever
 const maxReinjections = 3;
 
+// A request that failed (the background starting over, AniList down) is tried again after 2s, 4s and 8s
+const maxRetries = 3;
+
 interface RenderedCard {
   container: HTMLElement;
   /**
@@ -28,18 +31,35 @@ const signatureOf = (card: EpisodeCard) =>
 /**
  * Keeps the details of the cards on the page: `update` renders details into new cards and cards that now show
  * another episode, puts them back when the site removed them, and removes them from cards that are gone. Details are
- * fetched once per title (the background keeps them a while), and again for a card whose anime the user changed.
+ * fetched once per title (the background keeps them a while), again after a request failed, and again for a card whose
+ * anime the user changed.
  */
-export function createCardCustomizer(siteStyles: string) {
+export function createCardCustomizer(
+  siteStyles: string,
+  { retryDelay = 2000 } = {},
+) {
   const logger = createLogger('customizeCards');
   const store = createMutable({
     anime: {} as Record<string, AnimeDetails | null>,
   });
   const rendered = new Map<HTMLElement, RenderedCard>();
   const requestedTitles = new Set<string>();
+  const retries = new Set<ReturnType<typeof setTimeout>>();
   let initialized: Promise<unknown> | undefined;
 
-  async function fetchDetails(cards: EpisodeCard[]) {
+  function initialize() {
+    // A failed start is tried again by the next request, rather than failing every one after it
+    initialized ??= window.messageGateway
+      .sendMessage('initialize', null)
+      .catch((error: unknown) => {
+        initialized = undefined;
+        throw error;
+      });
+
+    return initialized;
+  }
+
+  async function fetchDetails(cards: EpisodeCard[], attempt = 0) {
     const pending = cards.filter((card) => !requestedTitles.has(card.title));
 
     if (pending.length === 0) return;
@@ -47,29 +67,43 @@ export function createCardCustomizer(siteStyles: string) {
     pending.forEach((card) => requestedTitles.add(card.title));
     logger.log('Fetching details for episode cards:', pending);
 
-    initialized ??= window.messageGateway.sendMessage('initialize', null);
-    await initialized;
+    const animeMap = await initialize()
+      .then(() =>
+        window.messageGateway.sendMessage('fetch-details', {
+          cards: pending.map(({ title, episodeNumber }) => ({
+            title,
+            episodeNumber,
+          })),
+        }),
+      )
+      .catch((error: unknown) => logger.error(error));
 
-    const animeMap = await window.messageGateway.sendMessage('fetch-details', {
-      cards: pending.map(({ title, episodeNumber }) => ({
-        title,
-        episodeNumber,
-      })),
-    });
-
-    if (!animeMap) {
-      logger.log('No details fetched from background');
+    if (animeMap) {
+      Object.assign(store.anime, animeMap);
       return;
     }
 
-    Object.assign(store.anime, animeMap);
+    logger.log('No details fetched from background');
+    pending.forEach((card) => requestedTitles.delete(card.title));
+
+    if (attempt < maxRetries) {
+      const retry = setTimeout(
+        () => {
+          retries.delete(retry);
+          void fetchDetails(pending, attempt + 1);
+        },
+        retryDelay * 2 ** attempt,
+      );
+
+      retries.add(retry);
+    }
   }
 
-  // After the user changed the anime on AniList (e.g. made it a favourite), or opened its details
-  async function refresh({ title, episodeNumber }: EpisodeCard) {
+  // After the user changed the anime on AniList (`maxAge` 0, e.g. made it a favourite), or opened its details
+  async function refresh({ title, episodeNumber }: EpisodeCard, maxAge = 0) {
     const animeMap = await window.messageGateway.sendMessage('fetch-details', {
       cards: [{ title, episodeNumber }],
-      fresh: true,
+      maxAge,
     });
 
     if (animeMap) Object.assign(store.anime, animeMap);
@@ -87,7 +121,7 @@ export function createCardCustomizer(siteStyles: string) {
         <CardDetail
           card={card}
           store={store}
-          onRefresh={() => void refresh(card)}
+          onRefresh={(maxAge) => void refresh(card, maxAge)}
         />
       ),
       root,
@@ -139,12 +173,16 @@ export function createCardCustomizer(siteStyles: string) {
 
     if (fresh.length) {
       logger.log('Customized episode cards:', fresh);
-      fetchDetails(fresh).catch((error: unknown) => logger.error(error));
+      void fetchDetails(fresh);
     }
   }
 
   return {
     update,
-    dispose: () => update([]),
+    dispose: () => {
+      update([]);
+      retries.forEach(clearTimeout);
+      retries.clear();
+    },
   };
 }

@@ -189,13 +189,14 @@ describe('card detail', () => {
     expect(screen.getByTitle('Remove Favorite').textContent).toBe('11');
   });
 
-  it('asks for the details again when the user opens them', async () => {
+  it('asks for the details again when the user opens them, unless they were asked for just now', async () => {
     const { onRefresh } = setup(anime({ popularity: 250_000 }));
 
     fireEvent.mouseMove(screen.getByTitle('Popularity [Visit AniList]'));
     await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1), {
       timeout: 1000,
     });
+    expect(onRefresh).toHaveBeenCalledWith(60_000);
   });
 
   it('starts as a favorite when AniList says so', () => {

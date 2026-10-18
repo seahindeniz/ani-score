@@ -1,3 +1,5 @@
+import { tokenKey } from '~/logic/storage';
+
 import type { AnimeDetails } from './fetchDetails';
 
 /**
@@ -19,14 +21,23 @@ const entries = new Map<string, Entry>();
  * preview, which starts over on every change) doesn't ask AniList again. A title AniList didn't find is kept too.
  * Returns what's kept, and the titles to ask for.
  */
-export function readCachedDetails(titles: string[], now = Date.now()) {
+export function readCachedDetails(
+  titles: string[],
+  {
+    now = Date.now(),
+    /**
+     * Asks again for details kept longer than this, e.g. 0 after the user changed the anime on AniList.
+     */
+    maxAge = detailsTtl,
+  } = {},
+) {
   const found: Record<string, AnimeDetails | null> = {};
   const missing: string[] = [];
 
   for (const title of titles) {
     const entry = entries.get(title);
 
-    if (entry && now - entry.at < detailsTtl) {
+    if (entry && now - entry.at < Math.min(maxAge, detailsTtl)) {
       found[title] = entry.details;
     } else {
       entries.delete(title);
@@ -55,4 +66,21 @@ export function forgetDetails(
   for (const [title, entry] of entries) {
     if (matches(title, entry.details)) entries.delete(title);
   }
+}
+
+/**
+ * The details hold the signed-in user's list progress and favourites, so signing in, out or as someone else (and
+ * AniList rejecting the token) starts over.
+ */
+export function watchAccount() {
+  const tokenOf = (value: unknown) =>
+    (value as { anilist?: string } | undefined)?.anilist ?? '';
+
+  browser.storage.onChanged.addListener((changes, areaName) => {
+    const change = areaName === 'local' ? changes[tokenKey] : undefined;
+
+    if (change && tokenOf(change.oldValue) !== tokenOf(change.newValue)) {
+      entries.clear();
+    }
+  });
 }
