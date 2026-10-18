@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import {
-  cardElements,
-  containerLayout,
-  firstExtract,
-  looksDark,
-  posterOf,
-} from '../detect';
+import { cardElements, firstExtract, looksDark, posterOf } from '../detect';
 
 describe('cardElements', () => {
   it('finds the cards, without the excluded ones and those missing what they must have', () => {
@@ -63,21 +57,5 @@ describe('looksDark', () => {
     expect(looksDark(document.getElementById('dark')!)).toBe(true);
     expect(looksDark(document.getElementById('light')!)).toBe(false);
     expect(looksDark(document.getElementById('none')!)).toBe(false);
-  });
-});
-
-describe('containerLayout', () => {
-  it("reads the container's layout and gap", () => {
-    document.body.innerHTML =
-      '<div id="grid" style="display: grid; column-gap: 20px"></div><div id="flex" style="display: flex"></div>';
-
-    expect(containerLayout(document.getElementById('grid')!)).toEqual({
-      mode: 'grid',
-      gap: 20,
-    });
-    expect(containerLayout(document.getElementById('flex')!)).toEqual({
-      mode: 'flex',
-      gap: 0,
-    });
   });
 });

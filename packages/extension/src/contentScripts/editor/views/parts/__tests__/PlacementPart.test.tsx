@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it } from 'bun:test';
 
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library';
 
-import { cardSpec, episodeGrid, settle } from '../../__tests__/harness';
+import { wait } from '~/utils/wait';
+
+import {
+  cardSpec,
+  chooseOption,
+  episodeGrid,
+  settle,
+} from '../../__tests__/harness';
 import { PlacementPart, placementSummary } from '../PlacementPart';
 import { renderCardPart } from './render';
 
@@ -79,9 +86,10 @@ describe('PlacementPart', () => {
         target: { value: 'span' },
       },
     );
-    fireEvent.change(screen.getByRole('combobox', { name: 'Position' }), {
-      target: { value: 'before' },
-    });
+    chooseOption(
+      screen.getByRole('combobox', { name: 'Position' }),
+      'Before it',
+    );
 
     expect(card().inject).toEqual({ selector: 'span', position: 'before' });
 
@@ -117,6 +125,37 @@ describe('PlacementPart', () => {
     await settle();
 
     expect(card().inject).toEqual({ selector: undefined, position: 'before' });
+  });
+});
+
+describe('PlacementPart with too little room', () => {
+  it("warns when part of the cards is too short for the score, also once it's shown", async () => {
+    const cards = episodeGrid();
+
+    renderCardPart(PlacementPart, cardSpec());
+
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    for (const card of cards) {
+      const name = card.querySelector('h3')!;
+
+      name.append(
+        Object.assign(document.createElement('div'), {
+          className: 'ani-score',
+        }),
+      );
+      Object.defineProperties(name, {
+        scrollHeight: { value: 120 },
+        clientHeight: { value: 70 },
+      });
+    }
+
+    // The details load inside shadow roots, so it looks again every second
+    await wait(1050);
+
+    expect(screen.getByRole('alert').textContent).toStartWith(
+      "The score doesn't fit in some cards",
+    );
   });
 });
 

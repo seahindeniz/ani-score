@@ -195,7 +195,7 @@ describe('parseSiteConfig', () => {
       '.a /* x */',
     ]) {
       expect(errorOf(withContainer(container))).toContain(
-        'A container selector cannot contain {, }, ; or comments',
+        'A selector written into CSS cannot contain {, }, ; or comments',
       );
     }
   });

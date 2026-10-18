@@ -22,6 +22,22 @@ describe('compileLayout', () => {
     ).toBe('.rail {\n  gap: 30px;\n}\n.rail > * {\n  flex-basis: 220px;\n}');
   });
 
+  it("spaces the cards with their margins or padding when that's how the site does", () => {
+    expect(
+      compileLayout([
+        { container: '.list', mode: 'block', spacing: 'margin', gap: 20 },
+        { container: '.row', mode: 'flex', spacing: 'padding', gap: 30 },
+        // Without a gap, there's nothing to space
+        { container: '.none', mode: 'block', spacing: 'margin' },
+      ]),
+    ).toBe(
+      [
+        '.list > * {\n  margin-inline: 10px !important;\n  margin-block-end: 20px !important;\n}',
+        '.row > * {\n  padding-inline: 15px !important;\n  padding-block-end: 30px !important;\n}',
+      ].join('\n'),
+    );
+  });
+
   it('only writes what is set', () => {
     expect(
       compileLayout([
@@ -46,5 +62,22 @@ describe('pageCss', () => {
         layout: [{ container: '.b', mode: 'grid', gap: 4 }],
       }),
     ).toBe('.a {}\n.b {\n  gap: 4px;\n}');
+  });
+
+  it('lets elements in the cards fit their content, or sets their height', () => {
+    expect(
+      pageCss({
+        ...page,
+        heights: [
+          { selector: ':is(.card) .info', height: 'auto' },
+          { selector: '.card', height: 320 },
+        ],
+      }),
+    ).toBe(
+      [
+        ':is(.card) .info {\n  height: auto !important;\n  max-height: none !important;\n}',
+        '.card {\n  height: 320px !important;\n  max-height: none !important;\n}',
+      ].join('\n'),
+    );
   });
 });

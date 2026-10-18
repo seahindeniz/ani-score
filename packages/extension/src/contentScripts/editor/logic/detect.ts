@@ -56,17 +56,3 @@ export function looksDark(element: Element) {
 
   return false;
 }
-
-/**
- * How the element around the cards lays them out, and the space it leaves between them.
- */
-export function containerLayout(container: Element) {
-  const style = getComputedStyle(container);
-
-  return {
-    mode: style.display.includes('grid')
-      ? ('grid' as const)
-      : ('flex' as const),
-    gap: Number.parseFloat(style.columnGap || style.gap) || 0,
-  };
-}

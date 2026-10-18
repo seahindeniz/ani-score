@@ -7,7 +7,15 @@ import type { SiteCard } from '~/sites/schema';
 import { firstExtract, posterOf } from '../../logic/detect';
 import { relativeSelector } from '../../logic/selectors';
 import { useEditor } from '../context';
-import { Advanced, Button, Field, Select, TextInput } from '../controls';
+import {
+  Advanced,
+  Button,
+  Field,
+  Select,
+  TextInput,
+  Warning,
+} from '../controls';
+import { createFixedBoxes } from './fixedBoxes';
 import { createCardPicker } from './pick';
 import type { CardPartProps, Summary } from './types';
 
@@ -182,8 +190,19 @@ export const PlacementPart: Component<CardPartProps> = (props) => {
     }
   }
 
+  const boxes = createFixedBoxes(
+    () => props.elements(),
+    () => props.card.selector,
+  );
+
   return (
     <>
+      <Show when={boxes().length}>
+        <Warning>
+          The score doesn't fit in some cards: part of them has a fixed height.
+          Choose another spot, or let it fit under "Highlight and spacing".
+        </Warning>
+      </Show>
       <ChoiceGroup
         label="Where the score goes"
         value={current().id}

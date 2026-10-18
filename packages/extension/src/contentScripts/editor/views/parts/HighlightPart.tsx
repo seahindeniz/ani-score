@@ -1,12 +1,21 @@
 import type { Component } from 'solid-js';
-import { createEffect, createMemo, Index, onCleanup, Show } from 'solid-js';
+import {
+  createEffect,
+  createMemo,
+  For,
+  Index,
+  onCleanup,
+  Show,
+} from 'solid-js';
 
 import { Button as UiButton } from '~/components/ui/button';
 import { Choice, ChoiceGroup } from '~/components/ui/choice-group';
 import type { SiteCard, SitePage } from '~/sites/schema';
 
-import { containerLayout, posterOf } from '../../logic/detect';
+import { posterOf } from '../../logic/detect';
 import { elementSelector, relativeSelector } from '../../logic/selectors';
+import type { FixedBox } from '../../logic/spacing';
+import { detectSpacing, fixedBoxes } from '../../logic/spacing';
 import { useEditor } from '../context';
 import {
   Advanced,
@@ -16,11 +25,15 @@ import {
   Range,
   Select,
   TextInput,
+  Warning,
 } from '../controls';
+import { createFixedBoxes } from './fixedBoxes';
 import { createCardPicker } from './pick';
 import type { CardPartProps, Summary } from './types';
+import { cardCount } from './types';
 
 type Layout = NonNullable<SitePage['layout']>[number];
+type Height = NonNullable<SitePage['heights']>[number];
 
 type Glow = 'poster' | 'card' | 'other' | 'none';
 
@@ -38,6 +51,12 @@ const glowNames: Record<Glow, string> = {
   none: 'No highlight',
 };
 
+const methodNames: Record<NonNullable<Layout['spacing']>, string> = {
+  gap: 'the gap between them',
+  margin: 'their margins',
+  padding: 'their padding',
+};
+
 const posterSelector = (first: HTMLElement | undefined) => {
   const poster = first && posterOf(first);
 
@@ -45,18 +64,18 @@ const posterSelector = (first: HTMLElement | undefined) => {
 };
 
 /**
- * The element around the cards, and the layout entry for it, if the page has one.
+ * The element around the cards, how the site spaces them, and the layout entry for it, if the page has one.
  */
 function spacingOf(page: SitePage, elements: HTMLElement[]) {
-  const container = elements[0]?.parentElement;
+  const site = elements[0] && detectSpacing(elements[0]);
 
-  if (!container) return undefined;
+  if (!site) return undefined;
 
-  const selector = elementSelector(container);
+  const selector = elementSelector(elements[0].parentElement!);
 
   return {
     selector,
-    site: containerLayout(container),
+    site,
     entry: page.layout?.find((layout) => layout.container === selector),
   };
 }
@@ -67,6 +86,10 @@ export function highlightSummary(
   elements: HTMLElement[],
 ): Summary {
   const gap = spacingOf(page, elements)?.entry?.gap;
+
+  if (fixedBoxes(elements, card.selector).length) {
+    return { text: 'Some cards cut the score off', status: 'issue' };
+  }
 
   return {
     text: `${glowNames[glowOf(card, posterSelector(elements[0]))]}, ${gap == null ? "site's own spacing" : `${gap} px apart`}`,
@@ -100,15 +123,6 @@ const LayoutFields: Component<{
                 value={item().container}
                 onValue={(container) => update({ container })}
               />
-              <Select
-                aria-label="Layout"
-                value={item().mode}
-                options={[
-                  { value: 'grid', label: 'Grid' },
-                  { value: 'flex', label: 'Row' },
-                ]}
-                onValue={(mode) => update({ mode })}
-              />
               <Button
                 aria-label="Remove spacing"
                 onClick={() => set(layout().filter((_, at) => at !== index))}
@@ -117,7 +131,29 @@ const LayoutFields: Component<{
               </Button>
             </div>
             <div class="grid grid-cols-2 gap-1">
-              <Field label="Gap (px)">
+              <Select
+                aria-label="Layout"
+                value={item().mode}
+                options={[
+                  { value: 'grid', label: 'Grid' },
+                  { value: 'flex', label: 'Row' },
+                  { value: 'block', label: 'Blocks' },
+                ]}
+                onValue={(mode) => update({ mode })}
+              />
+              <Select
+                aria-label="Spaced by"
+                value={item().spacing ?? 'gap'}
+                options={[
+                  { value: 'gap', label: 'Gap' },
+                  { value: 'margin', label: "Cards' margins" },
+                  { value: 'padding', label: "Cards' padding" },
+                ]}
+                onValue={(spacing) =>
+                  update({ spacing: spacing === 'gap' ? undefined : spacing })
+                }
+              />
+              <Field label="Space (px)">
                 <NumberInput
                   value={item().gap}
                   onValue={(gap) => update({ gap })}
@@ -137,9 +173,124 @@ const LayoutFields: Component<{
   );
 };
 
+type HeightChoice = 'site' | 'auto' | 'custom';
+
 /**
- * The part of each card that glows while the anime is on the user's list, and the space between the cards, which the
- * glow needs so it doesn't run into the next card.
+ * Elements in the cards whose fixed height cuts the details off, each with the height to give it instead.
+ */
+const HeightsSection: Component<{
+  boxes: FixedBox[];
+  page: SitePage;
+  onPageChange: (changes: Partial<SitePage>) => void;
+}> = (props) => {
+  const heights = () => props.page.heights ?? [];
+  // What the site cuts off, and what the user set before (which no longer cuts anything off)
+  const listed = createMemo(
+    () => [
+      ...props.boxes.filter(
+        (box) => !heights().some((height) => height.selector === box.selector),
+      ),
+      ...heights().map((height) => {
+        const box = props.boxes.find(
+          (item) => item.selector === height.selector,
+        );
+
+        return {
+          selector: height.selector,
+          height:
+            box?.height
+            ?? (typeof height.height === 'number' ? height.height : 0),
+          cards: box?.cards ?? 0,
+        };
+      }),
+    ],
+    [],
+    // Drawn again only when they change, which would close an open dropdown
+    { equals: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
+  const setHeight = (
+    selector: string,
+    height: Height['height'] | undefined,
+  ) => {
+    const others = heights().filter((entry) => entry.selector !== selector);
+    const list =
+      height === undefined ? others : [...others, { selector, height }];
+
+    props.onPageChange({ heights: list.length ? list : undefined });
+  };
+  const choiceOf = (selector: string): HeightChoice => {
+    const set = heights().find((entry) => entry.selector === selector)?.height;
+
+    return set === undefined ? 'site' : set === 'auto' ? 'auto' : 'custom';
+  };
+
+  return (
+    <Show when={listed().length}>
+      <div class="flex flex-col gap-3 border-t border-t-solid border-border pt-4">
+        <Show when={props.boxes.length}>
+          <Warning>
+            Part of the cards has a fixed height, so the score doesn't fit in
+            it. Let it fit the score, or give it a height:
+          </Warning>
+        </Show>
+        <For each={listed()}>
+          {(box) => (
+            <div class="flex flex-col gap-1.5 text-[13px]">
+              <code class="break-all text-xs">{box.selector}</code>
+              <span class="text-muted-foreground">
+                {box.cards
+                  ? `${box.height} px, too short on ${cardCount(box.cards)}`
+                  : 'Height set here'}
+              </span>
+              <div class="flex gap-2">
+                <Select
+                  aria-label={`Height of ${box.selector}`}
+                  class="h-8 flex-1"
+                  value={choiceOf(box.selector)}
+                  options={[
+                    { value: 'site', label: "The site's height" },
+                    { value: 'auto', label: 'Fit the content' },
+                    { value: 'custom', label: 'Set a height' },
+                  ]}
+                  onValue={(choice) =>
+                    setHeight(
+                      box.selector,
+                      choice === 'site'
+                        ? undefined
+                        : choice === 'auto'
+                          ? 'auto'
+                          : box.height + 40,
+                    )
+                  }
+                />
+                <Show when={choiceOf(box.selector) === 'custom'}>
+                  <div class="w-24">
+                    <NumberInput
+                      aria-label={`Height of ${box.selector} in pixels`}
+                      value={
+                        heights().find(
+                          (entry) => entry.selector === box.selector,
+                        )?.height as number
+                      }
+                      onValue={(height) =>
+                        setHeight(box.selector, height ?? 'auto')
+                      }
+                    />
+                  </div>
+                </Show>
+              </div>
+            </div>
+          )}
+        </For>
+      </div>
+    </Show>
+  );
+};
+
+/**
+ * The part of each card that glows while the anime is on the user's list, and the room the score needs: the space
+ * between the cards, which the glow needs so it doesn't run into the next card, and the height of parts of the cards
+ * too short for the score.
  */
 export const HighlightPart: Component<
   CardPartProps & {
@@ -149,6 +300,10 @@ export const HighlightPart: Component<
 > = (props) => {
   const editor = useEditor();
   const pickInCard = createCardPicker(() => props.elements());
+  const boxes = createFixedBoxes(
+    () => props.elements(),
+    () => props.card.selector,
+  );
   const poster = createMemo(() => {
     editor.pageVersion();
 
@@ -160,7 +315,7 @@ export const HighlightPart: Component<
 
     return spacingOf(props.page, props.elements());
   });
-  const gap = () => spacing()?.entry?.gap ?? spacing()?.site.gap ?? 0;
+  const gap = () => spacing()?.entry?.gap ?? spacing()?.site.space ?? 0;
   const setShimmer = (shimmer: SiteCard['shimmer']) =>
     props.onChange({ ...props.card, shimmer });
 
@@ -177,23 +332,26 @@ export const HighlightPart: Component<
     if (choice === 'none') setShimmer(undefined);
   }
 
+  // Spaces the cards the way the site does, so the change takes
   function setGap(value: number | undefined) {
-    const current = spacing()!;
+    const { entry, selector, site } = spacing()!;
     const others = (props.page.layout ?? []).filter(
-      (layout) => layout !== current.entry,
+      (layout) => layout !== entry,
     );
-    const entry: Layout = {
-      ...current.entry,
-      container: current.selector,
-      mode: current.entry?.mode ?? current.site.mode,
+    const method = entry?.spacing ?? site.method;
+    const changed: Layout = {
+      ...entry,
+      container: selector,
+      mode: entry?.mode ?? site.mode,
+      ...(method !== 'gap' && { spacing: method }),
       gap: value,
     };
-    const keep = entry.gap != null || entry.minCardWidth != null;
+    const keep = changed.gap != null || changed.minCardWidth != null;
 
     props.onPageChange({
       layout:
         keep || others.length
-          ? [...others, ...(keep ? [entry] : [])]
+          ? [...others, ...(keep ? [changed] : [])]
           : undefined,
     });
   }
@@ -259,7 +417,10 @@ export const HighlightPart: Component<
           <p class="m-0 text-[13px] leading-normal text-muted-foreground">
             {glow() === 'none'
               ? 'Add space if the score makes the cards look cramped.'
-              : 'If the glow runs into the next card, add space until it stands alone.'}
+              : 'If the glow runs into the next card, add space until it stands alone.'}{' '}
+            The site spaces its cards with{' '}
+            {methodNames[spacing()!.entry?.spacing ?? spacing()!.site.method]},
+            so that's what changes.
           </p>
           <Show when={spacing()!.entry?.gap != null}>
             <UiButton
@@ -273,6 +434,11 @@ export const HighlightPart: Component<
           </Show>
         </div>
       </Show>
+      <HeightsSection
+        boxes={boxes()}
+        page={props.page}
+        onPageChange={props.onPageChange}
+      />
       <Show when={props.advanced}>
         <Advanced>
           <Field

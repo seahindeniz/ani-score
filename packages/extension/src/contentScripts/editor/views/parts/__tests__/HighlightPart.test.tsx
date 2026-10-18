@@ -8,6 +8,7 @@ import type { SiteCard, SitePage } from '~/sites/schema';
 import { cardElements } from '../../../logic/detect';
 import {
   cardSpec,
+  chooseOption,
   episodeGrid,
   renderInEditor,
   settle,
@@ -104,10 +105,10 @@ describe('HighlightPart', () => {
     expect(slider().value).toBe('20');
     expect(slider().getAttribute('aria-valuetext')).toBe("Site's own, 20 px");
     expect(
-      screen.getByText(
-        'If the glow runs into the next card, add space until it stands alone.',
-      ),
-    ).toBeTruthy();
+      screen.getByText(/^If the glow runs into the next card/).textContent,
+    ).toBe(
+      "If the glow runs into the next card, add space until it stands alone. The site spaces its cards with the gap between them, so that's what changes.",
+    );
 
     fireEvent.input(slider(), { target: { value: '32' } });
 
@@ -134,7 +135,7 @@ describe('HighlightPart', () => {
     });
 
     expect(
-      screen.getByText('Add space if the score makes the cards look cramped.'),
+      screen.getByText(/^Add space if the score makes the cards look cramped/),
     ).toBeTruthy();
 
     fireEvent.click(
@@ -150,6 +151,99 @@ describe('HighlightPart', () => {
         minCardWidth: 180,
       },
     ]);
+  });
+
+  it('spaces cards the way the site does, like with their padding', () => {
+    episodeGrid();
+    (document.querySelector('.episodes') as HTMLElement).style.display =
+      'block';
+
+    for (const cell of document.querySelectorAll<HTMLElement>('.cell')) {
+      cell.style.padding = '0 8px';
+    }
+
+    const { page } = setUp(cellCard());
+
+    expect(slider().value).toBe('16');
+    expect(
+      screen.getByText(/spaces its cards with their padding/),
+    ).toBeTruthy();
+
+    fireEvent.input(slider(), { target: { value: '24' } });
+
+    expect(page().layout).toEqual([
+      { container: 'div.episodes', mode: 'block', spacing: 'padding', gap: 24 },
+    ]);
+  });
+
+  it('lets parts of the cards that are too short fit the score, or sets their height', async () => {
+    const cards = episodeGrid();
+
+    // Each card's name box is 70px high, and the details don't fit in it
+    for (const card of cards) {
+      const box = card.querySelector('h3')!;
+      const details = document.createElement('div');
+
+      details.className = 'ani-score';
+      box.append(details);
+      box.style.height = '70px';
+      Object.defineProperties(box, {
+        scrollHeight: { value: 120 },
+        clientHeight: { value: 70 },
+      });
+    }
+
+    const { page } = setUp(cellCard());
+    const height = () => screen.getByRole('combobox', { name: /^Height of/ });
+
+    expect(screen.getByRole('alert').textContent).toStartWith(
+      'Part of the cards has a fixed height',
+    );
+    expect(screen.getByText('70 px, too short on 5 cards')).toBeTruthy();
+
+    chooseOption(height(), 'Fit the content');
+
+    expect(page().heights).toEqual([
+      { selector: ':is(div.cell) h3', height: 'auto' },
+    ]);
+
+    chooseOption(height(), 'Set a height');
+
+    expect(page().heights).toEqual([
+      { selector: ':is(div.cell) h3', height: 110 },
+    ]);
+
+    fireEvent.input(screen.getByRole('spinbutton', { name: /in pixels/ }), {
+      target: { value: '' },
+    });
+
+    expect(page().heights).toEqual([
+      { selector: ':is(div.cell) h3', height: 'auto' },
+    ]);
+
+    chooseOption(height(), "The site's height");
+
+    expect(page().heights).toBeUndefined();
+  });
+
+  it('keeps a height set before, also once it fits', () => {
+    episodeGrid();
+    setUp(cellCard(), {
+      heights: [
+        { selector: ':is(div.cell) h3', height: 140 },
+        { selector: ':is(div.cell) span', height: 'auto' },
+      ],
+    });
+
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getAllByText('Height set here')).toHaveLength(2);
+    expect(
+      (
+        screen.getByRole('spinbutton', {
+          name: /in pixels/,
+        }) as HTMLInputElement
+      ).value,
+    ).toBe('140');
   });
 
   it('has no spacing without cards', () => {
@@ -182,10 +276,12 @@ describe('HighlightPart', () => {
     fireEvent.input(screen.getByRole('textbox', { name: 'Container' }), {
       target: { value: 'main' },
     });
-    fireEvent.change(screen.getByRole('combobox', { name: 'Layout' }), {
-      target: { value: 'flex' },
-    });
-    fireEvent.input(screen.getByRole('spinbutton', { name: /Gap/ }), {
+    chooseOption(screen.getByRole('combobox', { name: 'Layout' }), 'Row');
+    chooseOption(
+      screen.getByRole('combobox', { name: 'Spaced by' }),
+      "Cards' margins",
+    );
+    fireEvent.input(screen.getByRole('spinbutton', { name: /Space/ }), {
       target: { value: '12' },
     });
     fireEvent.input(screen.getByRole('spinbutton', { name: /Card width/ }), {
@@ -193,8 +289,18 @@ describe('HighlightPart', () => {
     });
 
     expect(page().layout).toEqual([
-      { container: 'main', mode: 'flex', gap: 12, minCardWidth: undefined },
+      {
+        container: 'main',
+        mode: 'flex',
+        spacing: 'margin',
+        gap: 12,
+        minCardWidth: undefined,
+      },
     ]);
+
+    chooseOption(screen.getByRole('combobox', { name: 'Spaced by' }), 'Gap');
+
+    expect(page().layout![0].spacing).toBeUndefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove spacing' }));
 
@@ -203,6 +309,23 @@ describe('HighlightPart', () => {
 });
 
 describe('highlightSummary', () => {
+  it('says when cards cut the score off', () => {
+    const [card] = episodeGrid();
+    const name = card.querySelector('h3')!;
+
+    name.append(
+      Object.assign(document.createElement('div'), { className: 'ani-score' }),
+    );
+    Object.defineProperties(name, {
+      scrollHeight: { value: 120 },
+      clientHeight: { value: 70 },
+    });
+
+    expect(
+      highlightSummary(cellCard(), { match: {}, cards: [] }, [card]),
+    ).toEqual({ text: 'Some cards cut the score off', status: 'issue' });
+  });
+
   it('names what glows and the spacing', () => {
     const cards = cardElements(cellCard({ selector: '' }));
 

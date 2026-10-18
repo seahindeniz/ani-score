@@ -41,7 +41,10 @@ same parts (`views/parts/`): the guided controls, plus each part's "Advanced" se
 the element under the pointer and keeps clicks from the site (`logic/picker.ts`); `logic/selectors.ts` turns picks into
 selectors that skip generated class names. `logic/analyze.ts` finds where the cards keep the name, the episode and the
 season (every element's text and attributes, each read with known formats) and cuts a name where its season or episode
-starts, so the setup can suggest them; `logic/detect.ts` finds the poster and the page's colors. While it's open, the engagement script pauses (`window.aniScoreEngagement`) and the editor previews the draft
+starts, so the setup can suggest them; `logic/detect.ts` finds the poster and the page's colors. `logic/spacing.ts`
+finds how the site spaces its cards (a gap, or the cards' margins or padding, which a page's `layout` then changes the
+same way) and the elements in the cards too short for the details, which the page's `heights` can resize. The editor's
+dropdowns are `components/ui/dropdown.tsx`: native selects take the host page's colors. While it's open, the engagement script pauses (`window.aniScoreEngagement`) and the editor previews the draft
 with the same runtime. Drafts (`{ config, step? }`) are kept per host under `siteDrafts`, and saving writes to
 `userSites`.
 

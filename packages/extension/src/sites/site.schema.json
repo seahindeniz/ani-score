@@ -168,9 +168,20 @@
                 "mode": {
                   "enum": [
                     "grid",
-                    "flex"
+                    "flex",
+                    "block"
                   ],
-                  "type": "string"
+                  "type": "string",
+                  "description": "How the container lays out its cards"
+                },
+                "spacing": {
+                  "enum": [
+                    "gap",
+                    "margin",
+                    "padding"
+                  ],
+                  "type": "string",
+                  "description": "What spaces the cards: the container's gap (the default), or the margins or the padding of the elements in it"
                 },
                 "gap": {
                   "type": "number",
@@ -190,6 +201,36 @@
               "additionalProperties": false
             },
             "description": "Spacing for the elements that hold the cards, so the details have room; applied while this page applies"
+          },
+          "heights": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "selector": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "height": {
+                  "anyOf": [
+                    {
+                      "const": "auto"
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 2000
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "selector",
+                "height"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Heights for elements in the cards whose fixed height leaves the details no room: \"auto\" to fit their content, or pixels; applied while this page applies"
           },
           "cards": {
             "type": "array",

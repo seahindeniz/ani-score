@@ -191,6 +191,16 @@ const Card = v.strictObject({
   shimmer: v.optional(v.strictObject({ selector: v.optional(Selector) })),
 });
 
+// A selector written into CSS, where these could end its rule and start another (the build can't parse selectors,
+// so it doesn't catch them otherwise)
+const CssSelector = v.pipe(
+  Selector,
+  v.check(
+    (selector) => !/[{};]|\/\*|\*\//.test(selector),
+    'A selector written into CSS cannot contain {, }, ; or comments',
+  ),
+);
+
 const Page = v.strictObject({
   name: v.optional(v.string()),
   match: v.strictObject({
@@ -214,16 +224,19 @@ const Page = v.strictObject({
     v.pipe(
       v.array(
         v.strictObject({
-          container: v.pipe(
-            Selector,
-            // It's written into CSS, where these could end its rule and start another (the build can't parse
-            // selectors, so it doesn't catch them otherwise)
-            v.check(
-              (selector) => !/[{};]|\/\*|\*\//.test(selector),
-              'A container selector cannot contain {, }, ; or comments',
+          container: CssSelector,
+          mode: v.pipe(
+            v.picklist(['grid', 'flex', 'block']),
+            v.description('How the container lays out its cards'),
+          ),
+          spacing: v.optional(
+            v.pipe(
+              v.picklist(['gap', 'margin', 'padding']),
+              v.description(
+                "What spaces the cards: the container's gap (the default), or the margins or the padding of the elements in it",
+              ),
             ),
           ),
-          mode: v.picklist(['grid', 'flex']),
           gap: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(200))),
           minCardWidth: v.optional(
             v.pipe(v.number(), v.minValue(0), v.maxValue(2000)),
@@ -232,6 +245,22 @@ const Page = v.strictObject({
       ),
       v.description(
         'Spacing for the elements that hold the cards, so the details have room; applied while this page applies',
+      ),
+    ),
+  ),
+  heights: v.optional(
+    v.pipe(
+      v.array(
+        v.strictObject({
+          selector: CssSelector,
+          height: v.union([
+            v.literal('auto'),
+            v.pipe(v.number(), v.minValue(0), v.maxValue(2000)),
+          ]),
+        }),
+      ),
+      v.description(
+        'Heights for elements in the cards whose fixed height leaves the details no room: "auto" to fit their content, or pixels; applied while this page applies',
       ),
     ),
   ),
