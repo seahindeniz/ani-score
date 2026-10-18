@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
 
-import type { SiteConfig, SitePage } from '~/sites/schema';
+import type { SiteConfig } from '~/sites/schema';
 import { wait } from '~/utils/wait';
 
 import { renderInEditor, settle } from '../../__tests__/harness';
@@ -27,23 +27,18 @@ function setUp(
   detected: 'dark' | 'light' = 'dark',
 ) {
   const [config, setConfig] = createSignal<SiteConfig>({ ...site, theme });
-  const [page, setPage] = createSignal<SitePage>(site.pages[0]);
   const result = renderInEditor(() => (
     <ColorsPart
       config={config()}
       onChange={(changes) =>
         setConfig((current) => ({ ...current, ...changes }))
       }
-      page={page()}
-      onPageChange={(changes) =>
-        setPage((current) => ({ ...current, ...changes }))
-      }
       detected={detected}
       advanced
     />
   ));
 
-  return { ...result, config, page };
+  return { ...result, config };
 }
 
 const radio = (name: RegExp) =>
@@ -117,10 +112,8 @@ describe('ColorsPart', () => {
     expect(config().theme).toBe('dark');
   });
 
-  it('edits the learned condition, the CSS and an overlay under Advanced', async () => {
-    document.body.innerHTML = '<div class="overlay"></div>';
-
-    const { config, page, willPick } = setUp({
+  it('edits the learned condition under Advanced', () => {
+    const { config } = setUp({
       dark: { selector: 'html.dark' },
     });
 
@@ -132,45 +125,12 @@ describe('ColorsPart', () => {
     );
 
     expect(config().theme).toEqual({ dark: { selector: 'body.night' } });
+  });
 
-    fireEvent.input(screen.getByRole('textbox', { name: /^Site CSS/ }), {
-      target: { value: 'a {}' },
-    });
-    fireEvent.input(screen.getByRole('textbox', { name: /^Page CSS/ }), {
-      target: { value: 'b {}' },
-    });
+  it('has no advanced settings until the switch is learned', () => {
+    setUp('dark');
 
-    expect(config().css).toBe('a {}');
-    expect(page().css).toBe('b {}');
-
-    willPick(document.querySelector('.overlay')!);
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Pick an overlay that blocks the cards',
-      }),
-    );
-    await settle();
-
-    expect(config().css).toBe(
-      'a {}\n/* Lets clicks and hovers through to the cards */\ndiv.overlay {\n  pointer-events: none !important;\n}',
-    );
-
-    fireEvent.input(screen.getByRole('textbox', { name: /^Site CSS/ }), {
-      target: { value: '' },
-    });
-    fireEvent.input(screen.getByRole('textbox', { name: /^Page CSS/ }), {
-      target: { value: '' },
-    });
-    willPick(undefined);
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Pick an overlay that blocks the cards',
-      }),
-    );
-    await settle();
-
-    expect(config().css).toBeUndefined();
-    expect(page().css).toBeUndefined();
+    expect(screen.queryByRole('button', { name: 'Advanced' })).toBeNull();
   });
 
   it('edits a stored value condition under Advanced', () => {

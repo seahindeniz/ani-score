@@ -127,6 +127,7 @@ describe('Checklist', () => {
       'Season',
       'Colors',
       'Highlight and spacing',
+      'Custom CSS',
       'Pages and addresses',
     ]) {
       fireEvent.click(row(name));
@@ -216,6 +217,53 @@ describe('Checklist', () => {
 
     expect(config().pages[1].cards).toHaveLength(1);
     expect(screen.queryByRole('combobox', { name: 'Cards' })).toBeNull();
+  });
+
+  it('renames the page in place of the page list', async () => {
+    const { config } = setUp();
+    const name = () =>
+      screen.getByRole('textbox', { name: 'Page name' }) as HTMLInputElement;
+
+    fireEvent.click(button('Rename this page'));
+    await settle();
+
+    expect(screen.queryByRole('combobox', { name: 'Page' })).toBeNull();
+    expect(name().value).toBe('Latest');
+    expect(name().placeholder).toBe('Page 1');
+
+    fireEvent.input(name(), { target: { value: '  New episodes ' } });
+    fireEvent.keyDown(name(), { key: 'Enter' });
+
+    expect(config().pages[0].name).toBe('New episodes');
+    expect(
+      screen.getByRole('combobox', { name: 'Page' }).textContent,
+    ).toContain('New episodes');
+
+    // Escape keeps the name, and the field losing the focus as it goes doesn't save
+    fireEvent.click(button('Rename this page'));
+    fireEvent.input(name(), { target: { value: 'Other' } });
+
+    const field = name();
+
+    fireEvent.keyDown(field, { key: 'Escape' });
+    fireEvent.blur(field);
+
+    expect(config().pages[0].name).toBe('New episodes');
+
+    // An empty name goes back to the page's number
+    fireEvent.click(button('Rename this page'));
+    fireEvent.input(name(), { target: { value: ' ' } });
+    fireEvent.mouseDown(button('Done renaming'));
+    fireEvent.click(button('Done renaming'));
+
+    expect(config().pages[0].name).toBeUndefined();
+
+    fireEvent.click(button('Rename this page'));
+    fireEvent.input(name(), { target: { value: 'Latest' } });
+    fireEvent.keyDown(name(), { key: 'a' });
+    fireEvent.blur(name());
+
+    expect(config().pages[0].name).toBe('Latest');
   });
 
   it('starts over, shares, copies, downloads and deletes from its menu', async () => {
@@ -339,12 +387,20 @@ describe('Checklist', () => {
     fireEvent.click(row('Colors'));
     fireEvent.click(screen.getByRole('radio', { name: /Follow the site's/ }));
     fireEvent.click(screen.getByRole('radio', { name: /^Dark/ }));
-    fireEvent.click(button('Advanced'));
-    fireEvent.input(screen.getByRole('textbox', { name: /^Page CSS/ }), {
+    fireEvent.click(row('Custom CSS'));
+    fireEvent.input(screen.getByRole('textbox', { name: /^This page/ }), {
       target: { value: 'b {}' },
     });
+    fireEvent.input(
+      screen.getByRole('textbox', { name: /^Every page of the site/ }),
+      { target: { value: 'a {}' } },
+    );
 
     expect(config().pages[0].css).toBe('b {}');
+    expect(config().css).toBe('a {}');
+    expect(row('Custom CSS').textContent).toContain(
+      'For the site and this page',
+    );
 
     fireEvent.click(row('Pages and addresses'));
     fireEvent.click(button('Advanced'));

@@ -83,6 +83,17 @@ const CSS = v.pipe(
   ),
 );
 
+/**
+ * Why a config can't have the CSS, or `undefined` when it can.
+ */
+export function checkCss(css: string) {
+  const result = v.safeParse(CSS, css);
+
+  return result.success
+    ? undefined
+    : result.issues.map((issue) => issue.message).join(' ');
+}
+
 const Source = v.union(
   [
     v.picklist(['text', 'ownText']),

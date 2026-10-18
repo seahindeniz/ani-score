@@ -10,10 +10,12 @@ import {
 } from 'solid-js';
 import LucideCheck from '~icons/lucide/check';
 import LucideChevronDown from '~icons/lucide/chevron-down';
+import LucideCode from '~icons/lucide/code';
 import LucideEllipsis from '~icons/lucide/ellipsis';
 import LucideLayers from '~icons/lucide/layers';
 import LucideMoon from '~icons/lucide/moon';
 import LucidePanelBottom from '~icons/lucide/panel-bottom';
+import LucidePencil from '~icons/lucide/pencil';
 import LucideSparkles from '~icons/lucide/sparkles';
 import LucideTriangleAlert from '~icons/lucide/triangle-alert';
 
@@ -32,6 +34,7 @@ import type { Position } from './Panel';
 import { Panel } from './Panel';
 import { CardsPart, cardsSummary } from './parts/CardsPart';
 import { ColorsPart, themeSummary } from './parts/ColorsPart';
+import { CssPart, cssSummary } from './parts/CssPart';
 import {
   EpisodePart,
   episodeSummary,
@@ -52,6 +55,7 @@ type SectionId =
   | 'placement'
   | 'colors'
   | 'highlight'
+  | 'css'
   | 'pages';
 
 const groups: { title: string; sections: SectionId[] }[] = [
@@ -59,7 +63,10 @@ const groups: { title: string; sections: SectionId[] }[] = [
     title: 'What AniScore reads',
     sections: ['cards', 'name', 'episode', 'season'],
   },
-  { title: 'How it looks', sections: ['placement', 'colors', 'highlight'] },
+  {
+    title: 'How it looks',
+    sections: ['placement', 'colors', 'highlight', 'css'],
+  },
   { title: 'Where it works', sections: ['pages'] },
 ];
 
@@ -71,14 +78,19 @@ const titles: Record<SectionId, string> = {
   placement: 'Score position',
   colors: 'Colors',
   highlight: 'Highlight and spacing',
+  css: 'Custom CSS',
   pages: 'Pages and addresses',
 };
+
+const pageName = (page: SitePage, index: number) =>
+  page.name || `Page ${index + 1}`;
 
 const icons: Partial<Record<SectionId, () => JSX.Element>> = {
   season: () => <LucideLayers />,
   placement: () => <LucidePanelBottom />,
   colors: () => <LucideMoon />,
   highlight: () => <LucideSparkles />,
+  css: () => <LucideCode />,
 };
 
 const statusLabels: Partial<Record<Summary['status'], string>> = {
@@ -144,6 +156,7 @@ export const Checklist: Component<ChecklistProps> = (props) => {
   const [notice, setNotice] = createSignal('');
   const [error, setError] = createSignal('');
   const [saved, setSaved] = createSignal(false);
+  const [renaming, setRenaming] = createSignal(false);
   const menuId = createUniqueId();
 
   const page = () =>
@@ -187,6 +200,7 @@ export const Checklist: Component<ChecklistProps> = (props) => {
       placement: placementSummary(card(), elements()),
       colors: themeSummary(props.config.theme),
       highlight: highlightSummary(card(), page(), elements()),
+      css: cssSummary(props.config, page()),
       pages: pagesSummary(page()),
     };
   });
@@ -206,6 +220,14 @@ export const Checklist: Component<ChecklistProps> = (props) => {
 
     setPageIndex(Number(value));
     setCardIndex(0);
+  }
+
+  // Saves the page's name as it's typed in place of the page list; empty goes back to "Page 1"
+  function rename(name: string) {
+    if (!renaming()) return;
+
+    setRenaming(false);
+    changePage({ name: name.trim() || undefined });
   }
 
   function addCard() {
@@ -291,8 +313,6 @@ export const Checklist: Component<ChecklistProps> = (props) => {
         <ColorsPart
           config={props.config}
           onChange={(changes) => change({ ...props.config, ...changes })}
-          page={page()}
-          onPageChange={changePage}
           detected={detected()}
           probe={elements()[0]}
           advanced
@@ -301,6 +321,14 @@ export const Checklist: Component<ChecklistProps> = (props) => {
       <Match when={id === 'highlight'}>
         <HighlightPart
           {...cardProps()}
+          page={page()}
+          onPageChange={changePage}
+        />
+      </Match>
+      <Match when={id === 'css'}>
+        <CssPart
+          config={props.config}
+          onChange={(changes) => change({ ...props.config, ...changes })}
           page={page()}
           onPageChange={changePage}
         />
@@ -454,19 +482,72 @@ export const Checklist: Component<ChecklistProps> = (props) => {
             >
               Page
             </label>
-            <Select
-              id={`${menuId}-page`}
-              class="h-8 text-[13px]"
-              value={String(pageIndex())}
-              options={[
-                ...props.config.pages.map((item, index) => ({
-                  value: String(index),
-                  label: `${item.name || `Page ${index + 1}`}${safelyMatches(item) ? ' (this page)' : ''}`,
-                })),
-                { value: 'add', label: 'Add a page' },
-              ]}
-              onValue={selectPage}
-            />
+            <Show
+              when={renaming()}
+              fallback={
+                <>
+                  <Select
+                    id={`${menuId}-page`}
+                    class="h-8 text-[13px]"
+                    value={String(pageIndex())}
+                    options={[
+                      ...props.config.pages.map((item, index) => ({
+                        value: String(index),
+                        label: `${pageName(item, index)}${safelyMatches(item) ? ' (this page)' : ''}`,
+                      })),
+                      { value: 'add', label: 'Add a page' },
+                    ]}
+                    onValue={selectPage}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    class="size-8 shrink-0 text-muted-foreground"
+                    aria-label="Rename this page"
+                    title="Rename this page"
+                    onClick={() => setRenaming(true)}
+                  >
+                    <LucidePencil aria-hidden="true" />
+                  </Button>
+                </>
+              }
+            >
+              <input
+                ref={(input) => queueMicrotask(() => input.select())}
+                id={`${menuId}-page`}
+                aria-label="Page name"
+                class="h-8 w-full min-w-0 flex-1 rounded border border-solid border-input bg-transparent px-2 text-[13px] text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                placeholder={`Page ${pageIndex() + 1}`}
+                value={page().name ?? ''}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') rename(event.currentTarget.value);
+                  if (event.key === 'Escape') {
+                    // Stops the panel from seeing it too
+                    event.stopPropagation();
+                    setRenaming(false);
+                  }
+                }}
+                onBlur={(event) => rename(event.currentTarget.value)}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-8 shrink-0 text-muted-foreground"
+                aria-label="Done renaming"
+                // Keeps the focus in the field, which saves the name as it loses it
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={(event) =>
+                  rename(
+                    (
+                      event.currentTarget
+                        .previousElementSibling as HTMLInputElement
+                    ).value,
+                  )
+                }
+              >
+                <LucideCheck aria-hidden="true" />
+              </Button>
+            </Show>
           </div>
           <Show when={page().cards.length > 1}>
             <div class="flex items-center gap-2.5">

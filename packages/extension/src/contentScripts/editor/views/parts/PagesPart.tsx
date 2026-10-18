@@ -220,15 +220,6 @@ export const PagesPart: Component<{
       </Show>
       <Show when={props.advanced}>
         <Advanced>
-          <Field label="Page name" hint="Tells the pages apart in this editor">
-            <TextInput
-              value={props.page.name ?? ''}
-              placeholder="e.g. Latest episodes"
-              onValue={(name) =>
-                props.onPageChange({ name: name || undefined })
-              }
-            />
-          </Field>
           <div class="flex flex-col gap-1 text-xs">
             <span class="font-medium">Paths</span>
             <Index each={paths()}>

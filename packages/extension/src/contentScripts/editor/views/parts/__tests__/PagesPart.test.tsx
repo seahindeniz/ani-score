@@ -121,7 +121,6 @@ describe('PagesPart', () => {
     const { config, page, willPick } = setUp({});
 
     fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
-    fireEvent.input(textbox(/^Page name/), { target: { value: 'Latest' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add a path' }));
     fireEvent.input(textbox(/^Path 1/), { target: { value: '^/yeniler' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add a path' }));
@@ -143,7 +142,6 @@ describe('PagesPart', () => {
     fireEvent.input(textbox(/^Id/), { target: { value: 'kitsune' } });
 
     expect(page()).toMatchObject({
-      name: 'Latest',
       match: { path: '^/yeniler', search: 'page=', selector: 'main' },
     });
     expect(config()).toMatchObject({
@@ -152,11 +150,10 @@ describe('PagesPart', () => {
       matches: ['*://kitsune.me/*', '*://kitsune.tv/*'],
     });
 
-    for (const name of [/^Page name/, /^Path 1/, /^Query/, /^Only while/]) {
+    for (const name of [/^Path 1/, /^Query/, /^Only while/]) {
       fireEvent.input(textbox(name), { target: { value: '' } });
     }
 
-    expect(page().name).toBeUndefined();
     expect(page().match).toEqual({
       path: undefined,
       search: undefined,

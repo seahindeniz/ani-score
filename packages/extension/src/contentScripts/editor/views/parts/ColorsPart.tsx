@@ -3,12 +3,10 @@ import { createSignal, onCleanup, Show } from 'solid-js';
 
 import { Button as UiButton } from '~/components/ui/button';
 import { Choice, ChoiceGroup } from '~/components/ui/choice-group';
-import type { Condition, SiteConfig, SitePage } from '~/sites/schema';
+import type { Condition, SiteConfig } from '~/sites/schema';
 
-import { elementSelector } from '../../logic/selectors';
 import { describeCondition, learnThemeSwitch } from '../../logic/themeSwitch';
-import { Advanced, Button, Field, TextArea, TextInput } from '../controls';
-import { createPicker } from './pick';
+import { Advanced, Field, TextInput } from '../controls';
 import type { Summary } from './types';
 
 type Theme = SiteConfig['theme'];
@@ -71,17 +69,11 @@ const ConditionFields: Component<{
 );
 
 /**
- * Whether the details use dark or light colors, or follow the site's own switch. Also where the advanced settings put
- * the site's and the page's CSS.
+ * Whether the details use dark or light colors, or follow the site's own switch.
  */
 export const ColorsPart: Component<{
   config: SiteConfig;
   onChange: (changes: Partial<SiteConfig>) => void;
-  /**
-   * The page whose CSS the advanced settings edit.
-   */
-  page?: SitePage;
-  onPageChange?: (changes: Partial<SitePage>) => void;
   /**
    * The colors the page has, from where its cards are.
    */
@@ -92,7 +84,6 @@ export const ColorsPart: Component<{
   probe?: Element;
   advanced?: boolean;
 }> = (props) => {
-  const pick = createPicker();
   const [learning, setLearning] = createSignal(false);
   let stop: (() => void) | undefined;
 
@@ -135,21 +126,6 @@ export const ColorsPart: Component<{
   const detectedNote = (choice: 'dark' | 'light') =>
     props.detected === choice ? 'Detected' : undefined;
 
-  async function unblock() {
-    const element = await pick();
-
-    if (!element) return;
-
-    props.onChange({
-      css: [
-        props.config.css,
-        `/* Lets clicks and hovers through to the cards */\n${elementSelector(element)} {\n  pointer-events: none !important;\n}`,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-    });
-  }
-
   return (
     <>
       <ChoiceGroup
@@ -191,43 +167,15 @@ export const ColorsPart: Component<{
           Learn the switch again
         </UiButton>
       </Show>
-      <Show when={props.advanced}>
-        <Advanced>
-          <Show when={learned()}>
-            {(condition) => (
-              <ConditionFields
-                condition={condition()}
-                onChange={(dark) => props.onChange({ theme: { dark } })}
-              />
-            )}
-          </Show>
-          <Field
-            label="Site CSS"
-            hint="Applied on every page of the site that has cards"
-          >
-            <TextArea
-              value={props.config.css ?? ''}
-              onValue={(css) => props.onChange({ css: css || undefined })}
+      <Show when={props.advanced && learned()}>
+        {(condition) => (
+          <Advanced>
+            <ConditionFields
+              condition={condition()}
+              onChange={(dark) => props.onChange({ theme: { dark } })}
             />
-          </Field>
-          <Show when={props.page}>
-            {(page) => (
-              <Field label="Page CSS" hint="Applied while this page applies">
-                <TextArea
-                  value={page().css ?? ''}
-                  onValue={(css) =>
-                    props.onPageChange?.({ css: css || undefined })
-                  }
-                />
-              </Field>
-            )}
-          </Show>
-          <div>
-            <Button onClick={() => void unblock()}>
-              Pick an overlay that blocks the cards
-            </Button>
-          </div>
-        </Advanced>
+          </Advanced>
+        )}
       </Show>
     </>
   );
