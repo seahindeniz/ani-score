@@ -9,7 +9,7 @@ import type { UserConfig } from 'vite';
 import { defineConfig, loadEnv, mergeConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 
-import packageJson from './package.json';
+import packageJson from './package.json' with { type: 'json' };
 import {
   isDev,
   isFirefox,
@@ -17,8 +17,8 @@ import {
   port,
   r,
   targetBrowser,
-} from './scripts/utils';
-import unoConfig from './unocss.config';
+} from './scripts/utils.ts';
+import unoConfig from './unocss.config.ts';
 
 // Vite runs on Bun through the `node` alias, where Bun doesn't load `.env` itself.
 // Variables set in the environment (e.g. by CI) take precedence.
@@ -62,13 +62,18 @@ export const sharedConfig: UserConfig = {
   build: {
     cssMinify: false,
     minify: false,
+    rolldownOptions: {
+      output: {
+        // Compress syntax and whitespace, but keep names readable (e.g. for add-on store review)
+        minify: {
+          compress: true,
+          mangle: false,
+          codegen: { removeWhitespace: true },
+        },
+      },
+    },
     // Inline sourcemaps made the content scripts ~3.5x larger, and they're parsed on every matching page
     sourcemap: isDev ? 'inline' : false,
-  },
-  esbuild: {
-    minifyIdentifiers: false,
-    minifySyntax: true,
-    minifyWhitespace: true,
   },
   optimizeDeps: {
     include: ['solid-js', 'solid-js/web', 'webextension-polyfill'],
@@ -146,7 +151,7 @@ export default defineConfig(({ command }) =>
       emptyOutDir: false,
       sourcemap: isDev ? 'inline' : false,
       target: 'esnext',
-      rollupOptions: {
+      rolldownOptions: {
         input: {
           options: r('src/options/index.html'),
           popup: r('src/popup/index.html'),

@@ -1,5 +1,6 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib",
+  // TypeScript 7 (the version `bun check` uses) through the TypeScript Native Preview extension
+  "js/ts.experimental.useTsgo": true,
   "vite.autoStart": false,
   // `bun fmt` has no editor integration yet, so the Run on Save extension runs it after each save
   "editor.formatOnSave": false,
@@ -15,6 +16,5 @@
     "*.css": "postcss"
   },
   "svg.preview.background": "custom",
-  "typescript.preferences.quoteStyle": "single",
-  "javascript.preferences.quoteStyle": "single"
+  "js/ts.preferences.quoteStyle": "single"
 }

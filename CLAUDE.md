@@ -23,7 +23,8 @@ Always use `bun run test` / `bun run build`. Bare `bun build` invokes Bun's bund
 - `bun run lint` (root) runs `bun lint`, `bun fmt --check`, then each package's type check. `bun run format` formats the repo. Both use `--no-script`, since `bun lint` otherwise runs the `lint` script.
 - Config is in the root `bunfig.toml`: Bun's built-in recommended rules plus `eslint-plugin-solid` for `.tsx` (it runs in JavaScript, and Bun installs `eslint` as its peer), and the `[fmt]` style.
 - Editors: there's no Bun formatter/linter integration yet. In VS Code, the Run on Save extension runs `bun fmt` on save (`.vscode/settings.json`), and the pre-commit hook formats and lints staged files.
-- Type checking is `bun check` (`lint` in each package), which bundles TypeScript 7. The `typescript` package stays on 5.x for editors, so editor diagnostics can differ from `bun check` in rare cases.
+- Type checking is `bun check` (`lint` in each package), which bundles TypeScript 7. VS Code runs TypeScript 7 too, through the TypeScript Native Preview extension (`js/ts.experimental.useTsgo`); TypeScript 7 has no `tsserver.js`, so `typescript.tsdk` can't point at it, and tsserver plugins don't work.
+- CSS modules are typed by generated `*.module.scss.d.ts` files (gitignored) listing their class names, so unknown class names fail the type check. `scripts/css-module-types.ts` writes them; `prepare` runs it in dev (with a watcher) and build, and the extension's `lint` runs it before `bun check`.
 
 ### Bun runtime
 

@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, renameSync, statSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -28,9 +28,9 @@ try {
 
   if (wantZip) {
     log('PACK', 'creating ZIP');
-    rmSync(`${outputDirectory}/extension-${version}.zip`, { force: true });
+    // Bun can't write zip archives; web-ext packs any extension folder, not only Firefox builds
     execSync(
-      `jszip-cli add extension/* -o ${outputDirectory}/extension-${version}.zip`,
+      `web-ext build --source-dir extension --artifacts-dir ${outputDirectory} --filename extension-${version}.zip --overwrite-dest`,
       { stdio: 'inherit' },
     );
   }

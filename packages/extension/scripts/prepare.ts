@@ -2,6 +2,7 @@ import { execSync } from 'node:child_process';
 import { watch } from 'node:fs';
 import process from 'node:process';
 
+import { writeCssModuleTypes } from './css-module-types';
 import { isDev, log, mode, port, r } from './utils';
 
 async function stubIndexHtml() {
@@ -50,6 +51,7 @@ function onChange(task: () => unknown, filter: (file: string) => boolean) {
 if (!process.env.SKIP_GRAPHQL_CODEGEN) generateGraphQLTypes();
 
 writeManifest();
+writeCssModuleTypes();
 
 if (isDev) {
   stubIndexHtml();
@@ -57,6 +59,11 @@ if (isDev) {
     r('src'),
     { recursive: true },
     onChange(stubIndexHtml, (file) => file.endsWith('.html')),
+  );
+  watch(
+    r('src'),
+    { recursive: true },
+    onChange(writeCssModuleTypes, (file) => /\.module\.s?css$/.test(file)),
   );
   // Watching the folders rather than the files keeps working when an editor saves by replacing the file
   watch(

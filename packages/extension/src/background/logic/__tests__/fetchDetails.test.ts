@@ -21,21 +21,23 @@ import {
   parseLookups,
 } from '../../__tests__/network';
 import { anilistClient } from '../../client/anilist';
+import type { AnimeDetails } from '../fetchDetails';
 import { fetchDetails } from '../fetchDetails';
 import { loadDatabase } from '../loadDatabase';
 
+// Partial AniList responses: the mock returns them as they are
 const frieren = {
   id: 154587,
   isFavourite: false,
   title: { userPreferred: 'Frieren' },
   favourites: 1234,
-};
+} as AnimeDetails;
 const apothecarySeason3 = {
   id: 190001,
   idMal: 60000,
   isFavourite: false,
   title: { userPreferred: 'The Apothecary Diaries Season 3' },
-};
+} as AnimeDetails & { idMal: number };
 
 const tokenStore = useTokenStore();
 

@@ -1,5 +1,5 @@
 import type { FuzzyResult } from '@nozbe/microfuzz';
-import createFuzzySearch from '@nozbe/microfuzz';
+import microfuzz from '@nozbe/microfuzz';
 import type { Options, SearchResult } from 'minisearch';
 import MiniSearch from 'minisearch';
 
@@ -10,6 +10,13 @@ import {
 } from '~/logic';
 import { logger } from '~/utils/logger';
 import { wait } from '~/utils/wait';
+
+// microfuzz is CommonJS with its function on `exports.default`. Vite 8 follows Node and imports `module.exports`
+// as the default, while Bun (unit tests) imports `exports.default`, so take the function from either shape.
+const createFuzzySearch: typeof microfuzz =
+  typeof microfuzz === 'function'
+    ? microfuzz
+    : (microfuzz as unknown as { default: typeof microfuzz }).default;
 
 interface DatabaseSource {
   name: string;

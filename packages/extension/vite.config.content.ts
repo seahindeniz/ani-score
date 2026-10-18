@@ -42,17 +42,15 @@ await Promise.all(
             //   // formats: ['es'],
             //   formats: ['es'],
             // },
-            rollupOptions: {
+            rolldownOptions: {
               input: {
                 [entry.name]: entry.path,
               },
               output: {
                 // entryFileNames: entry.name,
-                // // inlineDynamicImports: true,
                 // extend: true,
                 // format: 'iife',
 
-                inlineDynamicImports: true,
                 format: 'iife',
                 name: 'TBD',
                 entryFileNames: `[name]`,

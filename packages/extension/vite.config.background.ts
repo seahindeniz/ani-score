@@ -1,9 +1,9 @@
 import type { UserConfig } from 'vite';
 import { defineConfig, mergeConfig } from 'vite';
 
-import packageJson from './package.json';
-import { r } from './scripts/utils';
-import { sharedConfig } from './vite.config.js';
+import packageJson from './package.json' with { type: 'json' };
+import { r } from './scripts/utils.ts';
+import { sharedConfig } from './vite.config.ts';
 
 // bundling the content script using Vite
 export default defineConfig(({ mode }) =>
@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) =>
         name: packageJson.name,
         formats: ['iife'],
       },
-      rollupOptions: {
+      rolldownOptions: {
         output: {
           entryFileNames: 'index.mjs',
           extend: true,

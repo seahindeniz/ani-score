@@ -3,7 +3,10 @@ import type { FieldNode } from 'graphql';
 import { Kind } from 'graphql';
 
 import type { EpisodeCard } from '~/contentScripts/site/base';
-import type { BatchAnimeTemplateQuery, Exact } from '~/gql/graphql';
+import type {
+  BatchAnimeTemplateQuery,
+  BatchAnimeTemplateQueryVariables,
+} from '~/gql/graphql';
 import { useTokenStore } from '~/logic';
 import { logger } from '~/utils/logger';
 import { wait } from '~/utils/wait';
@@ -141,9 +144,7 @@ function generateBatchQuery(
     },
     [] as TypedDocumentNode<
       BatchAnimeTemplateQuery,
-      Exact<{
-        [key: string]: never;
-      }>
+      BatchAnimeTemplateQueryVariables
     >[],
   );
 }
