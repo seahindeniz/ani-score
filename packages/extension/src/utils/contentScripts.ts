@@ -38,12 +38,22 @@ function findEntries(pattern: string, exclude = (_path: string) => false) {
 
 const messageGatewayPath = 'src/contentScripts/messageGateway.ts';
 
+// Injected when the user asks for it, rather than by the manifest
+const onDemand = ['/contentScripts/widget/', '/contentScripts/editor/'];
+
 export const contentScriptPaths = [
   ...findEntries(messageGatewayPath),
   ...findEntries('src/contentScripts/*/main.{ts,tsx}', (path) =>
-    path.includes('/contentScripts/widget/'),
+    onDemand.some((directory) => path.includes(directory)),
   ),
   ...findEntries('src/contentScripts/*.{ts,tsx}', (path) =>
     path.endsWith(`/${messageGatewayPath}`),
   ),
 ].map(getContentScriptScope);
+
+/**
+ * Content scripts the background injects on demand (`scripting.executeScript`): the site editor.
+ */
+export const injectedScriptPaths = findEntries(
+  'src/contentScripts/editor/main.{ts,tsx}',
+).map(getContentScriptScope);

@@ -56,8 +56,11 @@ export async function getManifest() {
       ...(isFirefox ? [] : ['sidePanel']),
       'notifications',
       'unlimitedStorage',
-      // Injects AniScore on the optional sites the user allows (`registerContentScripts`)
+      // Injects AniScore on the optional sites the user allows (`registerContentScripts`), and the site editor
       'scripting',
+      // "Integrate this site with AniScore"; the click lets the editor run on that tab (`activeTab`)
+      'contextMenus',
+      'activeTab',
     ],
     // Granted per site when the user turns it on, never at install. `*://*/*` grants nothing by itself: the browser
     // only asks for a site that's declared here, so it lets users add sites that no bundled config lists.

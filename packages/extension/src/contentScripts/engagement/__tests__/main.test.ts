@@ -8,11 +8,12 @@ import {
   mock,
 } from 'bun:test';
 
+import { findSiteConfig } from '~/sites/resolveSites';
 import type { SiteConfig } from '~/sites/schema';
 import { wait } from '~/utils/wait';
 
 import { fakeBrowser } from '../../../../test/fake-browser';
-import { engage, findSiteConfig, start } from '../main';
+import { engage, start } from '../main';
 import { useRefStore } from '../store/refStore';
 
 const example: SiteConfig = {
@@ -179,5 +180,25 @@ describe('start', () => {
     await start();
 
     expect(fakeBrowser.storage.local.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('pauses for the editor, and stays paused while it is open', async () => {
+    document.body.innerHTML = '<div class="card"><h3>Frieren</h3></div>';
+    await fakeBrowser.storage.local.set({
+      userSites: [{ config: example, savedAt: 1 }],
+    });
+    await start();
+
+    window.aniScoreEngagement!.pause();
+    expect(document.querySelectorAll('.card .ani-score')).toHaveLength(0);
+
+    // Saving in the editor changes the configs, but its preview shows the page
+    window.aniScoreEditing = true;
+    await window.aniScoreEngagement!.restart();
+    expect(document.querySelectorAll('.card .ani-score')).toHaveLength(0);
+
+    window.aniScoreEditing = false;
+    await window.aniScoreEngagement!.restart();
+    expect(document.querySelectorAll('.card .ani-score')).toHaveLength(1);
   });
 });

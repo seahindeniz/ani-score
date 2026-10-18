@@ -202,6 +202,23 @@ const Page = v.strictObject({
   css: v.optional(
     v.pipe(CSS, v.description('Applied while this page applies')),
   ),
+  layout: v.optional(
+    v.pipe(
+      v.array(
+        v.strictObject({
+          container: Selector,
+          mode: v.picklist(['grid', 'flex']),
+          gap: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(200))),
+          minCardWidth: v.optional(
+            v.pipe(v.number(), v.minValue(0), v.maxValue(2000)),
+          ),
+        }),
+      ),
+      v.description(
+        'Spacing for the elements that hold the cards, so the details have room; applied while this page applies',
+      ),
+    ),
+  ),
   cards: v.pipe(v.array(Card), v.minLength(1)),
 });
 

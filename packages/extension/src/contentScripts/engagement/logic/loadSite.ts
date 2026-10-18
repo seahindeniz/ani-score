@@ -3,6 +3,7 @@ import { leadingAndTrailing, throttle } from '@solid-primitives/scheduled';
 import { rootContainerClass } from '~/constants/main';
 import { collectCards, pageMatches } from '~/contentScripts/sites/extract';
 import { toThemeSource } from '~/contentScripts/sites/theme';
+import { pageCss } from '~/sites/layout';
 import type { SiteConfig, SitePage } from '~/sites/schema';
 
 import { useRefStore } from '../store/refStore';
@@ -89,8 +90,10 @@ export function initSiteLogic(site: SiteConfig) {
     for (const page of site.pages) {
       const style = pageStyles.get(page);
 
-      if (page.css && pages.includes(page) && !style) {
-        pageStyles.set(page, createStyle(page.css));
+      const css = pageCss(page);
+
+      if (css && pages.includes(page) && !style) {
+        pageStyles.set(page, createStyle(css));
         document.body.append(pageStyles.get(page)!);
       } else if (style && !pages.includes(page)) {
         style.remove();

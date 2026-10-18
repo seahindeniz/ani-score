@@ -30,6 +30,16 @@ something the schema can't express, add it to the extension: a named transform i
 `schema.ts`. Bump `currentSchemaVersion` only for changes old configs can't satisfy, and migrate them in
 `parseSiteConfig`.
 
+## Editor
+
+Users build configs on the site itself: the context menu's "Integrate this site with AniScore"
+(`background/logic/editorEntry.ts`) asks for access to the site, then injects `contentScripts/editor/main.js` (built,
+but not in the manifest; see `injectedScriptPaths`). The editor is a panel in a shadow root. Picking outlines the
+element under the pointer and keeps clicks from the site (`logic/picker.ts`). `logic/selectors.ts` turns picks into
+selectors that skip generated class names. While it's open, the engagement script pauses (`window.aniScoreEngagement`)
+and the editor previews the draft with the same runtime. Drafts are kept per host under `siteDrafts`, and saving
+writes to `userSites`.
+
 ## Styling contract
 
 Site CSS may rely on these, so keep them stable:

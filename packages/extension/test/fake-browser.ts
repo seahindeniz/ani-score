@@ -161,7 +161,18 @@ function createFakeBrowser() {
       onAdded: onPermissionsAdded,
       onRemoved: onPermissionsRemoved,
     },
+    contextMenus: {
+      removeAll: mock(async () => {}),
+      create: mock((_properties: Record<string, unknown>) => 'id'),
+      onClicked: createEvent(),
+    },
     scripting: {
+      // Resolves with one result per frame, like the browser; set what scripts return with `mockResolvedValueOnce`
+      executeScript: mock(
+        async (
+          _injection: Record<string, unknown>,
+        ): Promise<{ result?: unknown }[]> => [{ result: undefined }],
+      ),
       getRegisteredContentScripts: mock(
         async ({ ids }: { ids?: string[] } = {}) =>
           registeredScripts.filter((script) => !ids || ids.includes(script.id)),
@@ -238,6 +249,7 @@ export function resetFakeBrowser() {
     sidePanel,
     permissions,
     scripting,
+    contextMenus,
   } = fakeBrowser;
 
   storage.local.reset();
@@ -253,6 +265,7 @@ export function resetFakeBrowser() {
     webNavigation.onCommitted,
     permissions.onAdded,
     permissions.onRemoved,
+    contextMenus.onClicked,
   ])
     event.clear();
 
@@ -270,6 +283,8 @@ export function resetFakeBrowser() {
     sidePanel,
     permissions,
     scripting,
+    contextMenus,
+    contextMenus.onClicked,
   ]) {
     for (const value of Object.values(api)) {
       if (typeof value === 'function' && 'mockClear' in value)

@@ -1,5 +1,6 @@
 import type { UserSite } from '~/logic/storage';
 
+import { matchesPattern } from './matchPattern';
 import type { SiteConfig } from './schema';
 import { parseSiteConfig } from './schema';
 
@@ -50,4 +51,13 @@ export function siteFingerprint(site: SiteConfig) {
   }
 
   return (hash >>> 0).toString(36);
+}
+
+/**
+ * The config, among those in effect, whose patterns match the URL.
+ */
+export function findSiteConfig(url: URL, sites: SiteConfig[]) {
+  return sites.find((site) =>
+    site.matches.some((pattern) => matchesPattern(pattern, url)),
+  );
 }

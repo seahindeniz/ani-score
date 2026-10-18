@@ -3,18 +3,11 @@ import bundledSites from 'virtual:ani-score/sites';
 import { liveInterval } from '~/constants/main';
 import type { UserSite } from '~/logic/storage';
 import { userSitesKey } from '~/logic/storage';
-import { matchesPattern } from '~/sites/matchPattern';
-import { resolveSites } from '~/sites/resolveSites';
+import { findSiteConfig, resolveSites } from '~/sites/resolveSites';
 import type { SiteConfig } from '~/sites/schema';
 import { logger } from '~/utils/logger';
 
 import { initSiteLogic } from './logic/loadSite';
-
-export function findSiteConfig(url: URL, sites: SiteConfig[]) {
-  return sites.find((site) =>
-    site.matches.some((pattern) => matchesPattern(pattern, url)),
-  );
-}
 
 /**
  * Starts AniScore on the page when a site config matches its URL, and keeps the background awake while it's open.
@@ -51,7 +44,8 @@ async function userSites() {
 
 /**
  * Engages with the user's configs and the bundled ones, and starts over when the user's configs change. Runs once per
- * page, also when both the manifest and a registration for an allowed site inject this script.
+ * page, also when both the manifest and a registration for an allowed site inject this script. While the editor is
+ * open, it shows its own preview instead (see `window.aniScoreEngagement`).
  */
 export async function start() {
   if (window.aniScoreStarted) return;
@@ -59,13 +53,19 @@ export async function start() {
   window.aniScoreStarted = true;
 
   let stop: (() => void) | undefined;
+  const pause = () => {
+    stop?.();
+    stop = undefined;
+  };
   const restart = async () => {
     const sites = resolveSites(await userSites(), bundledSites).sites;
 
-    stop?.();
-    stop = engage(new URL(location.href), sites);
+    pause();
+
+    if (!window.aniScoreEditing) stop = engage(new URL(location.href), sites);
   };
 
+  window.aniScoreEngagement = { pause, restart };
   browser.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local' && userSitesKey in changes) void restart();
   });

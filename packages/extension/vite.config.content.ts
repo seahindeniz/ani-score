@@ -3,11 +3,14 @@ import { build, mergeConfig } from 'vite';
 
 import { isDev, mode, r } from './scripts/utils';
 import { inlineCss } from './scripts/vite-plugin-inline-css';
-import { contentScriptPaths } from './src/utils/contentScripts';
+import {
+  contentScriptPaths,
+  injectedScriptPaths,
+} from './src/utils/contentScripts';
 import { sharedDOMConfig } from './vite.config.js';
 
 await Promise.all(
-  contentScriptPaths.map(async (entry) => {
+  [...contentScriptPaths, ...injectedScriptPaths].map(async (entry) => {
     const base = `dist/contentScripts/${entry.directory}`;
     return build(
       mergeConfig(

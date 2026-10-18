@@ -154,6 +154,41 @@
             "type": "string",
             "description": "Applied while this page applies"
           },
+          "layout": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "container": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "mode": {
+                  "enum": [
+                    "grid",
+                    "flex"
+                  ],
+                  "type": "string"
+                },
+                "gap": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 200
+                },
+                "minCardWidth": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2000
+                }
+              },
+              "required": [
+                "container",
+                "mode"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Spacing for the elements that hold the cards, so the details have room; applied while this page applies"
+          },
           "cards": {
             "type": "array",
             "items": {

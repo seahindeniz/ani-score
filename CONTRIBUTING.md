@@ -53,6 +53,10 @@ To add support for a new anime streaming site or database:
 
 A site is a config, not code: a folder in `packages/extension/src/sites/`.
 
+The easiest way to write one is in the browser: right-click a page of the site and choose **Integrate this site with
+AniScore**. The editor lets you pick the cards and what to read from them, previews AniScore's details on the page,
+and saves the config to your sites; its **Save** tab also downloads it. To write one by hand instead:
+
 1. **Copy an existing config**
 
    ```bash

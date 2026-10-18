@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 
-import { contentScriptPaths, getContentScriptScope } from '../contentScripts';
+import {
+  contentScriptPaths,
+  getContentScriptScope,
+  injectedScriptPaths,
+} from '../contentScripts';
 
 describe('getContentScriptScope', () => {
   it('maps a site entry to its build directory', () => {
@@ -47,5 +51,14 @@ describe('contentScriptPaths', () => {
       false,
     );
     expect(directories).not.toContain('widget');
+    expect(directories).not.toContain('editor');
+  });
+});
+
+describe('injectedScriptPaths', () => {
+  it('lists the editor, which the background injects when the user asks', () => {
+    expect(injectedScriptPaths.map((script) => script.directory)).toEqual([
+      'editor',
+    ]);
   });
 });
