@@ -1,6 +1,7 @@
 import type { Component } from 'solid-js';
 import { createMemo, createResource, For, Show } from 'solid-js';
 import LineMdLoadingLoop from '~icons/line-md/loading-loop';
+import MdiPlus from '~icons/mdi/plus';
 
 import { fetchGenres } from '~/background/logic/fetchGenres';
 import { Button } from '~/components/ui/button';
@@ -38,12 +39,14 @@ export const GenreColors: Component = () => {
   };
 
   return (
-    <Card class="w-xs">
+    <Card class="w-full">
       <CardHeader>
-        <CardTitle>Genre Colors</CardTitle>
-        <CardDescription>Customize the color for each genre.</CardDescription>
+        <CardTitle>Genre colors</CardTitle>
+        <CardDescription>
+          Give a genre a color to make it stand out in AniScore's details.
+        </CardDescription>
       </CardHeader>
-      <CardContent class="flex flex-col gap-7">
+      <CardContent class="flex flex-col gap-4">
         <Show
           when={data() && settingsStore.data()}
           fallback={
@@ -86,7 +89,14 @@ export const GenreColors: Component = () => {
               }}
             </For>
           </div>
+          <Show when={!entries().length}>
+            <p class="m-0 text-sm text-muted-foreground">
+              No genre colors yet.
+            </p>
+          </Show>
           <Button
+            variant="outline"
+            class="self-start"
             onClick={() => {
               setEntries([
                 ...entries(),
@@ -98,7 +108,8 @@ export const GenreColors: Component = () => {
               ]);
             }}
           >
-            Add Genre
+            <MdiPlus aria-hidden="true" />
+            Add genre
           </Button>
         </Show>
       </CardContent>

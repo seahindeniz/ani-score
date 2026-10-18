@@ -93,12 +93,12 @@ test('side panel imports a site config, to be turned on', async ({
   const kitsune = page.locator('[data-site="kitsune"]');
 
   await expect(kitsune).toContainText('Yours');
-  // Off until the user turns it on, in the sites to turn on
+  // Off until the user adds it, which the dropdown offers
   await expect(
-    page
-      .getByRole('region', { name: 'Available' })
-      .getByRole('switch', { name: 'Kitsune' }),
-  ).not.toBeChecked();
+    page.getByRole('region', { name: 'Your configs' }).locator(kitsune),
+  ).toContainText('Off');
+  await page.getByRole('button', { name: /^Add a site/ }).click();
+  await expect(page.getByRole('option', { name: /^Kitsune/ })).toBeVisible();
   await expect
     .poll(() => getStorage('userSites'))
     .toEqual([{ config, savedAt: expect.any(Number) }]);

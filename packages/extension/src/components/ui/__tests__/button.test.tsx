@@ -49,8 +49,8 @@ describe('button', () => {
     const button = screen.getByRole('button', { name: 'Export' });
 
     expect(button.className).toContain('text-muted-foreground');
-    // Sized by its text: the inline size replaces the base text size and padding
-    expect(button.className).toContain('h-auto p-0 text-xs');
+    // Sized by its text, 24px tall: the inline size replaces the base text size and padding
+    expect(button.className).toContain('h-6 px-0 text-xs');
     expect(button.className).not.toContain('text-sm');
   });
 

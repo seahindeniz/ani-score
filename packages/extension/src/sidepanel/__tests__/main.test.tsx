@@ -28,7 +28,7 @@ describe('side panel entry', () => {
     await import('../main');
 
     expect(
-      await screen.findByRole('button', { name: 'Authorize Anilist' }),
+      await screen.findByRole('button', { name: 'Sign in with AniList' }),
     ).toBeTruthy();
 
     for (const url of [
@@ -38,7 +38,7 @@ describe('side panel entry', () => {
     ]) {
       navigate(url);
       expect(
-        await screen.findByRole('button', { name: 'Authorize Anilist' }),
+        await screen.findByRole('button', { name: 'Sign in with AniList' }),
       ).toBeTruthy();
     }
 

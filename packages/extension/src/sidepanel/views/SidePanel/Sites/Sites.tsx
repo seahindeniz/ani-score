@@ -4,8 +4,10 @@ import {
   createResource,
   createSignal,
   For,
+  Match,
   onCleanup,
   Show,
+  Switch,
 } from 'solid-js';
 import bundledSites from 'virtual:ani-score/sites';
 import browser from 'webextension-polyfill';
@@ -19,7 +21,14 @@ import {
   CardHeader,
   CardTitle,
 } from '~/components/ui/card';
-import { Switch } from '~/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select';
 import type { UserSite } from '~/logic';
 import { useUserSitesStore } from '~/logic';
 import { matchPatternFormat } from '~/sites/matchPattern';
@@ -224,6 +233,7 @@ export const Sites: Component = () => {
       props.row.entry?.basedOn
       && bundled()
       && props.row.entry.basedOn !== siteFingerprint(bundled()!);
+    const [confirming, setConfirming] = createSignal(false);
 
     return (
       <li class="flex flex-col gap-1.5 py-2.5" data-site={site().id}>
@@ -244,20 +254,26 @@ export const Sites: Component = () => {
               {hostsOf(site())[0]}
             </span>
           </div>
-          <Show
-            when={!props.row.required}
-            fallback={
+          <Switch>
+            <Match when={props.row.required}>
               <span class="shrink-0 text-xs text-muted-foreground">
                 Always on
               </span>
-            }
-          >
-            <Switch
-              label={site().name}
-              checked={Boolean(props.row.on)}
-              onChange={(on) => (on ? turnOn(site()) : turnOff(site()))}
-            />
-          </Show>
+            </Match>
+            <Match when={props.row.on}>
+              <Button
+                variant="quiet"
+                size="inline"
+                aria-label={`Turn off ${site().name}`}
+                onClick={() => turnOff(site())}
+              >
+                Turn off
+              </Button>
+            </Match>
+            <Match when={!props.row.on}>
+              <span class="shrink-0 text-xs text-muted-foreground">Off</span>
+            </Match>
+          </Switch>
         </div>
         <Show when={outdated()}>
           <p class="m-0 text-xs text-warning-foreground">
@@ -266,29 +282,60 @@ export const Sites: Component = () => {
         </Show>
         <Show when={props.row.entry}>
           {(entry) => (
-            <div class="flex gap-3">
-              <Button
-                variant="quiet"
-                size="inline"
-                onClick={() => void share(site())}
-              >
-                Share
-              </Button>
-              <Button
-                variant="quiet"
-                size="inline"
-                onClick={() => download(`${site().id}.json`, entry().config)}
-              >
-                Export
-              </Button>
-              <Button
-                variant="quiet"
-                size="inline"
-                onClick={() => remove(site())}
-              >
-                {bundled() ? 'Reset to built-in' : 'Delete'}
-              </Button>
-            </div>
+            // Removing the user's own config can't be undone, so it takes a second click
+            <Show
+              when={confirming()}
+              fallback={
+                <div class="flex gap-3">
+                  <Button
+                    variant="quiet"
+                    size="inline"
+                    onClick={() => void share(site())}
+                  >
+                    Share
+                  </Button>
+                  <Button
+                    variant="quiet"
+                    size="inline"
+                    onClick={() =>
+                      download(`${site().id}.json`, entry().config)
+                    }
+                  >
+                    Export
+                  </Button>
+                  <Button
+                    variant="quiet"
+                    size="inline"
+                    onClick={() => setConfirming(true)}
+                  >
+                    {bundled() ? 'Reset to built-in' : 'Delete'}
+                  </Button>
+                </div>
+              }
+            >
+              <div class="flex flex-wrap items-center gap-x-3" role="group">
+                <span class="text-xs">
+                  {bundled()
+                    ? 'Drop your changes to this site?'
+                    : 'Delete your config for this site?'}
+                </span>
+                <Button
+                  variant="quiet"
+                  size="inline"
+                  class="text-destructive hover:text-destructive"
+                  onClick={() => remove(site())}
+                >
+                  {bundled() ? 'Reset' : 'Delete'}
+                </Button>
+                <Button
+                  variant="quiet"
+                  size="inline"
+                  onClick={() => setConfirming(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Show>
           )}
         </Show>
       </li>
@@ -296,7 +343,7 @@ export const Sites: Component = () => {
   };
 
   return (
-    <Card class="w-xs text-left">
+    <Card class="w-full">
       <CardHeader>
         <CardTitle>Sites</CardTitle>
         <CardDescription>
@@ -326,12 +373,43 @@ export const Sites: Component = () => {
           </section>
         </Show>
         <Show when={availableRows().length}>
-          <section aria-label="Available">
+          {/* Choosing a site turns it on; the choice is the click the browser needs to ask for access */}
+          <Select<ReturnType<typeof rowOf>>
+            options={availableRows()}
+            optionValue={(row) => row.site.id}
+            optionTextValue={(row) => row.site.name}
+            value={null}
+            placeholder="Add a site"
+            onChange={(row) => row && turnOn(row.site)}
+            itemComponent={(item) => (
+              <SelectItem item={item.item}>
+                <span class="flex flex-col">
+                  <span>{item.item.rawValue.site.name}</span>
+                  <span class="text-xs text-muted-foreground">
+                    {hostsOf(item.item.rawValue.site)[0]}
+                  </span>
+                </span>
+              </SelectItem>
+            )}
+          >
+            <SelectLabel class="sr-only">Add a site</SelectLabel>
+            <SelectTrigger>
+              {/* Nothing stays selected: a chosen site leaves this list for the one above */}
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent class="max-h-72 overflow-y-auto" />
+          </Select>
+        </Show>
+        {/* The user's own configs that are off still need sharing, exporting and deleting */}
+        <Show when={availableRows().some((row) => row.entry)}>
+          <section aria-label="Your configs">
             <h3 class="m-0 text-xs font-medium text-muted-foreground">
-              Available
+              Your configs
             </h3>
             <ul class="m-0 list-none divide-y divide-border p-0">
-              <For each={availableRows()}>{(row) => <SiteRow row={row} />}</For>
+              <For each={availableRows().filter((row) => row.entry)}>
+                {(row) => <SiteRow row={row} />}
+              </For>
             </ul>
           </section>
         </Show>

@@ -56,7 +56,7 @@ describe('genre colors', () => {
   it('loads AniList genres, then adds the first one without a color yet', async () => {
     render(() => <GenreColors />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Genre' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add genre' }));
 
     expect(genreColor()).toEqual([
       { id: 'drama', name: 'Drama', color: '#ff0000' },
@@ -74,7 +74,7 @@ describe('genre colors', () => {
     });
     render(() => <GenreColors />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Genre' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add genre' }));
 
     expect(genreColor().at(-1)).toEqual({
       id: expect.any(String),
@@ -86,7 +86,7 @@ describe('genre colors', () => {
   it('switches a row to another genre and recolors it', async () => {
     render(() => <GenreColors />);
 
-    choose(await screen.findByRole('button', { name: /Drama/ }));
+    choose(await screen.findByRole('button', { name: /^Genre.*Drama/ }));
     await pick('Action');
     expect(genreColor()).toEqual([
       { id: 'drama', name: 'Action', color: '#ff0000' },
@@ -106,7 +106,7 @@ describe('genre colors', () => {
   it('removes a row', async () => {
     render(() => <GenreColors />);
 
-    await screen.findByRole('button', { name: 'Add Genre' });
+    await screen.findByRole('button', { name: 'Add genre' });
     fireEvent.click(
       document.querySelector<HTMLButtonElement>('button.min-w-\\[40px\\]')!,
     );

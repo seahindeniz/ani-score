@@ -30,8 +30,8 @@ const buttonVariants = cva(
         sm: 'h-9 px-3 text-xs',
         lg: 'h-11 px-8',
         icon: 'size-10',
-        // Sized by its text, to sit within a line
-        inline: 'h-auto p-0 text-xs',
+        // Sized by its text, to sit within a line; 24px tall, the smallest pointer target WCAG 2.2 allows
+        inline: 'h-6 px-0 text-xs',
       },
     },
     defaultVariants: {

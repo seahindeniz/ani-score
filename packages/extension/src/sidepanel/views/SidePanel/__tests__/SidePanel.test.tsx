@@ -39,7 +39,9 @@ describe('side panel', () => {
   it('opens AniList authorization when signed out', () => {
     render(() => <SidePanel />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Authorize Anilist' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Sign in with AniList' }),
+    );
 
     expect(fakeBrowser.tabs.create).toHaveBeenCalledWith({
       url: (globalThis as unknown as { ANILIST_TOKEN_URL: string })
@@ -52,26 +54,22 @@ describe('side panel', () => {
     render(() => <SidePanel />);
 
     expect(
-      screen.queryByRole('button', { name: 'Authorize Anilist' }),
+      screen.queryByRole('button', { name: 'Sign in with AniList' }),
     ).toBeNull();
-    expect(screen.getByText('Genre Colors')).toBeTruthy();
-    expect(screen.getByText('Tag Colors')).toBeTruthy();
+    expect(screen.getByText('Genre colors')).toBeTruthy();
+    expect(screen.getByText('Tag colors')).toBeTruthy();
   });
 
   it('signs out, then offers to authorize again', () => {
     useTokenStore().setData({ anilist: 'token' });
     render(() => <SidePanel />);
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Sign out of AniList' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
 
     expect(useTokenStore().data().anilist).toBe('');
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
     expect(
-      screen.queryByRole('button', { name: 'Sign out of AniList' }),
-    ).toBeNull();
-    expect(
-      screen.getByRole('button', { name: 'Authorize Anilist' }),
+      screen.getByRole('button', { name: 'Sign in with AniList' }),
     ).toBeTruthy();
     expect(fakeBrowser.tabs.create).not.toHaveBeenCalled();
   });

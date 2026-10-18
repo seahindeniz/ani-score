@@ -256,7 +256,7 @@ test('asks to sign in on the toolbar badge again after signing out', async ({
   await sidePanel.goto(
     `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
   );
-  await sidePanel.getByRole('button', { name: 'Sign out of AniList' }).click();
+  await sidePanel.getByRole('button', { name: 'Sign out' }).click();
 
   await expect.poll(badge).toBe('Login');
 });
