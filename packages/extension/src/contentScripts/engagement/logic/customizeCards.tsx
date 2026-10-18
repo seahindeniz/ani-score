@@ -46,6 +46,7 @@ export function createCardCustomizer(
   const requestedTitles = new Set<string>();
   const retries = new Set<ReturnType<typeof setTimeout>>();
   let initialized: Promise<unknown> | undefined;
+  let disposed = false;
 
   function initialize() {
     // A failed start is tried again by the next request, rather than failing every one after it
@@ -77,6 +78,9 @@ export function createCardCustomizer(
         }),
       )
       .catch((error: unknown) => logger.error(error));
+
+    // The answer to a request still on its way when the cards went has nowhere to go, nor a reason to try again
+    if (disposed) return;
 
     if (animeMap) {
       Object.assign(store.anime, animeMap);
@@ -180,6 +184,7 @@ export function createCardCustomizer(
   return {
     update,
     dispose: () => {
+      disposed = true;
       update([]);
       retries.forEach(clearTimeout);
       retries.clear();
