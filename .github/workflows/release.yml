@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release instead of the one derived from the commits (e.g. when AMO already has that version)
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -83,8 +88,11 @@ jobs:
 
       - name: Release
         if: github.ref == 'refs/heads/main'
-        run: bun run release
+        working-directory: packages/extension
+        # Unquoted, so an empty version passes no argument and release-it derives it
+        run: bun run release $RELEASE_VERSION
         env:
+          RELEASE_VERSION: ${{ inputs.version }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           ANILIST_TOKEN_URL: ${{ vars.ANILIST_TOKEN_URL }}
           WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
