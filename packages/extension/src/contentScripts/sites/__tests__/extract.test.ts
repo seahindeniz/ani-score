@@ -171,6 +171,18 @@ describe('readCard', () => {
     expect(card.episodeNumber).toBeUndefined();
   });
 
+  it('keeps a card whose episode it cannot read, when the config allows it', () => {
+    const card = readCard(element(html), {
+      ...spec,
+      episode: { selector: 'h3' },
+      season: undefined,
+      allowMissingEpisode: true,
+    })!;
+
+    expect(card.title).toBe('Blue Box');
+    expect(card.episodeNumber).toBeUndefined();
+  });
+
   it('ignores a season it cannot read', () => {
     expect(
       readCard(element(html), { ...spec, season: { selector: '.missing' } })!

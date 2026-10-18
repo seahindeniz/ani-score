@@ -175,6 +175,14 @@ const Card = v.strictObject({
   ),
   title: Field,
   episode: v.optional(Field),
+  allowMissingEpisode: v.optional(
+    v.pipe(
+      v.boolean(),
+      v.description(
+        "Shows the details also on cards whose episode can't be read (e.g. movies), instead of skipping them",
+      ),
+    ),
+  ),
   season: v.optional(Field),
   inject: v.strictObject({
     selector: v.optional(Selector),

@@ -92,8 +92,8 @@ export const toQueryTitle = (title: string, season?: number) =>
   season != null && season > 1 ? `${title} Season ${season}` : title;
 
 /**
- * Reads a card, or returns `undefined` when it lacks a title, its declared episode number, or the element to inject
- * the details at.
+ * Reads a card, or returns `undefined` when it lacks a title, its declared episode number (unless `allowMissingEpisode`)
+ * or the element to inject the details at.
  */
 export function readCard(
   element: HTMLElement,
@@ -110,7 +110,11 @@ export function readCard(
     ? element.querySelector(spec.inject.selector)
     : element;
 
-  if (!title || (spec.episode && episodeNumber == null) || !anchor) {
+  if (
+    !title
+    || (spec.episode && episodeNumber == null && !spec.allowMissingEpisode)
+    || !anchor
+  ) {
     return undefined;
   }
 

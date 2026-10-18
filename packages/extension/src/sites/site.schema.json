@@ -635,6 +635,10 @@
                     }
                   ]
                 },
+                "allowMissingEpisode": {
+                  "type": "boolean",
+                  "description": "Shows the details also on cards whose episode can't be read (e.g. movies), instead of skipping them"
+                },
                 "season": {
                   "anyOf": [
                     {
