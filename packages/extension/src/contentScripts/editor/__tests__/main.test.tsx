@@ -175,7 +175,7 @@ describe('openEditor', () => {
         { config: { ...anizm, name: 'Older' }, savedAt: 1 },
         { config: saved, savedAt: 1 },
       ],
-      [draftsKey]: { 'example.com': { config: mine, step: 6 } },
+      [draftsKey]: { 'example.com': { config: mine, step: 7 } },
     });
     await open();
 
@@ -197,7 +197,7 @@ describe('openEditor', () => {
 
   it("saves a site the extension doesn't bundle without a fingerprint, and deletes it", async () => {
     await fakeBrowser.storage.local.set({
-      [draftsKey]: { 'example.com': { config: saved, step: 6 } },
+      [draftsKey]: { 'example.com': { config: saved, step: 7 } },
     });
     await open();
 

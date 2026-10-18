@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import type { JSX, ParentComponent } from 'solid-js';
 import { createSignal, createUniqueId, For, Show, splitProps } from 'solid-js';
 import LucideCheck from '~icons/lucide/check';
+import LucideInfo from '~icons/lucide/info';
 import LucideMousePointer2 from '~icons/lucide/mouse-pointer-2';
 import LucideTriangleAlert from '~icons/lucide/triangle-alert';
 
@@ -178,6 +179,22 @@ export const Result: ParentComponent<{ title: string }> = (props) => (
 );
 
 /**
+ * Something the setup noticed on the page, with a choice to make about it.
+ */
+export const Notice: ParentComponent<{ title: string }> = (props) => (
+  <div class="flex gap-2.5 rounded-lg border border-solid border-violet-500/40 bg-violet-500/10 p-3 text-[13px] leading-normal">
+    <LucideInfo
+      class="mt-0.5 size-4 shrink-0 text-violet-400"
+      aria-hidden="true"
+    />
+    <div class="flex min-w-0 flex-1 flex-col gap-2.5">
+      <p class="m-0 font-semibold">{props.title}</p>
+      {props.children}
+    </div>
+  </div>
+);
+
+/**
  * Something on the page the setup doesn't handle yet, with what to do about it.
  */
 export const Warning: ParentComponent = (props) => (
@@ -246,33 +263,6 @@ export function Range(props: {
         aria-valuetext={props.valueText}
         onInput={(event) => props.onValue(Number(event.currentTarget.value))}
       />
-    </label>
-  );
-}
-
-/**
- * A checkbox with its label and an explanation below.
- */
-export function Checkbox(props: {
-  label: string;
-  hint?: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label class="flex cursor-pointer items-start gap-2.5 text-[13px] leading-normal">
-      <input
-        type="checkbox"
-        class="mt-0.5 size-4 shrink-0 accent-violet-500"
-        checked={props.checked}
-        onChange={(event) => props.onChange(event.currentTarget.checked)}
-      />
-      <span class="flex flex-col">
-        {props.label}
-        <Show when={props.hint}>
-          <span class="text-muted-foreground">{props.hint}</span>
-        </Show>
-      </span>
     </label>
   );
 }

@@ -11,6 +11,7 @@ import {
 import LucideCheck from '~icons/lucide/check';
 import LucideChevronDown from '~icons/lucide/chevron-down';
 import LucideEllipsis from '~icons/lucide/ellipsis';
+import LucideLayers from '~icons/lucide/layers';
 import LucideMoon from '~icons/lucide/moon';
 import LucidePanelBottom from '~icons/lucide/panel-bottom';
 import LucideSparkles from '~icons/lucide/sparkles';
@@ -31,7 +32,12 @@ import type { Position } from './Panel';
 import { Panel } from './Panel';
 import { CardsPart, cardsSummary } from './parts/CardsPart';
 import { ColorsPart, themeSummary } from './parts/ColorsPart';
-import { EpisodePart, episodeSummary } from './parts/EpisodePart';
+import {
+  EpisodePart,
+  episodeSummary,
+  SeasonPart,
+  seasonSummary,
+} from './parts/EpisodePart';
 import { HighlightPart, highlightSummary } from './parts/HighlightPart';
 import { NamePart, nameSummary } from './parts/NamePart';
 import { PagesPart, pagesSummary, safelyMatches } from './parts/PagesPart';
@@ -39,10 +45,20 @@ import { PlacementPart, placementSummary } from './parts/PlacementPart';
 import type { Summary } from './parts/types';
 
 type SectionId =
-  'cards' | 'name' | 'episode' | 'placement' | 'colors' | 'highlight' | 'pages';
+  | 'cards'
+  | 'name'
+  | 'episode'
+  | 'season'
+  | 'placement'
+  | 'colors'
+  | 'highlight'
+  | 'pages';
 
 const groups: { title: string; sections: SectionId[] }[] = [
-  { title: 'What AniScore reads', sections: ['cards', 'name', 'episode'] },
+  {
+    title: 'What AniScore reads',
+    sections: ['cards', 'name', 'episode', 'season'],
+  },
   { title: 'How it looks', sections: ['placement', 'colors', 'highlight'] },
   { title: 'Where it works', sections: ['pages'] },
 ];
@@ -50,7 +66,8 @@ const groups: { title: string; sections: SectionId[] }[] = [
 const titles: Record<SectionId, string> = {
   cards: 'Episode cards',
   name: 'Name',
-  episode: 'Episode and season',
+  episode: 'Episode number',
+  season: 'Season',
   placement: 'Score position',
   colors: 'Colors',
   highlight: 'Highlight and spacing',
@@ -58,6 +75,7 @@ const titles: Record<SectionId, string> = {
 };
 
 const icons: Partial<Record<SectionId, () => JSX.Element>> = {
+  season: () => <LucideLayers />,
   placement: () => <LucidePanelBottom />,
   colors: () => <LucideMoon />,
   highlight: () => <LucideSparkles />,
@@ -165,6 +183,7 @@ export const Checklist: Component<ChecklistProps> = (props) => {
       cards: cardsSummary(elements()),
       name: nameSummary(card(), elements()),
       episode: episodeSummary(card(), elements()),
+      season: seasonSummary(card(), elements()),
       placement: placementSummary(card(), elements()),
       colors: themeSummary(props.config.theme),
       highlight: highlightSummary(card(), page(), elements()),
@@ -261,6 +280,9 @@ export const Checklist: Component<ChecklistProps> = (props) => {
       </Match>
       <Match when={id === 'episode'}>
         <EpisodePart {...cardProps()} />
+      </Match>
+      <Match when={id === 'season'}>
+        <SeasonPart {...cardProps()} />
       </Match>
       <Match when={id === 'placement'}>
         <PlacementPart {...cardProps()} />

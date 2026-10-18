@@ -123,10 +123,13 @@ test('sets a site up again, one step at a time', async ({
   ).toBeVisible();
   await next();
 
-  await page.getByText('1120. Bölüm').click();
+  // It found the episode, so there's nothing to click
   await expect(
     setup(page).getByText('Read an episode on all 2 cards'),
   ).toBeVisible();
+  await next();
+
+  await expect(setup(page)).toContainText('AniScore found no season');
   await next();
 
   // The score goes under the name, and shows on the page
@@ -166,4 +169,100 @@ test('sets a site up again, one step at a time', async ({
   await setup(page).getByRole('button', { name: 'Done' }).click();
   await expect(setup(page)).toHaveCount(0);
   await expect(page.locator('.v3-card-copy > h3 + .ani-score')).toHaveCount(2);
+});
+
+test('reads the name alone from a line that also holds the season and the episode', async ({
+  context,
+  page,
+  background,
+  getStorage,
+}) => {
+  const url = 'https://anizm.net/son-bolumler';
+  const entries = [
+    ['Tensei Kizoku, Kantei Skill de Nariagaru', '3.Sezon', '4.Bölüm izle'],
+    ['Vertex Force', '', '3.Bölüm Türkçe'],
+  ];
+
+  const recorded = await mockNetwork(context, {
+    media: [frieren],
+    pages: {
+      [url]: `<!doctype html><html><head><meta charset="utf-8"><title>Site</title></head><body><div class="list">${entries
+        .map(([name, season, episode]) => {
+          const full = [name, season].filter(Boolean).join(' ');
+
+          return `<div class="item"><b>${full}</b><small>${full} ${episode}</small></div>`;
+        })
+        .join('')}</div></body></html>`,
+    },
+  });
+  await page.goto(url);
+  await openEditor(background);
+  await alreadySetUp(page)
+    .getByRole('button', { name: /^Start from scratch/ })
+    .click();
+
+  const next = () => setup(page).getByRole('button', { name: 'Next' }).click();
+  const line = page.getByText('Vertex Force 3.Bölüm Türkçe');
+
+  await line.click();
+  await next();
+
+  // The line holds more than the name, so it suggests the name alone
+  await line.click();
+  await expect(setup(page)).toContainText('This text holds more than the name');
+  await expect(
+    setup(page).getByRole('radio', {
+      name: /^Tensei Kizoku, Kantei Skill de Nariagaru/,
+    }),
+  ).toBeChecked();
+  await next();
+
+  // The episode comes from the same line, the season from the name above it
+  await expect(
+    setup(page).getByText('Read an episode on all 2 cards'),
+  ).toBeVisible();
+  await next();
+  await expect(
+    setup(page).getByRole('radio', { name: /^Season 3, on 1 of 2 cards/ }),
+  ).toBeChecked();
+
+  for (const step of ['season', 'placement', 'colors', 'highlight']) {
+    await expect(setup(page), step).toBeVisible();
+    await next();
+  }
+
+  await setup(page).getByRole('button', { name: 'Save' }).click();
+
+  await expect
+    .poll(() =>
+      getStorage<{ config: { pages: { cards: unknown[] }[] } }[]>('userSites'),
+    )
+    .toMatchObject([
+      {
+        config: {
+          pages: [
+            {
+              cards: [
+                {
+                  title: { selector: 'small', steps: [expect.anything()] },
+                  episode: { selector: 'small' },
+                  season: { selector: 'b' },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ]);
+
+  // AniList is searched by the name alone (the other name matches the offline database, so it goes by id)
+  await expect(page.locator('.item .ani-score')).toHaveCount(2);
+  await expect
+    .poll(() => recorded.lookups.map(({ value }) => value))
+    .toContain('Vertex Force');
+  expect(
+    recorded.lookups.filter(({ value }) =>
+      /Bölüm|Sezon|izle|Türkçe/.test(value),
+    ),
+  ).toEqual([]);
 });

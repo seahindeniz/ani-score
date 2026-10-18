@@ -153,7 +153,7 @@ describe('App', () => {
   it('goes on with a draft where it was left', () => {
     setUp({
       existing: { config, source: 'yours' },
-      draft: { config, step: 3 },
+      draft: { config, step: 4 },
     });
 
     expect(heading()).toBe('Choose where the score goes');
@@ -180,7 +180,7 @@ describe('App', () => {
   });
 
   it('saves, then edits the saved setup, and deletes it', async () => {
-    const { props } = setUp({ draft: { config, step: 6 } });
+    const { props } = setUp({ draft: { config, step: 7 } });
 
     fireEvent.click(button('Save'));
     await settle();

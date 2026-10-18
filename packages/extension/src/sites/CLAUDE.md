@@ -39,8 +39,9 @@ On a site without a setup it runs the guided setup (`views/Setup.tsx`), one step
 first (`views/AlreadySetUp.tsx`), then opens the editor (`views/Checklist.tsx`) or starts the setup over. Both show the
 same parts (`views/parts/`): the guided controls, plus each part's "Advanced" settings in the editor. Picking outlines
 the element under the pointer and keeps clicks from the site (`logic/picker.ts`); `logic/selectors.ts` turns picks into
-selectors that skip generated class names, and `logic/detect.ts` guesses the episode format, the poster and the page's
-colors. While it's open, the engagement script pauses (`window.aniScoreEngagement`) and the editor previews the draft
+selectors that skip generated class names. `logic/analyze.ts` finds where the cards keep the name, the episode and the
+season (every element's text and attributes, each read with known formats) and cuts a name where its season or episode
+starts, so the setup can suggest them; `logic/detect.ts` finds the poster and the page's colors. While it's open, the engagement script pauses (`window.aniScoreEngagement`) and the editor previews the draft
 with the same runtime. Drafts (`{ config, step? }`) are kept per host under `siteDrafts`, and saving writes to
 `userSites`.
 

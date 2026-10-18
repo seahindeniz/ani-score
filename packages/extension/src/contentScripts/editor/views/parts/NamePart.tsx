@@ -2,6 +2,7 @@ import type { Component } from 'solid-js';
 import {
   createEffect,
   createMemo,
+  createSignal,
   For,
   onCleanup,
   onMount,
@@ -12,10 +13,12 @@ import { Button as UiButton } from '~/components/ui/button';
 import { readField } from '~/contentScripts/sites/extract';
 import type { SiteCard, SiteField } from '~/sites/schema';
 
+import { holdsMore, isRepeated, nameCandidates } from '../../logic/analyze';
 import { firstExtract } from '../../logic/detect';
 import { useEditor } from '../context';
-import { Advanced, Result, Waiting, Warning } from '../controls';
+import { Advanced, Notice, Result, Waiting, Warning } from '../controls';
 import { FieldEditor } from '../FieldEditor';
+import { FieldChoices } from './FieldChoices';
 import { createCardPicker } from './pick';
 import type { CardPartProps, Summary } from './types';
 import { cardCount } from './types';
@@ -35,8 +38,19 @@ const target = (card: Element, field: SiteField | undefined) => {
 export const readNames = (card: SiteCard, elements: HTMLElement[]) =>
   elements.map((element) => readField(element, card.title));
 
+/**
+ * Whether names hold more than the name, like the season or the episode, which keeps AniList from finding the anime.
+ */
+const mixed = (names: string[]) =>
+  names.some((name) => holdsMore(name) || isRepeated(name));
+
 export function nameSummary(card: SiteCard, elements: HTMLElement[]): Summary {
-  const read = readNames(card, elements).filter(Boolean).length;
+  const names = readNames(card, elements);
+  const read = names.filter(Boolean).length;
+
+  if (mixed(names)) {
+    return { text: 'Names include more than the name', status: 'issue' };
+  }
 
   return {
     text: `Read on ${read} of ${cardCount(elements.length)}`,
@@ -45,11 +59,18 @@ export function nameSummary(card: SiteCard, elements: HTMLElement[]): Summary {
 }
 
 /**
- * The anime's name in each card, which AniScore looks up on AniList.
+ * The anime's name in each card, which AniScore looks up on AniList. When the text picked holds more, like the season
+ * and the episode, it offers the places that read the name alone.
  */
 export const NamePart: Component<CardPartProps> = (props) => {
   const editor = useEditor();
   const pickInCard = createCardPicker(() => props.elements());
+  // The element the user picked, which the suggestions start from
+  const [anchor, setAnchor] = createSignal(
+    // eslint-disable-next-line solid/reactivity -- where it starts, the picks change it
+    firstExtract(props.card.title)?.selector,
+  );
+  const [suggesting, setSuggesting] = createSignal(false);
   const unset = () => props.autoPick && isUnset(props.card.title);
   const names = createMemo(() => {
     editor.pageVersion();
@@ -57,16 +78,42 @@ export const NamePart: Component<CardPartProps> = (props) => {
     return readNames(props.card, props.elements());
   });
   const read = () => names().filter(Boolean);
+  const candidates = createMemo(() => {
+    editor.pageVersion();
+
+    return suggesting() ? nameCandidates(props.elements(), anchor()) : [];
+  });
+  const whole = (): SiteField => {
+    const selector = anchor();
+
+    return selector ? { selector } : {};
+  };
+  const update = (title: SiteField) => props.onChange({ ...props.card, title });
+
+  // Once the names are mixed up, the suggestions stay, also after choosing a clean one
+  createEffect(() => {
+    if (!unset() && mixed(names())) setSuggesting(true);
+  });
 
   async function pick() {
     const picked = await pickInCard();
 
-    if (picked) {
-      props.onChange({
-        ...props.card,
-        title: picked.selector ? { selector: picked.selector } : {},
-      });
-    }
+    if (!picked) return;
+
+    const selector = picked.selector || undefined;
+
+    const plain = selector ? { selector } : {};
+    const holdsMoreThanName = mixed(
+      props.elements().map((card) => readField(card, plain)),
+    );
+
+    setAnchor(selector);
+    setSuggesting(holdsMoreThanName);
+    update(
+      holdsMoreThanName
+        ? (nameCandidates(props.elements(), selector)[0]?.extract ?? plain)
+        : plain,
+    );
   }
 
   onMount(() => {
@@ -98,6 +145,27 @@ export const NamePart: Component<CardPartProps> = (props) => {
           </Waiting>
         }
       >
+        <Show when={suggesting()}>
+          <Notice title="This text holds more than the name">
+            <p class="m-0 text-muted-foreground">
+              It also has the season, the episode or other words. AniScore looks
+              the anime up by its name alone, so choose what reads as just the
+              name:
+            </p>
+            <FieldChoices
+              label="The name"
+              candidates={candidates()}
+              field={props.card.title}
+              onChange={(title) => update(title ?? {})}
+              describe={(candidate) => candidate.reads.find(Boolean) ?? ''}
+              other={{
+                label: 'The whole text',
+                description: "AniList won't find most anime by it",
+                field: whole(),
+              }}
+            />
+          </Notice>
+        </Show>
         <Result
           title={
             read().length === names().length
@@ -136,9 +204,7 @@ export const NamePart: Component<CardPartProps> = (props) => {
             label="Name"
             field={props.card.title}
             cards={props.elements}
-            onChange={(title) =>
-              props.onChange({ ...props.card, title: title ?? {} })
-            }
+            onChange={(title) => update(title ?? {})}
           />
         </Advanced>
       </Show>

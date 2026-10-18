@@ -2,7 +2,7 @@ import type { SiteStep } from '~/sites/schema';
 
 export interface StepPreset {
   /**
-   * Names the preset for the editor's guesses (`detectSteps`).
+   * Names the preset for the editor's own use, e.g. the fallback for a picked number.
    */
   id: string;
   label: string;

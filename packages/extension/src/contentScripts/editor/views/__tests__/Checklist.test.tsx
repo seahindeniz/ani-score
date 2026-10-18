@@ -91,11 +91,9 @@ describe('Checklist', () => {
         .querySelector('[role=img]')!
         .getAttribute('aria-label'),
     ).toBe('Works');
-    expect(row('Episode and season').textContent).toContain(
-      'Read on 3 of 5 cards',
-    );
+    expect(row('Episode number').textContent).toContain('Read on 3 of 5 cards');
     expect(
-      row('Episode and season')
+      row('Episode number')
         .querySelector('[role=img]')!
         .getAttribute('aria-label'),
     ).toBe('Needs a look');
@@ -119,7 +117,8 @@ describe('Checklist', () => {
 
     // Every part opens in place
     for (const name of [
-      'Episode and season',
+      'Episode number',
+      'Season',
       'Colors',
       'Highlight and spacing',
       'Pages and addresses',
@@ -324,11 +323,13 @@ describe('Checklist', () => {
     const cards = Array.from(document.querySelectorAll('article.card'));
 
     fireEvent.click(row('Name'));
-    willPick(cards[0].querySelector('span')!);
+    willPick(cards[0].querySelector('div.poster')!);
     fireEvent.click(button('Pick again'));
     await settle();
 
-    expect(config().pages[0].cards[0].title).toEqual({ selector: 'span' });
+    expect(config().pages[0].cards[0].title).toEqual({
+      selector: 'div.poster',
+    });
 
     fireEvent.click(row('Colors'));
     fireEvent.click(screen.getByRole('radio', { name: /Follow the site's/ }));

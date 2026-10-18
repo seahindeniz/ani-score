@@ -3,19 +3,10 @@ import { describe, expect, it } from 'bun:test';
 import {
   cardElements,
   containerLayout,
-  detectSteps,
   firstExtract,
   looksDark,
   posterOf,
 } from '../detect';
-
-const episodeCards = (...episodes: string[]) => {
-  document.body.innerHTML = episodes
-    .map((episode) => `<div class="card"><span>${episode}</span></div>`)
-    .join('');
-
-  return Array.from(document.querySelectorAll('.card'));
-};
 
 describe('cardElements', () => {
   it('finds the cards, without the excluded ones and those missing what they must have', () => {
@@ -48,31 +39,6 @@ describe('firstExtract', () => {
     expect(firstExtract([{ selector: 'h3' }, {}])).toEqual({ selector: 'h3' });
     expect(firstExtract({ selector: 'h3' })).toEqual({ selector: 'h3' });
     expect(firstExtract(undefined)).toBeUndefined();
-  });
-});
-
-describe('detectSteps', () => {
-  it('reads the episode in the format the cards use, also next to a season', () => {
-    const cards = episodeCards('12. Bölüm', '2. Sezon 5. Bölüm');
-
-    expect(detectSteps(cards, 'span', 'episode')).toEqual([
-      { match: '(\\d+)(?:[.,]\\d+)?\\.\\s*B[öo]l[üu]m', flags: 'i' },
-    ]);
-  });
-
-  it('falls back to the first number', () => {
-    expect(detectSteps(episodeCards('12', '13'), 'span', 'episode')).toEqual([
-      { match: '(\\d+)' },
-    ]);
-  });
-
-  it('finds a season when a card mentions one, and nothing otherwise', () => {
-    expect(
-      detectSteps(episodeCards('Sezon 2 Bölüm 5'), 'span', 'season'),
-    ).toEqual([{ match: 'Sezon\\s*(\\d+)', flags: 'i' }]);
-    expect(
-      detectSteps(episodeCards('12. Bölüm'), 'span', 'season'),
-    ).toBeUndefined();
   });
 });
 

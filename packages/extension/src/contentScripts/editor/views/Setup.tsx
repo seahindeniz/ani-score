@@ -22,7 +22,12 @@ import type { Position } from './Panel';
 import { Panel } from './Panel';
 import { CardsPart, cardsSummary } from './parts/CardsPart';
 import { ColorsPart, themeSummary } from './parts/ColorsPart';
-import { EpisodePart, episodeSummary } from './parts/EpisodePart';
+import {
+  EpisodePart,
+  episodeSummary,
+  SeasonPart,
+  seasonSummary,
+} from './parts/EpisodePart';
 import { HighlightPart, highlightSummary } from './parts/HighlightPart';
 import { isUnset, NamePart, nameSummary } from './parts/NamePart';
 import { PagesPart } from './parts/PagesPart';
@@ -33,6 +38,7 @@ type StepId =
   | 'cards'
   | 'name'
   | 'episode'
+  | 'season'
   | 'placement'
   | 'colors'
   | 'highlight'
@@ -62,7 +68,14 @@ export const setupSteps: Step[] = [
     id: 'episode',
     title: 'Pick the episode number',
     description:
-      'Click the episode text in any card. AniScore keeps only the number, so the score matches the right season.',
+      'AniScore keeps only the number. Check where it reads it from, or click the episode on the page.',
+  },
+  {
+    id: 'season',
+    title: 'Find the season',
+    description:
+      'Later seasons have their own entry on AniList, so the season picks the right score. Cards without one count as the first season.',
+    optional: true,
   },
   {
     id: 'placement',
@@ -114,7 +127,8 @@ export const Setup: Component<SetupProps> = (props) => {
   const [saved, setSaved] = createSignal(false);
   const [error, setError] = createSignal('');
   const [notice, setNotice] = createSignal('');
-  const [placed, setPlaced] = createSignal(false);
+  // The steps shown before, which don't fill themselves in again
+  const [visited, setVisited] = createSignal(new Set<StepId>());
   const page = () => props.config.pages[0];
   const card = () => page().cards[0];
   const elements = createMemo(() => {
@@ -166,7 +180,7 @@ export const Setup: Component<SetupProps> = (props) => {
 
     if (
       id === 'placement'
-      && !placed()
+      && !visited().has('placement')
       && name
       && !card().inject.selector
       && card().inject.position === 'append'
@@ -177,7 +191,7 @@ export const Setup: Component<SetupProps> = (props) => {
       );
     }
 
-    if (step().id === 'placement') setPlaced(true);
+    setVisited((steps) => new Set(steps).add(step().id));
 
     if (index >= setupSteps.findIndex((item) => item.id === 'colors')) {
       config =
@@ -196,10 +210,13 @@ export const Setup: Component<SetupProps> = (props) => {
         changeCard({
           ...card(),
           episode: undefined,
-          season: undefined,
           allowMissingEpisode: undefined,
         }),
       );
+    }
+
+    if (step().id === 'season') {
+      props.onChange(changeCard({ ...card(), season: undefined }));
     }
 
     if (step().id === 'highlight') {
@@ -247,6 +264,11 @@ export const Setup: Component<SetupProps> = (props) => {
       summary: episodeSummary(card(), elements()),
     },
     {
+      label: 'Season',
+      step: 'season',
+      summary: seasonSummary(card(), elements()),
+    },
+    {
       label: 'Score',
       step: 'placement',
       summary: placementSummary(card(), elements()),
@@ -272,7 +294,8 @@ export const Setup: Component<SetupProps> = (props) => {
     card: card(),
     onChange: (changed: SiteCard) => props.onChange(changeCard(changed)),
     elements,
-    autoPick: true,
+    // Picks and suggests only the first time; coming back keeps what the user chose
+    autoPick: !visited().has(step().id),
   });
 
   const description = (): JSX.Element =>
@@ -309,7 +332,7 @@ export const Setup: Component<SetupProps> = (props) => {
               aria-valuemin={1}
               aria-valuemax={setupSteps.length}
               aria-valuenow={props.step + 1}
-              class="grid grid-cols-7 gap-1"
+              class="grid grid-cols-8 gap-1"
             >
               <Index each={setupSteps}>
                 {(_, index) => (
@@ -432,6 +455,9 @@ export const Setup: Component<SetupProps> = (props) => {
           </Match>
           <Match when={step().id === 'episode'}>
             <EpisodePart {...cardProps()} />
+          </Match>
+          <Match when={step().id === 'season'}>
+            <SeasonPart {...cardProps()} />
           </Match>
           <Match when={step().id === 'placement'}>
             <PlacementPart {...cardProps()} />

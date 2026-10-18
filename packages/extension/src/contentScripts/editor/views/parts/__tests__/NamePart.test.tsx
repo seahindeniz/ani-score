@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library';
 
 import { cardSpec, episodeGrid, settle } from '../../__tests__/harness';
-import { isUnset, NamePart, nameSummary } from '../NamePart';
+import { NamePart, nameSummary } from '../NamePart';
 import { renderCardPart } from './render';
 
 afterEach(cleanup);
@@ -55,12 +55,69 @@ describe('NamePart', () => {
       screen.getByText('Pick a name in one of the outlined cards.'),
     ).toBeTruthy();
 
-    // Picking the card itself reads all of its text
+    // The card's text holds the episode too, so it suggests the heading in it
     willPick(cards[1]);
     fireEvent.click(screen.getByRole('button', { name: 'Pick on the page' }));
     await settle();
 
-    expect(isUnset(card().title)).toBe(true);
+    expect(card().title).toEqual({ selector: 'h3' });
+  });
+
+  it('notices a text that holds more than the name, and suggests the name alone', async () => {
+    document.body.innerHTML = [
+      ['Ao Ashi', '2.Sezon', '3.Bölüm izle'],
+      ['Vertex Force', '', '3.Bölüm Türkçe'],
+      ['Da Wang Rao Ming', '3.Sezon', '5.Bölüm'],
+    ]
+      .map(([name, season, episode]) => {
+        const full = [name, season].filter(Boolean).join(' ');
+
+        return `<div class="item"><b>${full}</b><small>${full} ${episode}</small></div>`;
+      })
+      .join('');
+
+    const line = document.querySelector('small')!;
+    const { card } = renderCardPart(
+      NamePart,
+      cardSpec({ selector: 'div.item', title: {} }),
+      { autoPick: true },
+      [line],
+    );
+
+    await settle();
+
+    expect(screen.getByText('This text holds more than the name')).toBeTruthy();
+    expect(card().title).toMatchObject({ selector: 'small' });
+    expect(
+      screen.getAllByRole('listitem').map((item) => item.textContent),
+    ).toEqual(['Ao Ashi', 'Vertex Force', 'Da Wang Rao Ming']);
+
+    const radio = (name: RegExp) =>
+      screen.getByRole('radio', { name }) as HTMLInputElement;
+
+    expect(radio(/^Ao Ashi/).checked).toBe(true);
+
+    // Keeping it as it is stays possible, and the suggestions stay
+    fireEvent.click(radio(/^The whole text/));
+
+    expect(card().title).toEqual({ selector: 'small' });
+    expect(
+      nameSummary(card(), Array.from(document.querySelectorAll('div.item'))),
+    ).toEqual({
+      text: 'Names include more than the name',
+      status: 'issue',
+    });
+
+    fireEvent.click(radio(/^Ao Ashi/));
+
+    expect(card().title).toMatchObject({ selector: 'small', steps: [{}] });
+  });
+
+  it('suggests the name in the editor for a setup that reads more', () => {
+    episodeGrid();
+    renderCardPart(NamePart, cardSpec({ title: { selector: 'span' } }));
+
+    expect(screen.getByText('This text holds more than the name')).toBeTruthy();
   });
 
   it('warns about cards without a name where it reads', () => {

@@ -1,7 +1,4 @@
-import { readField } from '~/contentScripts/sites/extract';
-import type { SiteCard, SiteField, SiteStep } from '~/sites/schema';
-
-import { stepPresets } from './stepPresets';
+import type { SiteCard, SiteField } from '~/sites/schema';
 
 /**
  * The elements a card type matches on the page, as the runtime filters them.
@@ -26,45 +23,6 @@ export function cardElements(card: SiteCard) {
  */
 export const firstExtract = (field: SiteField | undefined) =>
   Array.isArray(field) ? field[0] : field;
-
-const presetSteps = (id: string) =>
-  stepPresets.find((preset) => preset.id === id)!.steps;
-
-// Most specific first: "2. Sezon 5. Bölüm" holds two numbers, and only the episode formats read the right one
-const guesses = {
-  episode: [
-    'number-then-episode',
-    'episode-then-number',
-    'english-episode',
-    'sxe-episode',
-    'first-number',
-  ],
-  season: ['number-then-season', 'season-then-number', 'sxe-season'],
-};
-
-/**
- * The ready-made steps that read a number from the most cards, from the element `selector` finds in each, or
- * `undefined` when none reads one (e.g. no card mentions a season).
- */
-export function detectSteps(
-  cards: Element[],
-  selector: string | undefined,
-  kind: keyof typeof guesses,
-): SiteStep[] | undefined {
-  let best: { steps: SiteStep[]; count: number } | undefined;
-
-  for (const id of guesses[kind]) {
-    const steps = presetSteps(id);
-    const count = cards.filter(
-      (card) =>
-        !Number.isNaN(Number.parseInt(readField(card, { selector, steps }))),
-    ).length;
-
-    if (count > (best?.count ?? 0)) best = { steps, count };
-  }
-
-  return best?.steps;
-}
 
 /**
  * The element around the card's first image, where details can sit on top of the poster. `undefined` when the card has

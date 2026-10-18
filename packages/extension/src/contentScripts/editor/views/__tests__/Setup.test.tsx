@@ -78,16 +78,12 @@ describe('Setup', () => {
   it('asks for one thing at a time, from the cards to where the score goes', async () => {
     const cards = episodeGrid();
     const { config, step } = setUp(newDraft(location), {
-      picks: [
-        cards[0].querySelector('h3')!,
-        cards[1].querySelector('h3')!,
-        cards[2].querySelector('span')!,
-      ],
+      picks: [cards[0].querySelector('h3')!, cards[1].querySelector('h3')!],
     });
 
     expect(heading()).toBe('Find the episode cards');
     expect(progress()).toBe('1');
-    expect(screen.getByText('Step 1 of 7')).toBeTruthy();
+    expect(screen.getByText('Step 1 of 8')).toBeTruthy();
     expect(button('Next').hasAttribute('disabled')).toBe(true);
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
 
@@ -100,14 +96,17 @@ describe('Setup', () => {
     await settle();
     fireEvent.click(button('Next'));
 
+    // The episode and the season start from where they were found
     expect(heading()).toBe('Pick the episode number');
-    expect(button('No episodes here')).toBeTruthy();
-
-    await settle();
-
+    expect(card(config()).episode).toMatchObject({ selector: 'span' });
     expect(
       screen.queryByRole('button', { name: 'No episodes here' }),
     ).toBeNull();
+
+    fireEvent.click(button('Next'));
+
+    expect(heading()).toBe('Find the season');
+    expect(card(config()).season).toMatchObject({ selector: 'span' });
 
     fireEvent.click(button('Next'));
 
@@ -180,8 +179,11 @@ describe('Setup', () => {
     expect(config().pages[0].layout).toBeUndefined();
   });
 
-  it('goes on without an episode on sites that show none', () => {
-    episodeGrid();
+  it('goes on without an episode on sites that show none, and without a season', () => {
+    episodeGrid([
+      ['Frieren', 'New'],
+      ['Dandadan', 'New'],
+    ]);
 
     const initial = complete();
 
@@ -202,8 +204,13 @@ describe('Setup', () => {
 
     fireEvent.click(button('No episodes here'));
 
+    expect(heading()).toBe('Find the season');
+    expect(card(config()).episode).toBeUndefined();
+
+    fireEvent.click(button('Skip'));
+
     expect(heading()).toBe('Choose where the score goes');
-    expect(card(config())).not.toHaveProperty('season', expect.anything());
+    expect(card(config()).season).toBeUndefined();
   });
 
   it('reviews the setup, saves it, and offers to share it or open the editor', async () => {
@@ -226,6 +233,7 @@ describe('Setup', () => {
       'Episode cards',
       'Name',
       'Episode',
+      'Season',
       'Score',
       'Colors',
       'Highlight and spacing',
