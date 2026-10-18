@@ -25,6 +25,7 @@ import { matchPatternFormat } from '~/sites/matchPattern';
 import { resolveSites, siteFingerprint } from '~/sites/resolveSites';
 import type { SiteConfig } from '~/sites/schema';
 import { parseSiteConfig } from '~/sites/schema';
+import { shareLink } from '~/sites/share';
 
 const bundledById = new Map(bundledSites.map((site) => [site.id, site]));
 
@@ -146,6 +147,28 @@ export const Sites: Component = () => {
     if (unused.length) void browser.permissions.remove({ origins: unused });
   }
 
+  // Opens a GitHub issue that proposes the config for everyone; one too long for a link goes to the clipboard first
+  async function share(site: SiteConfig) {
+    const config = structuredClone(site);
+
+    // Only bundled configs have one, and the maintainers decide it
+    delete config.access;
+
+    const link = shareLink(config);
+
+    if (link.pasteConfig) {
+      await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+    }
+
+    await browser.tabs.create({ url: link.url });
+    setMessage({
+      kind: 'success',
+      text: link.pasteConfig
+        ? `${site.name}'s config is too long for a link, so it's on your clipboard: paste it into the form's Config field.`
+        : `Opened a GitHub issue with ${site.name}'s config.`,
+    });
+  }
+
   function importConfig() {
     let input: unknown;
 
@@ -255,6 +278,13 @@ export const Sites: Component = () => {
                       Export
                     </Button>
                     <Show when={entry()}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void share(site)}
+                      >
+                        Share
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"

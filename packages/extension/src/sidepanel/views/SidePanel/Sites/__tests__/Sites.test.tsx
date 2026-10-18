@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from 'bun:test';
 
 import {
   cleanup,
@@ -213,6 +221,48 @@ describe('sites', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]);
 
     expect(store.data()).toEqual([{ config: null, savedAt: 2 }]);
+  });
+
+  it("shares the user's own configs through a prefilled GitHub issue", async () => {
+    const writeText = mock(async (_text: string) => {});
+
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    await renderSites([
+      { config: config('openani'), savedAt: 1 },
+      { config: config('animex', { css: 'a'.repeat(9000) }), savedAt: 2 },
+    ]);
+
+    // Built-in sites are shared already
+    expect(button('anizm', 'Share')).toBeUndefined();
+
+    fireEvent.click(button('openani', 'Share'));
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe(
+        "Opened a GitHub issue with Openani's config.",
+      ),
+    );
+
+    const [[{ url }]] = fakeBrowser.tabs.create.mock.calls as unknown as [
+      [{ url: string }],
+    ];
+
+    // Without the `access` that only bundled configs have
+    expect(JSON.parse(new URL(url).searchParams.get('config')!)).toEqual(
+      config('openani'),
+    );
+
+    fireEvent.click(button('animex', 'Share'));
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe(
+        "Animex's config is too long for a link, so it's on your clipboard: paste it into the form's Config field.",
+      ),
+    );
+    expect(JSON.parse(writeText.mock.calls[0][0])).toEqual(
+      config('animex', { css: 'a'.repeat(9000) }),
+    );
   });
 
   it('exports a config as a JSON file', async () => {

@@ -1,0 +1,104 @@
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import process from 'node:process';
+
+import type { SiteConfig } from '../src/sites/schema';
+import { parseSiteConfig } from '../src/sites/schema';
+import { r } from './utils';
+
+/**
+ * The value of an issue form field: the text under its `### Label` heading, unwrapped from the code fence a
+ * `render`ed field gets.
+ */
+export function issueField(body: string, label: string) {
+  const section = body
+    .split(/^### /m)
+    .find((part) => part.startsWith(`${label}\n`));
+
+  if (!section) return undefined;
+
+  const text = section.slice(label.length).trim();
+  const fenced = /^```\w*\n([\s\S]*?)\n```$/.exec(text);
+
+  return fenced ? fenced[1] : text;
+}
+
+export type IssueResult =
+  | { success: true; config: SiteConfig; siteUrl?: string }
+  | { success: false; error: string };
+
+/**
+ * The config proposed in a "Site integration" issue, validated like any other.
+ */
+export function configFromIssue(body: string): IssueResult {
+  const json = issueField(body, 'Config');
+
+  if (!json) return { success: false, error: 'The issue has no config.' };
+
+  let input: unknown;
+
+  try {
+    input = JSON.parse(json);
+  } catch (error) {
+    return {
+      success: false,
+      error: `The config isn't valid JSON: ${(error as Error).message}`,
+    };
+  }
+
+  const result = parseSiteConfig(input);
+
+  if (!result.success) return result;
+
+  const siteUrl = issueField(body, 'Site');
+
+  return { success: true, config: result.config, siteUrl };
+}
+
+/**
+ * Writes a proposed config as a bundled site: `site.json`, plus its CSS in `style.css`. A community site is always
+ * optional (users turn it on), whatever the config says.
+ */
+export function writeSite(config: SiteConfig, sitesDir = r('src/sites')) {
+  const dir = join(sitesDir, config.id);
+  const { css, access: _, ...rest } = config;
+  const updated = existsSync(dir);
+
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    join(dir, 'site.json'),
+    `${JSON.stringify({ $schema: '../site.schema.json', ...rest }, null, 2)}\n`,
+  );
+
+  const stylePath = join(dir, 'style.css');
+
+  if (css) writeFileSync(stylePath, `${css.trim()}\n`);
+  else if (updated && existsSync(stylePath)) writeFileSync(stylePath, '');
+
+  return { dir, updated };
+}
+
+// For the "Site integration" workflow: reads the issue from ISSUE_BODY, writes the site, and reports to GITHUB_OUTPUT
+if (import.meta.main) {
+  const result = configFromIssue(process.env.ISSUE_BODY ?? '');
+  const output = (name: string, value: string) =>
+    process.env.GITHUB_OUTPUT
+    && appendFileSync(
+      process.env.GITHUB_OUTPUT,
+      `${name}<<EOF_${name}\n${value}\nEOF_${name}\n`,
+    );
+
+  if (!result.success) {
+    output('error', result.error);
+    console.error(result.error);
+    process.exit(1);
+  }
+
+  const { updated } = writeSite(result.config);
+
+  output('id', result.config.id);
+  output('name', result.config.name);
+  output('site-url', result.siteUrl ?? '');
+  output('updated', String(updated));
+  console.log(`${updated ? 'Updated' : 'Added'} src/sites/${result.config.id}`);
+}

@@ -3,6 +3,7 @@ import { createMemo, createSignal, Show } from 'solid-js';
 
 import type { SiteConfig } from '~/sites/schema';
 import { parseSiteConfig } from '~/sites/schema';
+import { shareLink } from '~/sites/share';
 
 import { Button, TextArea } from './controls';
 
@@ -31,6 +32,25 @@ export const ReviewTab: Component<{
   async function copy() {
     await navigator.clipboard.writeText(json());
     setMessage('Copied.');
+  }
+
+  // The link opens a prefilled GitHub issue; a config too long for a link goes to the clipboard first, while the click
+  // still counts as the user's
+  async function share() {
+    const current = result();
+
+    if (!current.success) return;
+
+    const link = shareLink(current.config, location.href);
+
+    if (link.pasteConfig) await navigator.clipboard.writeText(json());
+
+    window.open(link.url, '_blank', 'noopener');
+    setMessage(
+      link.pasteConfig
+        ? "The config is too long for a link, so it's on your clipboard: paste it into the form's Config field."
+        : 'Opened a GitHub issue with the config. Once a maintainer reviews it, it ships with AniScore for everyone.',
+    );
   }
 
   function download() {
@@ -67,6 +87,9 @@ export const ReviewTab: Component<{
         </Button>
         <Button onClick={download}>Download</Button>
         <Button onClick={copy}>Copy</Button>
+        <Button disabled={!result().success} onClick={share}>
+          Share with everyone
+        </Button>
       </div>
       <Show when={message()}>
         <p class="m-0 text-xs" role="status">

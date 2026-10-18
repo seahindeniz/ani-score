@@ -55,7 +55,11 @@ A site is a config, not code: a folder in `packages/extension/src/sites/`.
 
 The easiest way to write one is in the browser: right-click a page of the site and choose **Integrate this site with
 AniScore**. The editor lets you pick the cards and what to read from them, previews AniScore's details on the page,
-and saves the config to your sites; its **Save** tab also downloads it. To write one by hand instead:
+and saves the config to your sites. Its **Share with everyone** button opens a prefilled "Site integration" issue:
+once a maintainer approves it (the `site-integration: approved` label), a pull request adds the site. No fork or
+local setup needed. See [Add a Site](https://aniscore.link/guide/add-a-site) for a walkthrough.
+
+To write one by hand instead:
 
 1. **Copy an existing config**
 

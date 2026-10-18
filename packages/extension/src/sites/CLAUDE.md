@@ -40,6 +40,15 @@ selectors that skip generated class names. While it's open, the engagement scrip
 and the editor previews the draft with the same runtime. Drafts are kept per host under `siteDrafts`, and saving
 writes to `userSites`.
 
+## Sharing
+
+"Share" (the editor's Save tab, and the side panel for the user's own configs) opens the repository's "Site
+integration" issue form (`.github/ISSUE_TEMPLATE/site-integration.yml`) filled in by `share.ts`; a config too long for
+the link goes to the clipboard. A maintainer reviews it and adds the `site-integration: approved` label, and
+`.github/workflows/site-integration.yml` runs `scripts/site-config-from-issue.ts`: it validates the config, writes
+`src/sites/<id>/` (always optional, CSS in `style.css`), runs the unit tests and opens a pull request with the reporter
+as co-author, or comments on the issue with what's wrong.
+
 ## Styling contract
 
 Site CSS may rely on these, so keep them stable:

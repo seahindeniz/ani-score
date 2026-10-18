@@ -1,0 +1,58 @@
+name: Site integration
+description: Propose a site config made with AniScore's editor, so AniScore works on that site for everyone
+title: 'Site: '
+labels: ['site-integration']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for adding a site! The editor's **Share with everyone** button fills this form in.
+
+        A maintainer reviews the config. Once it's approved, a pull request adds it to AniScore, and it ships with the
+        next release: users turn the site on from AniScore's side panel.
+
+  - type: input
+    id: site-url
+    attributes:
+      label: Site
+      description: A page of the site with episode cards
+      placeholder: https://example.com/episodes
+    validations:
+      required: true
+
+  - type: textarea
+    id: pages
+    attributes:
+      label: Other pages with episode cards
+      description: Addresses of the other pages the config covers, one per line, so the reviewer can check them
+    validations:
+      required: false
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Config
+      description: The JSON from the editor's Save tab
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything the reviewer should know, and screenshots of the cards with AniScore's details (drag images here)
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked the config on the pages above with the editor's live preview
+          required: true
+        - label: The site lists anime episodes
+          required: true
+        - label: I agree that the config is published under the repository's MIT license
+          required: true

@@ -1,0 +1,33 @@
+---
+title: Add a Site
+---
+
+# {frontmatter.title}
+
+AniScore works on any anime site once it knows where the site's episode cards are. You can teach it a new site yourself, right on the site, without writing code, and share it so AniScore works there for everyone.
+
+## Turn on a built-in site
+
+Some sites come with AniScore but stay off until you turn them on: open AniScore's side panel and click **Turn on** next to the site. Your browser asks whether AniScore may access that site; it never gets access to sites you didn't turn on.
+
+## Integrate a new site
+
+1. Open a page of the site that lists episodes, such as its latest episodes.
+2. Right-click the page (or AniScore's toolbar button) and choose **Integrate this site with AniScore**. Allow access when your browser asks, so AniScore keeps working there after you save.
+3. In the editor that opens, on the **Pages** tab:
+   - **Pick** an episode card. AniScore finds all the cards like it; check the count, and use **Wider** if the outline only covers part of a card.
+   - Pick where the **title** and the **episode** number are. When they're in one text, like _Frieren 2. Sezon 5. Bölüm_, add a ready-made step such as _"12. Bölüm" → 12_ or _Text before "2. Sezon"_. Add the **season** too when the site shows it separately.
+   - Pick where the details go and, optionally, the element that **shimmers** for anime you're watching.
+   - Under **Spacing**, give the cards room for the details.
+4. Watch the live preview: AniScore's details appear on the page as you edit. **What AniScore reads** lists the title and episode of the first cards.
+5. On the **Save** tab, click **Save**. The site is now on for you.
+
+Your work is kept as a draft if you close the editor before saving. For a page whose address doesn't change, like a single-page app that pages in place, add one more page with **+ Page**, or set **Only while this exists**.
+
+## Share it with everyone
+
+On the editor's **Save** tab, or next to your site in the side panel, click **Share**. It opens a GitHub issue with your config filled in. A maintainer reviews it, and once it's approved it ships with the next AniScore release, for everyone to turn on.
+
+## Edit or remove a site
+
+Open the editor on the site again to change its config, or use the side panel: **Export** downloads a config, pasting one under **Import** adds it, and **Delete** (or **Reset to built-in** for a built-in site you edited) removes yours.
