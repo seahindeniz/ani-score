@@ -1,6 +1,4 @@
 import process from 'node:process'
-import glob from 'fast-glob'
-import fs from 'fs-extra'
 import { log, r } from './utils'
 
 /**
@@ -53,25 +51,24 @@ function hasRuntimeCode(file: string, source: string) {
 
 const lcovPath = r('coverage/lcov.info')
 
-if (!await fs.pathExists(lcovPath)) {
+if (!await Bun.file(lcovPath).exists()) {
   log('COVERAGE', `error: ${lcovPath} not found, run the tests with coverage first`)
   process.exit(1)
 }
 
-const report = parseLcov(await fs.readFile(lcovPath, 'utf-8'))
-const sourceFiles = await glob('src/**/*.{ts,tsx}', {
-  cwd: r(),
-  absolute: true,
-  ignore: ['src/gql/**', 'src/**/*.d.ts', 'src/**/__tests__/**', '**/node_modules/**'],
-})
+const report = parseLcov(await Bun.file(lcovPath).text())
+const root = r().replace(/\\/g, '/')
+const sourceFiles = Array.from(new Bun.Glob('src/**/*.{ts,tsx}').scanSync({ cwd: root }), file => file.replace(/\\/g, '/'))
+  .filter(file => !file.startsWith('src/gql/') && !file.endsWith('.d.ts') && !file.includes('/__tests__/') && !file.includes('node_modules/'))
+  .sort()
 const problems: string[] = []
 
-for (const file of sourceFiles.sort()) {
-  const relative = file.slice(r().replace(/\\/g, '/').length + 1)
+for (const relative of sourceFiles) {
+  const file = `${root}/${relative}`
   const coverage = report.get(file)
 
   if (!coverage) {
-    if (hasRuntimeCode(file, await fs.readFile(file, 'utf-8')))
+    if (hasRuntimeCode(file, await Bun.file(file).text()))
       problems.push(`${relative}: not covered by any test`)
 
     continue

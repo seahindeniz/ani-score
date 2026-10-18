@@ -4,7 +4,6 @@ import { dirname, join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 import { test as base, chromium } from '@playwright/test'
-import fs from 'fs-extra'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 export const extensionPath = join(__dirname, '../extension')
@@ -15,7 +14,7 @@ async function missingBuildFiles() {
   let manifest: Manifest.WebExtensionManifest
 
   try {
-    manifest = await fs.readJson(join(extensionPath, 'manifest.json'))
+    manifest = await Bun.file(join(extensionPath, 'manifest.json')).json()
   }
   catch {
     return ['manifest.json']
@@ -29,7 +28,7 @@ async function missingBuildFiles() {
     ...(manifest.content_scripts ?? []).flatMap(script => script.js ?? []),
     ...['options', 'popup', 'sidepanel'].map(view => `dist/${view}/index.html`),
   ]
-  const exists = await Promise.all(files.map(file => fs.pathExists(join(extensionPath, file))))
+  const exists = await Promise.all(files.map(file => Bun.file(join(extensionPath, file)).exists()))
 
   return files.filter((_, index) => !exists[index])
 }

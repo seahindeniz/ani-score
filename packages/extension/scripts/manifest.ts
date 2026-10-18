@@ -1,12 +1,11 @@
 import type { Manifest } from 'webextension-polyfill'
 import type PkgType from '../package.json'
 import { join } from 'node:path'
-import fs from 'fs-extra'
 import { argv, isDev, isFirefox, log, port, r } from '../scripts/utils'
 import { contentScriptPaths } from '../src/utils/contentScripts'
 
 export async function getManifest() {
-  const pkg = await fs.readJSON(r('package.json')) as typeof PkgType
+  const pkg = await Bun.file(r('package.json')).json() as typeof PkgType
 
   const contentScripts = [
     ...await Promise.all(contentScriptPaths.map(async (entry) => {
@@ -135,7 +134,7 @@ export async function getManifest() {
 
 if (argv.writeManifest) {
   getManifest().then(async (manifest) => {
-    await fs.writeJSON(r('extension/manifest.json'), manifest, { spaces: 2 })
+    await Bun.write(r('extension/manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
     log('PRE', 'Manifest written to extension/manifest.json')
   })
 }

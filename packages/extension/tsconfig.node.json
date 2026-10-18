@@ -10,7 +10,8 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "types": [
-      "vite/client"
+      "vite/client",
+      "bun"
     ],
     "strict": true,
     "noUnusedLocals": true,
@@ -31,7 +32,6 @@
   ],
   "exclude": [
     "dist",
-    "node_modules",
-    "./scripts/check-coverage.ts"
+    "node_modules"
   ]
 }

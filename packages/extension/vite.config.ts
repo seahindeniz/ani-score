@@ -2,7 +2,6 @@ import type { UserConfig } from 'vite'
 import { dirname, relative } from 'node:path'
 import process from 'node:process'
 import presetRemToPx from '@unocss/preset-rem-to-px'
-import { config as loadEnv } from 'dotenv'
 import UnoCSS from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import Icons from 'unplugin-icons/vite'
@@ -11,8 +10,6 @@ import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
 import { isDev, isFirefox, mode, port, r, targetBrowser } from './scripts/utils'
 import unoConfig from './unocss.config'
-
-loadEnv()
 
 const ANILIST_TOKEN_URL = isFirefox
   ? process.env.ANILIST_TOKEN_URL_FIREFOX

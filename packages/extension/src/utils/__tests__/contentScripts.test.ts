@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 import { contentScriptPaths, getContentScriptScope } from '../contentScripts'
 
-function entry(path: string) {
-  return { path, name: path.split('/').pop()!, dirent: {} } as Parameters<typeof getContentScriptScope>[0]
-}
-
 describe('getContentScriptScope', () => {
   it('maps a site entry to its build directory', () => {
-    expect(getContentScriptScope(entry('/repo/packages/extension/src/contentScripts/site/anizm/main.ts'))).toEqual({
+    expect(getContentScriptScope('/repo/packages/extension/src/contentScripts/site/anizm/main.ts')).toEqual({
       path: '/repo/packages/extension/src/contentScripts/site/anizm/main.ts',
       directory: 'site/anizm',
       relativePath: 'src/contentScripts/site/anizm/main.ts',
@@ -17,14 +13,14 @@ describe('getContentScriptScope', () => {
   })
 
   it('gives top-level scripts their own directory under root/', () => {
-    expect(getContentScriptScope(entry('/repo/src/contentScripts/messageGateway.ts'))).toMatchObject({
+    expect(getContentScriptScope('/repo/src/contentScripts/messageGateway.ts')).toMatchObject({
       directory: 'root/messageGateway',
       name: 'main.js',
     })
   })
 
   it('strips .tsx extensions too', () => {
-    expect(getContentScriptScope(entry('/repo/src/contentScripts/engagement/main.tsx'))).toMatchObject({
+    expect(getContentScriptScope('/repo/src/contentScripts/engagement/main.tsx')).toMatchObject({
       directory: 'engagement',
       name: 'main.js',
     })

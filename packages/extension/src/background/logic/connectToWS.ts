@@ -1,7 +1,7 @@
 import { liveInterval } from '~/constants/main'
 import { logger } from '~/utils/logger'
 
-let intervalId: NodeJS.Timeout | null = null
+let intervalId: number | null = null
 const op = (text: MessageEvent) => String(text.data)
 
 function createWebSocketConnection() {

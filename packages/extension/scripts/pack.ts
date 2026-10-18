@@ -1,19 +1,16 @@
 import { execSync } from 'node:child_process'
+import { mkdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { config as loadEnv } from 'dotenv'
-import glob from 'fast-glob'
-import fs from 'fs-extra'
 import { outputDirectory } from './constants'
 import { argv, log, r } from './utils'
 
-loadEnv()
-
+// `.env` is loaded by Bun itself
 const wantAll = Boolean(argv.pack) || (!argv.zip && !argv.crx && !argv.xpi)
 const wantZip = wantAll || Boolean(argv.zip)
 const wantCrx = wantAll || Boolean(argv.crx)
 const wantXpi = wantAll || Boolean(argv.xpi)
-const { version } = await fs.readJSON(r('package.json'))
+const { version } = await Bun.file(r('package.json')).json()
 
 if (!version) {
   log('PACK', 'error: version is not defined in package.json')
@@ -26,11 +23,12 @@ try {
     execSync('bun run build', { stdio: 'inherit', env: process.env })
   }
 
-  await fs.ensureDir(r('release'))
+  mkdirSync(r('release'), { recursive: true })
 
   if (wantZip) {
     log('PACK', 'creating ZIP')
-    execSync(`rimraf ${outputDirectory}/extension-${version}.zip && jszip-cli add extension/* -o ${outputDirectory}/extension-${version}.zip`, { stdio: 'inherit' })
+    rmSync(`${outputDirectory}/extension-${version}.zip`, { force: true })
+    execSync(`jszip-cli add extension/* -o ${outputDirectory}/extension-${version}.zip`, { stdio: 'inherit' })
   }
 
   if (wantCrx) {
@@ -58,13 +56,12 @@ try {
       log('PACK', 'signing Firefox build')
       execSync(`web-ext sign`, { stdio: 'inherit', env })
 
-      const file = glob.sync(`${outputDirectory}/*.xpi`, { absolute: true, stats: true })
-        .toSorted((a, b) => a.stats!.mtimeMs - b.stats!.mtimeMs)
-        .map(f => f.path)
+      const file = Array.from(new Bun.Glob(`${outputDirectory}/*.xpi`).scanSync({ absolute: true }), file => file.replaceAll(path.sep, '/'))
+        .toSorted((a, b) => statSync(a).mtimeMs - statSync(b).mtimeMs)
         .pop()
 
       if (file)
-        fs.renameSync(file, file.replace(/(?<=release\/).{1,99}(?=-.*\.xpi)/, 'extension'))
+        renameSync(file, file.replace(/(?<=release\/).{1,99}(?=-.*\.xpi)/, 'extension'))
     }
     else {
       log('PACK', 'creating Firefox build')

@@ -1,24 +1,20 @@
 import type { Plugin } from 'vite'
-import glob from 'fast-glob'
-import { minimatch } from 'minimatch'
+import { existsSync } from 'node:fs'
 import { getContentScriptScope } from '../src/utils/contentScripts'
 
 export function injectEngageWithSite(include: string[]): Plugin {
+  const globs = include.map(pattern => new Bun.Glob(pattern))
+
   return {
     name: 'inject-engage-with-site',
     enforce: 'pre',
     transform(code, id) {
-      if (!include.some(pattern => minimatch(id, pattern))) {
+      // Only real files; virtual and query-suffixed module ids don't exist on disk
+      if (!globs.some(glob => glob.match(id)) || !existsSync(id)) {
         return null
       }
 
-      const [entry] = glob.sync(id, { absolute: true, stats: true })
-
-      if (!entry) {
-        return null
-      }
-
-      const detail = getContentScriptScope(entry)
+      const detail = getContentScriptScope(id)
 
       return {
         code: `${code}\n\nwindow.engageWithSite(config, '${detail.directory}')`,
