@@ -101,22 +101,27 @@ export function sharedDOMConfig(
     ...props,
   };
 
-  return mergeConfig(sharedConfig, {
+  // UnoCSS goes before the shared plugins: it reads class names from the source, and once Solid has compiled JSX into
+  // HTML templates, an element with a single class gets it unquoted (`<img class=size-7>`), which UnoCSS doesn't find
+  const unoCSS =
+    propsWithDefaults.unoCSS
+    && UnoCSS(
+      propsWithDefaults.remToPx
+        ? // Content scripts render inside the host page, where `rem` follows the site's root font size (e.g. 10px on
+          // tranimeizle), so their sizes are emitted in px at the default 16px base. Extension pages keep rem, so they
+          // still follow the user's browser font size.
+          {
+            ...unoConfig,
+            configFile: false,
+            presets: [...(unoConfig.presets ?? []), presetRemToPx()],
+          }
+        : undefined,
+    );
+
+  return mergeConfig({ ...sharedConfig, plugins: [unoCSS] }, {
     plugins: [
+      ...(sharedConfig.plugins ?? []),
       propsWithDefaults.icons && Icons({ compiler: 'solid' }),
-      propsWithDefaults.unoCSS
-        && UnoCSS(
-          propsWithDefaults.remToPx
-            ? // Content scripts render inside the host page, where `rem` follows the site's root font size (e.g. 10px on
-              // tranimeizle), so their sizes are emitted in px at the default 16px base. Extension pages keep rem, so they
-              // still follow the user's browser font size.
-              {
-                ...unoConfig,
-                configFile: false,
-                presets: [...(unoConfig.presets ?? []), presetRemToPx()],
-              }
-            : undefined,
-        ),
 
       // rewrite assets to use relative path
       {
