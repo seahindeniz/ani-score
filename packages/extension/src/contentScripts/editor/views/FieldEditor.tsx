@@ -1,6 +1,7 @@
 import type { Component } from 'solid-js';
 import { createMemo, For, Index, Show } from 'solid-js';
 
+import { Dropdown } from '~/components/ui/dropdown';
 import { readField } from '~/contentScripts/sites/extract';
 import { presetNames } from '~/sites/presets';
 import type { SiteExtract, SiteField, SiteStep } from '~/sites/schema';
@@ -209,30 +210,28 @@ const ExtractEditor: Component<{
         </Index>
       </ul>
       <div class="flex gap-1">
-        <select
+        <Dropdown
           aria-label="Add a step"
-          class="min-w-0 flex-1 rounded border border-solid border-input bg-transparent px-1 py-1 text-xs text-foreground"
-          value=""
-          onChange={(event) => {
-            const { value } = event.currentTarget;
-            const added =
-              customSteps[value] !== undefined
+          class="flex-1"
+          placeholder="Add a step…"
+          value={undefined}
+          options={[
+            ...stepPresets.map((preset, index) => ({
+              value: String(index),
+              label: preset.label,
+            })),
+            { value: 'custom-match', label: 'Keep part of it (expression)' },
+            { value: 'custom-replace', label: 'Replace part of it' },
+          ]}
+          onChange={(value) =>
+            setSteps([
+              ...steps(),
+              ...(customSteps[value] !== undefined
                 ? [customSteps[value]]
-                : stepPresets[Number(value)].steps;
-
-            setSteps([...steps(), ...added]);
-            event.currentTarget.value = '';
-          }}
-        >
-          <option value="" disabled selected>
-            Add a step…
-          </option>
-          <For each={stepPresets}>
-            {(preset, index) => <option value={index()}>{preset.label}</option>}
-          </For>
-          <option value="custom-match">Keep part of it (expression)</option>
-          <option value="custom-replace">Replace part of it</option>
-        </select>
+                : stepPresets[Number(value)].steps),
+            ])
+          }
+        />
         <Show when={props.onRemove}>
           <Button onClick={() => props.onRemove!()}>Remove fallback</Button>
         </Show>

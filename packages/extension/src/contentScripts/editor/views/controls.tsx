@@ -1,12 +1,13 @@
 import clsx from 'clsx';
 import type { JSX, ParentComponent } from 'solid-js';
-import { createSignal, createUniqueId, For, Show, splitProps } from 'solid-js';
+import { createSignal, createUniqueId, Show, splitProps } from 'solid-js';
 import LucideCheck from '~icons/lucide/check';
 import LucideInfo from '~icons/lucide/info';
 import LucideMousePointer2 from '~icons/lucide/mouse-pointer-2';
 import LucideTriangleAlert from '~icons/lucide/triangle-alert';
 
 import { Button as UiButton } from '~/components/ui/button';
+import { Dropdown } from '~/components/ui/dropdown';
 
 import { useEditor } from './context';
 
@@ -82,6 +83,9 @@ export function TextArea(
   );
 }
 
+/**
+ * A choice among a few values: the shared dropdown, which stays readable on any site.
+ */
 export function Select<Value extends string>(props: {
   value: Value;
   options: { value: Value; label: string }[];
@@ -91,17 +95,14 @@ export function Select<Value extends string>(props: {
   class?: string;
 }) {
   return (
-    <select
+    <Dropdown
       id={props.id}
-      class={clsx(inputClass, props.class)}
+      class={props.class}
       aria-label={props['aria-label']}
       value={props.value}
-      onChange={(event) => props.onValue(event.currentTarget.value as Value)}
-    >
-      <For each={props.options}>
-        {(option) => <option value={option.value}>{option.label}</option>}
-      </For>
-    </select>
+      options={props.options}
+      onChange={(value) => props.onValue(value)}
+    />
   );
 }
 

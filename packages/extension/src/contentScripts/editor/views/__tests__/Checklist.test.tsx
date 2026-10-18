@@ -7,7 +7,13 @@ import type { SiteConfig } from '~/sites/schema';
 
 import type { ChecklistProps } from '../Checklist';
 import { Checklist } from '../Checklist';
-import { cardSpec, episodeGrid, renderInEditor, settle } from './harness';
+import {
+  cardSpec,
+  chooseOption,
+  episodeGrid,
+  renderInEditor,
+  settle,
+} from './harness';
 
 const saved: SiteConfig = {
   schemaVersion: 1,
@@ -179,14 +185,13 @@ describe('Checklist', () => {
     const { config } = setUp();
     const page = () => screen.getByRole('combobox', { name: 'Page' });
 
+    fireEvent.click(page());
+
     expect(
-      Array.from(
-        (page() as HTMLSelectElement).options,
-        (option) => option.text,
-      ),
+      screen.getAllByRole('option').map((option) => option.textContent),
     ).toEqual(['Latest (this page)', 'Page 2', 'Add a page']);
 
-    fireEvent.change(page(), { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('option', { name: 'Page 2' }));
 
     expect(row('Episode cards').textContent).toContain('None on this page');
 
@@ -195,7 +200,7 @@ describe('Checklist', () => {
 
     expect(config().pages).toHaveLength(1);
 
-    fireEvent.change(page(), { target: { value: 'add' } });
+    chooseOption(page(), 'Add a page');
 
     expect(config().pages).toHaveLength(2);
     expect(row('Episode cards').getAttribute('aria-expanded')).toBe('true');
@@ -206,7 +211,7 @@ describe('Checklist', () => {
 
     const cards = screen.getByRole('combobox', { name: 'Cards' });
 
-    fireEvent.change(cards, { target: { value: '0' } });
+    chooseOption(cards, 'Kind of card 1');
     fireEvent.click(button('Remove this kind of card'));
 
     expect(config().pages[1].cards).toHaveLength(1);

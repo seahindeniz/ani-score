@@ -7,7 +7,7 @@ import type { SiteField } from '~/sites/schema';
 
 import { useEditor } from '../context';
 import { FieldEditor } from '../FieldEditor';
-import { renderInEditor, settle } from './harness';
+import { chooseOption, renderInEditor, settle } from './harness';
 
 function cards() {
   document.body.innerHTML = `
@@ -102,11 +102,11 @@ describe('FieldEditor', () => {
     const { field } = setUp({ selector: 'p' });
     const source = () => screen.getByRole('combobox', { name: 'Read' });
 
-    fireEvent.change(source(), { target: { value: 'ownText' } });
+    chooseOption(source(), 'Own text (without child elements)');
     expect(field()).toEqual({ selector: 'p', source: 'ownText' });
     expect(read()[0]).toBe('Sezon 2');
 
-    fireEvent.change(source(), { target: { value: 'attr' } });
+    chooseOption(source(), 'Attribute');
     expect(field()).toEqual({ selector: 'p', source: { attr: 'href' } });
 
     fireEvent.input(screen.getByRole('textbox', { name: 'Attribute' }), {
@@ -114,18 +114,19 @@ describe('FieldEditor', () => {
     });
     expect(field()).toEqual({ selector: 'p', source: { attr: 'title' } });
 
-    fireEvent.change(source(), { target: { value: 'text' } });
+    chooseOption(source(), 'Text');
     expect(field()).toEqual({ selector: 'p', source: undefined });
   });
 
   it('adds ready-made and custom steps, and edits them', () => {
     const { field } = setUp({ selector: 'p' });
-    const addStep = (value: string) =>
-      fireEvent.change(screen.getByRole('combobox', { name: 'Add a step' }), {
-        target: { value },
-      });
+    const addStep = (option: string) =>
+      chooseOption(
+        screen.getByRole('combobox', { name: 'Add a step' }),
+        option,
+      );
 
-    addStep('0');
+    addStep('First number');
     expect(field()).toEqual({ selector: 'p', steps: [{ match: '(\\d+)' }] });
 
     fireEvent.input(screen.getByRole('textbox', { name: 'Expression' }), {
@@ -156,7 +157,7 @@ describe('FieldEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove step' }));
     expect(field()).toEqual({ selector: 'p', steps: undefined });
 
-    addStep('custom-replace');
+    addStep('Replace part of it');
     fireEvent.input(screen.getByRole('textbox', { name: 'Replace' }), {
       target: { value: 'Sezon' },
     });
@@ -174,8 +175,8 @@ describe('FieldEditor', () => {
       steps: [{ replace: 'Sezon', with: 'Season', flags: undefined }],
     });
 
-    addStep('custom-match');
-    addStep(String(11));
+    addStep('Keep part of it (expression)');
+    addStep('"3. Sezon" → "Season 3"');
     expect(field()).toEqual({
       selector: 'p',
       steps: [
@@ -185,9 +186,10 @@ describe('FieldEditor', () => {
       ],
     });
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Transform' }), {
-      target: { value: 'tr-season-markers' },
-    });
+    chooseOption(
+      screen.getByRole('combobox', { name: 'Transform' }),
+      'tr-season-markers',
+    );
     expect(field()!).toMatchObject({
       steps: [{}, {}, { preset: 'tr-season-markers' }],
     });

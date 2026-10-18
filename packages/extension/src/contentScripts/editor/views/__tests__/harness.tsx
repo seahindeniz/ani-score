@@ -1,6 +1,6 @@
 import { mock } from 'bun:test';
 
-import { render } from '@solidjs/testing-library';
+import { fireEvent, render, screen } from '@solidjs/testing-library';
 import type { JSX } from 'solid-js';
 import { createSignal } from 'solid-js';
 
@@ -117,3 +117,11 @@ export const cardSpec = (changes: Partial<SiteCard> = {}): SiteCard => ({
   inject: { position: 'append' },
   ...changes,
 });
+
+/**
+ * Chooses an option of a dropdown, the way the user does: opening it, then clicking the option.
+ */
+export function chooseOption(dropdown: HTMLElement, option: string | RegExp) {
+  fireEvent.click(dropdown);
+  fireEvent.click(screen.getByRole('option', { name: option }));
+}
