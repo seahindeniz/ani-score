@@ -149,6 +149,13 @@ describe('parseSiteConfig', () => {
     expect(errorOf(config({ theme: { dark: { any: [] } } }))).toBeDefined();
   });
 
+  it('takes a name of one line', () => {
+    expect(errorOf(config({ name: 'Open\nAni' }))).toContain(
+      'The name must be a single line',
+    );
+    expect(errorOf(config({ name: 'a'.repeat(81) }))).toBeDefined();
+  });
+
   it('only takes match patterns and lowercase ids', () => {
     expect(errorOf(config({ matches: ['example.com'] }))).toContain(
       'Use match patterns like *://example.com/*',

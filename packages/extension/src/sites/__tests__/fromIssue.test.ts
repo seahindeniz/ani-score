@@ -5,7 +5,8 @@ import { join } from 'node:path';
 
 import {
   configFromIssue,
-  issueField,
+  issueFields,
+  type IssueResult,
   writeSite,
 } from '../../../scripts/site-config-from-issue';
 import { loadBundledSites } from '../../../scripts/sites';
@@ -104,11 +105,44 @@ describe('configFromIssue', () => {
         siteUrl: 'https://openani.me/episodes/latest/1',
       },
     );
-    expect(issueField('### Notes\n\nplain text', 'Notes')).toBe('plain text');
+    expect(issueFields(issueBody('{}'))).toMatchObject({
+      Site: 'https://openani.me/episodes/latest/1',
+      Notes: '_No response_',
+      Config: '{}',
+    });
+  });
+
+  it('only takes a web address as the site', () => {
+    const body = issueBody(JSON.stringify(config)).replace(
+      'https://openani.me/episodes/latest/1',
+      'javascript:alert(1)\nhttps://openani.me/',
+    );
+
+    expect(configFromIssue(body)).toMatchObject({
+      success: true,
+      siteUrl: undefined,
+    });
+  });
+
+  it("refuses a body that isn't exactly the form", () => {
+    const body = issueBody(JSON.stringify(config));
+    const formError: IssueResult = {
+      success: false,
+      error:
+        "The issue doesn't have the form's sections (Site, Other pages with episode cards, Config, Notes, Checks), each once and in that order.",
+    };
+
+    // A second config, which the reviewer might not notice
+    expect(
+      configFromIssue(`${body}\n\n### Config\n\n\`\`\`json\n{}\n\`\`\``),
+    ).toEqual(formError);
+    expect(configFromIssue('### Site\n\nhttps://openani.me/')).toEqual(
+      formError,
+    );
   });
 
   it('says what is wrong with the config', () => {
-    expect(configFromIssue('### Site\n\nhttps://openani.me/')).toEqual({
+    expect(configFromIssue(issueBody(''))).toEqual({
       success: false,
       error: 'The issue has no config.',
     });

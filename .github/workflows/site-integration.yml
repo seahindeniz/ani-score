@@ -97,7 +97,7 @@ jobs:
 
           body="Adds the site config proposed in #${ISSUE_NUMBER} by @${AUTHOR}, for ${SITE_URL}.
 
-          Check the config's pages with the editor's live preview before merging. Users turn the site on from the side panel.
+          Review this diff before merging: it's what ships, and the issue may have been edited after it was approved. Check the config's pages with the editor's live preview. Users turn the site on from the side panel.
 
           Closes #${ISSUE_NUMBER}"
 

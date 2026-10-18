@@ -258,7 +258,13 @@ export const SiteConfigSchema = v.strictObject({
       'The id may only contain lowercase letters, digits and dashes',
     ),
   ),
-  name: v.pipe(v.string(), v.nonEmpty()),
+  name: v.pipe(
+    v.string(),
+    v.nonEmpty(),
+    v.maxLength(80),
+    // It ends up in commit messages and pull request titles
+    v.regex(/^[^\r\n]+$/, 'The name must be a single line'),
+  ),
   matches: v.pipe(
     v.array(
       v.pipe(

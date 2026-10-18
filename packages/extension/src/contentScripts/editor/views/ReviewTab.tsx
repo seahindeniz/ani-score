@@ -41,7 +41,11 @@ export const ReviewTab: Component<{
 
     if (!current.success) return;
 
-    const link = shareLink(current.config, location.href);
+    // Without the query and hash, which can hold session data that has no place in a public issue
+    const link = shareLink(
+      current.config,
+      `${location.origin}${location.pathname}`,
+    );
 
     if (link.pasteConfig) await navigator.clipboard.writeText(json());
 

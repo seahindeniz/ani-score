@@ -6,21 +6,37 @@ import type { SiteConfig } from '../src/sites/schema';
 import { parseSiteConfig } from '../src/sites/schema';
 import { r } from './utils';
 
+// The headings the "Site integration" form produces, in order (`.github/ISSUE_TEMPLATE/site-integration.yml`)
+export const formHeadings = [
+  'Site',
+  'Other pages with episode cards',
+  'Config',
+  'Notes',
+  'Checks',
+];
+
 /**
- * The value of an issue form field: the text under its `### Label` heading, unwrapped from the code fence a
- * `render`ed field gets.
+ * The form's fields by label: the text under each `### Label` heading, unwrapped from the code fence a `render`ed
+ * field gets. `undefined` unless the body has exactly the form's headings, in order, so an edited body can't show the
+ * reviewer one config and hand the workflow another (say, under a second "Config" heading).
  */
-export function issueField(body: string, label: string) {
-  const section = body
-    .split(/^### /m)
-    .find((part) => part.startsWith(`${label}\n`));
+export function issueFields(body: string) {
+  const headings = Array.from(body.matchAll(/^### (.*)$/gm), ([, label]) =>
+    label.trim(),
+  );
 
-  if (!section) return undefined;
+  if (headings.join('\n') !== formHeadings.join('\n')) return undefined;
 
-  const text = section.slice(label.length).trim();
-  const fenced = /^```\w*\n([\s\S]*?)\n```$/.exec(text);
+  const sections = body.split(/^### .*$/m).slice(1);
 
-  return fenced ? fenced[1] : text;
+  return Object.fromEntries(
+    formHeadings.map((label, index) => {
+      const text = sections[index].trim();
+      const fenced = /^```\w*\n([\s\S]*?)\n```$/.exec(text);
+
+      return [label, fenced ? fenced[1] : text];
+    }),
+  );
 }
 
 export type IssueResult =
@@ -31,7 +47,16 @@ export type IssueResult =
  * The config proposed in a "Site integration" issue, validated like any other.
  */
 export function configFromIssue(body: string): IssueResult {
-  const json = issueField(body, 'Config');
+  const fields = issueFields(body);
+
+  if (!fields) {
+    return {
+      success: false,
+      error: `The issue doesn't have the form's sections (${formHeadings.join(', ')}), each once and in that order.`,
+    };
+  }
+
+  const json = fields.Config;
 
   if (!json) return { success: false, error: 'The issue has no config.' };
 
@@ -50,7 +75,10 @@ export function configFromIssue(body: string): IssueResult {
 
   if (!result.success) return result;
 
-  const siteUrl = issueField(body, 'Site');
+  // Only a web address, which then only goes into the pull request's description
+  const siteUrl = /^https?:\/\/\S+$/.test(fields.Site)
+    ? fields.Site
+    : undefined;
 
   return { success: true, config: result.config, siteUrl };
 }
@@ -81,12 +109,17 @@ export function writeSite(config: SiteConfig, sitesDir = r('src/sites')) {
 // For the "Site integration" workflow: reads the issue from ISSUE_BODY, writes the site, and reports to GITHUB_OUTPUT
 if (import.meta.main) {
   const result = configFromIssue(process.env.ISSUE_BODY ?? '');
-  const output = (name: string, value: string) =>
-    process.env.GITHUB_OUTPUT
-    && appendFileSync(
-      process.env.GITHUB_OUTPUT,
-      `${name}<<EOF_${name}\n${value}\nEOF_${name}\n`,
-    );
+  // A delimiter the issue's author can't guess, so a value can't end early and set outputs of its own
+  const output = (name: string, value: string) => {
+    const delimiter = `EOF_${crypto.randomUUID()}`;
+
+    if (process.env.GITHUB_OUTPUT) {
+      appendFileSync(
+        process.env.GITHUB_OUTPUT,
+        `${name}<<${delimiter}\n${value}\n${delimiter}\n`,
+      );
+    }
+  };
 
   if (!result.success) {
     output('error', result.error);
