@@ -82,8 +82,9 @@ test('side panel imports a site config, to be turned on', async ({
 
   await expect(anizm).toContainText('Always on');
 
+  await page.getByRole('button', { name: 'Import a config' }).click();
   await page.getByLabel('Site config').fill(JSON.stringify(config));
-  await page.getByRole('button', { name: 'Import' }).click();
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
 
   await expect(page.getByRole('status')).toHaveText(
     'Imported Kitsune. Turn it on to allow it on kitsune.me.',
@@ -92,7 +93,12 @@ test('side panel imports a site config, to be turned on', async ({
   const kitsune = page.locator('[data-site="kitsune"]');
 
   await expect(kitsune).toContainText('Yours');
-  await expect(kitsune.getByRole('button', { name: 'Turn on' })).toBeVisible();
+  // Off until the user turns it on, in the sites to turn on
+  await expect(
+    page
+      .getByRole('region', { name: 'Available' })
+      .getByRole('switch', { name: 'Kitsune' }),
+  ).not.toBeChecked();
   await expect
     .poll(() => getStorage('userSites'))
     .toEqual([{ config, savedAt: expect.any(Number) }]);

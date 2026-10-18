@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from '~/components/ui/card';
+import { Switch } from '~/components/ui/switch';
 import type { UserSite } from '~/logic';
 import { useUserSitesStore } from '~/logic';
 import { matchPatternFormat } from '~/sites/matchPattern';
@@ -37,19 +38,15 @@ const requiredPatterns = new Set(
 
 const idOf = (entry: UserSite) => (entry.config as { id?: unknown } | null)?.id;
 
-function hostsOf(site: SiteConfig) {
-  const hosts = Array.from(
+// The site's addresses as people write them, without `www.` (most sites answer both ways)
+const hostsOf = (site: SiteConfig) =>
+  Array.from(
     new Set(
       site.matches.map((pattern) =>
-        matchPatternFormat.exec(pattern)![2].replace(/^\*\./, ''),
+        matchPatternFormat.exec(pattern)![2].replace(/^(\*\.|www\.)/, ''),
       ),
     ),
   );
-
-  return hosts.length > 1
-    ? `${hosts[0]} +${hosts.length - 1}`
-    : (hosts[0] ?? '');
-}
 
 function download(name: string, data: unknown) {
   const url = URL.createObjectURL(
@@ -90,6 +87,7 @@ export const Sites: Component = () => {
         ).filter((id) => id != null),
       ),
   );
+  const [importing, setImporting] = createSignal(false);
   const [draft, setDraft] = createSignal('');
   const [message, setMessage] = createSignal<Message>();
 
@@ -198,150 +196,119 @@ export const Sites: Component = () => {
       },
     ]);
     setDraft('');
+    setImporting(false);
     setMessage({
       kind: 'success',
-      text: `Imported ${config.name}. Turn it on to allow it on ${hostsOf(config)}.`,
+      text: `Imported ${config.name}. Turn it on to allow it on ${hostsOf(config)[0]}.`,
     });
   }
+
+  const rowOf = (site: SiteConfig) => {
+    const entry = store.data().find((item) => idOf(item) === site.id);
+    const required = !entry && site.access === 'required';
+
+    return { site, entry, required, on: required || allowed()?.has(site.id) };
+  };
+  const rows = createMemo(() =>
+    resolved()
+      .sites.map(rowOf)
+      .sort((a, b) => a.site.name.localeCompare(b.site.name)),
+  );
+  const onRows = () => rows().filter((row) => row.on);
+  const availableRows = () => rows().filter((row) => !row.on);
+
+  const SiteRow: Component<{ row: ReturnType<typeof rowOf> }> = (props) => {
+    const site = () => props.row.site;
+    const bundled = () => bundledById.get(site().id);
+    const outdated = () =>
+      props.row.entry?.basedOn
+      && bundled()
+      && props.row.entry.basedOn !== siteFingerprint(bundled()!);
+
+    return (
+      <li class="flex flex-col gap-1.5 py-2.5" data-site={site().id}>
+        <div class="flex items-center gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5">
+              <span class="truncate text-sm font-medium">{site().name}</span>
+              <Show when={props.row.entry}>
+                <Badge variant="secondary" class="px-1.5 py-0 text-[10px]">
+                  {bundled() ? 'Edited' : 'Yours'}
+                </Badge>
+              </Show>
+            </div>
+            <span
+              class="block truncate text-xs text-muted-foreground"
+              title={hostsOf(site()).join(', ')}
+            >
+              {hostsOf(site())[0]}
+            </span>
+          </div>
+          <Show
+            when={!props.row.required}
+            fallback={
+              <span class="shrink-0 text-xs text-muted-foreground">
+                Always on
+              </span>
+            }
+          >
+            <Switch
+              label={site().name}
+              checked={Boolean(props.row.on)}
+              onChange={(on) => (on ? turnOn(site()) : turnOff(site()))}
+            />
+          </Show>
+        </div>
+        <Show when={outdated()}>
+          <p class="m-0 text-xs text-warning-foreground">
+            The built-in version changed since you edited it.
+          </p>
+        </Show>
+        <Show when={props.row.entry}>
+          {(entry) => (
+            <div class="flex gap-3">
+              <Button
+                variant="quiet"
+                size="inline"
+                onClick={() => void share(site())}
+              >
+                Share
+              </Button>
+              <Button
+                variant="quiet"
+                size="inline"
+                onClick={() => download(`${site().id}.json`, entry().config)}
+              >
+                Export
+              </Button>
+              <Button
+                variant="quiet"
+                size="inline"
+                onClick={() => remove(site())}
+              >
+                {bundled() ? 'Reset to built-in' : 'Delete'}
+              </Button>
+            </div>
+          )}
+        </Show>
+      </li>
+    );
+  };
 
   return (
     <Card class="w-xs text-left">
       <CardHeader>
         <CardTitle>Sites</CardTitle>
-        <CardDescription>Where AniScore shows ratings.</CardDescription>
+        <CardDescription>
+          Where AniScore shows ratings. Turning a site on lets AniScore read its
+          pages.
+        </CardDescription>
       </CardHeader>
       <CardContent class="flex flex-col gap-4">
-        <ul class="flex flex-col gap-3">
-          <For each={resolved().sites}>
-            {(site) => {
-              const bundled = bundledById.get(site.id);
-              const entry = () =>
-                store.data().find((item) => idOf(item) === site.id);
-              const required = () => !entry() && site.access === 'required';
-              const isOn = () => required() || allowed()?.has(site.id);
-
-              return (
-                <li class="flex flex-col gap-1" data-site={site.id}>
-                  <div class="flex items-center gap-2">
-                    <span class="font-medium">{site.name}</span>
-                    <Badge variant={entry() ? 'secondary' : 'outline'}>
-                      {entry() ? (bundled ? 'Edited' : 'Yours') : 'Built in'}
-                    </Badge>
-                  </div>
-                  <span class="text-xs text-muted-foreground">
-                    {hostsOf(site)}
-                  </span>
-                  <Show
-                    when={
-                      entry()?.basedOn
-                      && bundled
-                      && entry()!.basedOn !== siteFingerprint(bundled)
-                    }
-                  >
-                    <span class="text-xs text-warning-foreground">
-                      The built-in config changed since you edited it.
-                    </span>
-                  </Show>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <Show
-                      when={!required()}
-                      fallback={
-                        <span class="text-xs text-muted-foreground">
-                          Always on
-                        </span>
-                      }
-                    >
-                      <Show
-                        when={isOn()}
-                        fallback={
-                          <Button size="sm" onClick={() => turnOn(site)}>
-                            Turn on
-                          </Button>
-                        }
-                      >
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => turnOff(site)}
-                        >
-                          Turn off
-                        </Button>
-                      </Show>
-                    </Show>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() =>
-                        download(`${site.id}.json`, entry()?.config ?? site)
-                      }
-                    >
-                      Export
-                    </Button>
-                    <Show when={entry()}>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => void share(site)}
-                      >
-                        Share
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => remove(site)}
-                      >
-                        {bundled ? 'Reset to built-in' : 'Delete'}
-                      </Button>
-                    </Show>
-                  </div>
-                </li>
-              );
-            }}
-          </For>
-          <For each={resolved().invalid}>
-            {(invalid) => (
-              <li class="flex flex-col gap-1">
-                <span class="font-medium">
-                  {String(invalid.id ?? 'Unnamed config')}
-                </span>
-                <span class="text-xs text-error-foreground">
-                  {invalid.error}
-                </span>
-                <div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      store.setData(
-                        store
-                          .data()
-                          .filter((_, index) => index !== invalid.index),
-                      )
-                    }
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </li>
-            )}
-          </For>
-        </ul>
-        <div class="flex flex-col gap-2">
-          <textarea
-            class="min-h-24 w-full rounded-md border border-input bg-transparent p-2 text-xs font-mono"
-            placeholder="Paste a site config (JSON) to import it"
-            aria-label="Site config"
-            value={draft()}
-            onInput={(event) => setDraft(event.currentTarget.value)}
-          />
-          <Button size="sm" disabled={!draft().trim()} onClick={importConfig}>
-            Import
-          </Button>
-        </div>
         <Show when={message()}>
           <p
             role="status"
-            class="text-xs"
+            class="m-0 rounded-md bg-secondary px-3 py-2 text-xs"
             classList={{
               'text-success-foreground': message()!.kind === 'success',
               'text-error-foreground': message()!.kind === 'error',
@@ -350,6 +317,112 @@ export const Sites: Component = () => {
             {message()!.text}
           </p>
         </Show>
+        <Show when={onRows().length}>
+          <section aria-label="On">
+            <h3 class="m-0 text-xs font-medium text-muted-foreground">On</h3>
+            <ul class="m-0 list-none divide-y divide-border p-0">
+              <For each={onRows()}>{(row) => <SiteRow row={row} />}</For>
+            </ul>
+          </section>
+        </Show>
+        <Show when={availableRows().length}>
+          <section aria-label="Available">
+            <h3 class="m-0 text-xs font-medium text-muted-foreground">
+              Available
+            </h3>
+            <ul class="m-0 list-none divide-y divide-border p-0">
+              <For each={availableRows()}>{(row) => <SiteRow row={row} />}</For>
+            </ul>
+          </section>
+        </Show>
+        <Show when={resolved().invalid.length}>
+          <section aria-label="Can't be used">
+            <h3 class="m-0 text-xs font-medium text-muted-foreground">
+              Can't be used
+            </h3>
+            <ul class="m-0 list-none divide-y divide-border p-0">
+              <For each={resolved().invalid}>
+                {(invalid) => (
+                  <li class="flex flex-col gap-1 py-2.5">
+                    <span class="text-sm font-medium">
+                      {String(invalid.id ?? 'Unnamed config')}
+                    </span>
+                    <span class="text-xs text-error-foreground">
+                      It no longer matches the config format. Delete it, or
+                      import a fixed copy.
+                    </span>
+                    <details class="text-xs text-muted-foreground">
+                      <summary class="cursor-pointer">What's wrong</summary>
+                      <pre class="m-0 mt-1 whitespace-pre-wrap font-mono text-[11px]">
+                        {invalid.error}
+                      </pre>
+                    </details>
+                    <div>
+                      <Button
+                        variant="quiet"
+                        size="inline"
+                        onClick={() =>
+                          store.setData(
+                            store
+                              .data()
+                              .filter((_, index) => index !== invalid.index),
+                          )
+                        }
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </section>
+        </Show>
+        <Show
+          when={importing()}
+          fallback={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setImporting(true)}
+            >
+              Import a config
+            </Button>
+          }
+        >
+          <div class="flex flex-col gap-2">
+            <textarea
+              class="min-h-24 w-full rounded-md border border-input bg-transparent p-2 font-mono text-xs"
+              placeholder="Paste a site config (JSON)"
+              aria-label="Site config"
+              value={draft()}
+              onInput={(event) => setDraft(event.currentTarget.value)}
+            />
+            <div class="flex gap-2">
+              <Button
+                size="sm"
+                disabled={!draft().trim()}
+                onClick={importConfig}
+              >
+                Import
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setDraft('');
+                  setImporting(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </Show>
+        <p class="m-0 text-xs text-muted-foreground">
+          To add another site, right-click one of its pages and choose
+          “Integrate this site with AniScore”.
+        </p>
       </CardContent>
     </Card>
   );

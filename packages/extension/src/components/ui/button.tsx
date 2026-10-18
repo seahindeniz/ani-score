@@ -21,12 +21,17 @@ const buttonVariants = cva(
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
+        // A secondary action that stays out of the way until pointed at, e.g. in a list row
+        quiet:
+          'text-muted-foreground underline-offset-4 hover:text-foreground hover:underline',
       },
       size: {
         default: 'h-10 px-4 py-2',
         sm: 'h-9 px-3 text-xs',
         lg: 'h-11 px-8',
         icon: 'size-10',
+        // Sized by its text, to sit within a line
+        inline: 'h-auto p-0 text-xs',
       },
     },
     defaultVariants: {

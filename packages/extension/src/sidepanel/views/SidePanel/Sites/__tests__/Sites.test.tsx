@@ -57,7 +57,18 @@ const button = (id: string, name: string) =>
     (item) => item.textContent === name,
   )!;
 
+const toggle = (id: string) =>
+  row(id).querySelector<HTMLInputElement>('[role="switch"]')!;
+
+const isOn = (id: string) => toggle(id).closest('[data-checked]') != null;
+
+const group = (name: string) => screen.getByRole('region', { name });
+
 function paste(json: string) {
+  const open = screen.queryByRole('button', { name: 'Import a config' });
+
+  if (open) fireEvent.click(open);
+
   fireEvent.input(screen.getByLabelText('Site config'), {
     target: { value: json },
   });
@@ -72,14 +83,32 @@ beforeEach(async () => {
 afterEach(cleanup);
 
 describe('sites', () => {
-  it('lists the built-in sites that are always on', async () => {
+  it('lists the sites that are on, then the ones to turn on, by name', async () => {
     await renderSites();
 
-    expect(row('anizm').textContent).toContain('Anizm');
-    expect(row('anizm').textContent).toContain('Built in');
-    expect(row('anizm').textContent).toContain('anizm.net');
-    expect(row('anizm').textContent).toContain('Always on');
-    expect(row('tranimeizle').textContent).toContain('www.tranimeizle.live');
+    const names = (name: string) =>
+      Array.from(group(name).querySelectorAll('[data-site]'), (item) =>
+        item.getAttribute('data-site'),
+      );
+
+    expect(names('On')).toEqual(['anizm', 'tranimeizle']);
+    expect(names('Available')).toEqual([
+      'acheriya',
+      'animecix',
+      'animex',
+      'animexe',
+      'animpow',
+      'asyaanimeleri',
+      'openani',
+      'sonanime',
+    ]);
+    // Built-in sites need no badge, and the always-on ones no switch
+    expect(row('anizm').textContent).toBe('Anizmanizm.netAlways on');
+    expect(row('tranimeizle').textContent).toContain('tranimeizle.live');
+    expect(toggle('anizm')).toBeNull();
+    expect(isOn('openani')).toBe(false);
+    expect(row('openani').querySelector('button')).toBeNull();
+    expect(screen.queryByRole('region', { name: "Can't be used" })).toBeNull();
   });
 
   it('imports a config, to be turned on', async () => {
@@ -93,9 +122,26 @@ describe('sites', () => {
     expect(store.data()).toEqual([
       { config: config('kitsune'), savedAt: expect.any(Number) },
     ]);
+    // The import form closes once it's done
+    expect(screen.queryByLabelText('Site config')).toBeNull();
+  });
+
+  it('closes the import form without importing', async () => {
+    await renderSites();
+    fireEvent.click(screen.getByRole('button', { name: 'Import a config' }));
+    fireEvent.input(screen.getByLabelText('Site config'), {
+      target: { value: '{}' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByLabelText('Site config')).toBeNull();
+
+    // And starts empty next time
+    fireEvent.click(screen.getByRole('button', { name: 'Import a config' }));
     expect(
       (screen.getByLabelText('Site config') as HTMLTextAreaElement).value,
     ).toBe('');
+    expect(store.data()).toEqual([]);
   });
 
   it('replaces a config imported again', async () => {
@@ -124,28 +170,30 @@ describe('sites', () => {
 
   it("asks the browser for access to turn a site on, and drops access it doesn't need to turn it off", async () => {
     await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
-    fireEvent.click(button('kitsune', 'Turn on'));
+    fireEvent.click(toggle('kitsune'));
 
     expect(fakeBrowser.permissions.request).toHaveBeenCalledWith({
       origins: ['*://kitsune.me/*'],
     });
-    await waitFor(() => expect(button('kitsune', 'Turn off')).toBeTruthy());
+    await waitFor(() => expect(isOn('kitsune')).toBe(true));
+    expect(group('On').contains(row('kitsune'))).toBe(true);
     expect(screen.getByRole('status').textContent).toBe(
       'Kitsune is on. Reload its open tabs to see ratings.',
     );
 
-    fireEvent.click(button('kitsune', 'Turn off'));
+    fireEvent.click(toggle('kitsune'));
 
     expect(fakeBrowser.permissions.remove).toHaveBeenCalledWith({
       origins: ['*://kitsune.me/*'],
     });
-    await waitFor(() => expect(button('kitsune', 'Turn on')).toBeTruthy());
+    await waitFor(() => expect(isOn('kitsune')).toBe(false));
+    expect(group('Available').contains(row('kitsune'))).toBe(true);
   });
 
   it('stays off when the user declines access', async () => {
     fakeBrowser.permissions.request.mockResolvedValueOnce(false);
     await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
-    fireEvent.click(button('kitsune', 'Turn on'));
+    fireEvent.click(toggle('kitsune'));
 
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toBe(
@@ -197,10 +245,10 @@ describe('sites', () => {
 
     expect(row('anizm').textContent).toContain('Edited');
     expect(row('anizm').textContent).toContain(
-      'The built-in config changed since you edited it.',
+      'The built-in version changed since you edited it.',
     );
     // A user's config is never on from install
-    expect(button('anizm', 'Turn on')).toBeTruthy();
+    expect(isOn('anizm')).toBe(false);
 
     fireEvent.click(button('anizm', 'Reset to built-in'));
 
@@ -215,8 +263,15 @@ describe('sites', () => {
       { config: null, savedAt: 2 },
     ]);
 
+    const broken = group("Can't be used");
+
     expect(screen.getByText('broken')).toBeTruthy();
     expect(screen.getByText('Unnamed config')).toBeTruthy();
+    expect(broken.textContent).toContain(
+      'It no longer matches the config format. Delete it, or import a fixed copy.',
+    );
+    // The details stay folded away
+    expect(broken.querySelector('details pre')!.textContent).toContain('pages');
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]);
 
@@ -279,7 +334,6 @@ describe('sites', () => {
 
     await renderSites([{ config: config('kitsune'), savedAt: 1 }]);
     fireEvent.click(button('kitsune', 'Export'));
-    fireEvent.click(button('anizm', 'Export'));
 
     const [[blob]] = createObjectURL.mock.calls as unknown as [[Blob]];
 
@@ -287,9 +341,8 @@ describe('sites', () => {
     expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe(
       'kitsune.json',
     );
-    expect((click.mock.contexts[1] as HTMLAnchorElement).download).toBe(
-      'anizm.json',
-    );
+    // Built-in sites ship with AniScore, so they have nothing to export
+    expect(button('anizm', 'Export')).toBeUndefined();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:config');
 
     createObjectURL.mockRestore();
@@ -297,16 +350,23 @@ describe('sites', () => {
     click.mockRestore();
   });
 
-  it('shows more than one host as a count', async () => {
+  it("shows a site's first address, with all of them on hover", async () => {
     await renderSites([
       {
         config: config('kitsune', {
-          matches: ['*://kitsune.me/*', '*://*.kitsune.tv/*'],
+          matches: [
+            '*://www.kitsune.me/*',
+            '*://kitsune.me/*',
+            '*://*.kitsune.tv/*',
+          ],
         }),
         savedAt: 1,
       },
     ]);
 
-    expect(row('kitsune').textContent).toContain('kitsune.me +1');
+    const host = row('kitsune').querySelector('[title]')!;
+
+    expect(host.textContent).toBe('kitsune.me');
+    expect(host.getAttribute('title')).toBe('kitsune.me, kitsune.tv');
   });
 });
