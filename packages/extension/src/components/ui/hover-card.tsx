@@ -1,25 +1,29 @@
-import type { PolymorphicProps } from '@kobalte/core/polymorphic'
-import type { Component, ValidComponent } from 'solid-js'
+import * as HoverCardPrimitive from '@kobalte/core/hover-card';
+import type { PolymorphicProps } from '@kobalte/core/polymorphic';
+import type { Component, ValidComponent } from 'solid-js';
+import { splitProps } from 'solid-js';
 
-import * as HoverCardPrimitive from '@kobalte/core/hover-card'
-import { splitProps } from 'solid-js'
+import { cn } from '~/utils';
 
-import { cn } from '~/utils'
-
-const HoverCardTrigger = HoverCardPrimitive.Trigger
+const HoverCardTrigger = HoverCardPrimitive.Trigger;
 
 const HoverCard: Component<HoverCardPrimitive.HoverCardRootProps> = (props) => {
-  return <HoverCardPrimitive.Root gutter={4} {...props} />
-}
+  return <HoverCardPrimitive.Root gutter={4} {...props} />;
+};
 
-type HoverCardContentProps<T extends ValidComponent = 'div'>
-  = HoverCardPrimitive.HoverCardContentProps<T> & {
-    class?: string | undefined
-    portTo?: HTMLElement | undefined
-  }
+type HoverCardContentProps<T extends ValidComponent = 'div'> =
+  HoverCardPrimitive.HoverCardContentProps<T> & {
+    class?: string | undefined;
+    portTo?: HTMLElement | undefined;
+  };
 
-function HoverCardContent<T extends ValidComponent = 'div'>(props: PolymorphicProps<T, HoverCardContentProps<T>>) {
-  const [local, others] = splitProps(props as HoverCardContentProps, ['class', 'portTo'])
+function HoverCardContent<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, HoverCardContentProps<T>>,
+) {
+  const [local, others] = splitProps(props as HoverCardContentProps, [
+    'class',
+    'portTo',
+  ]);
   return (
     <HoverCardPrimitive.Portal mount={local.portTo}>
       <HoverCardPrimitive.Content
@@ -30,7 +34,7 @@ function HoverCardContent<T extends ValidComponent = 'div'>(props: PolymorphicPr
         {...others}
       />
     </HoverCardPrimitive.Portal>
-  )
+  );
 }
 
-export { HoverCard, HoverCardContent, HoverCardTrigger }
+export { HoverCard, HoverCardContent, HoverCardTrigger };

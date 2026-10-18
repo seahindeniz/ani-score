@@ -1,17 +1,18 @@
-import type { Component, ComponentProps } from 'solid-js'
-import { mergeProps, splitProps } from 'solid-js'
+import type { Component, ComponentProps } from 'solid-js';
+import { mergeProps, splitProps } from 'solid-js';
 
-import { cn } from '~/utils'
+import { cn } from '~/utils';
 
-type JustifyContent = 'start' | 'end' | 'center' | 'between' | 'around' | 'evenly'
-type AlignItems = 'start' | 'end' | 'center' | 'baseline' | 'stretch'
-type FlexDirection = 'row' | 'col' | 'row-reverse' | 'col-reverse'
+type JustifyContent =
+  'start' | 'end' | 'center' | 'between' | 'around' | 'evenly';
+type AlignItems = 'start' | 'end' | 'center' | 'baseline' | 'stretch';
+type FlexDirection = 'row' | 'col' | 'row-reverse' | 'col-reverse';
 
 type FlexProps = ComponentProps<'div'> & {
-  flexDirection?: FlexDirection
-  justifyContent?: JustifyContent
-  alignItems?: AlignItems
-}
+  flexDirection?: FlexDirection;
+  justifyContent?: JustifyContent;
+  alignItems?: AlignItems;
+};
 
 const Flex: Component<FlexProps> = (rawProps) => {
   const props = mergeProps(
@@ -21,13 +22,13 @@ const Flex: Component<FlexProps> = (rawProps) => {
       alignItems: 'center',
     } satisfies FlexProps,
     rawProps,
-  )
+  );
   const [local, others] = splitProps(props, [
     'flexDirection',
     'justifyContent',
     'alignItems',
     'class',
-  ])
+  ]);
 
   return (
     <div
@@ -40,10 +41,10 @@ const Flex: Component<FlexProps> = (rawProps) => {
       )}
       {...others}
     />
-  )
-}
+  );
+};
 
-export { Flex }
+export { Flex };
 
 const justifyContentClassNames: { [key in JustifyContent]: string } = {
   start: 'justify-start',
@@ -52,7 +53,7 @@ const justifyContentClassNames: { [key in JustifyContent]: string } = {
   between: 'justify-between',
   around: 'justify-around',
   evenly: 'justify-evenly',
-}
+};
 
 const alignItemsClassNames: { [key in AlignItems]: string } = {
   start: 'items-start',
@@ -60,11 +61,11 @@ const alignItemsClassNames: { [key in AlignItems]: string } = {
   center: 'items-center',
   baseline: 'items-baseline',
   stretch: 'items-stretch',
-}
+};
 
 const flexDirectionClassNames: { [key in FlexDirection]: string } = {
-  'row': 'flex-row',
-  'col': 'flex-col',
+  row: 'flex-row',
+  col: 'flex-col',
   'row-reverse': 'flex-row-reverse',
   'col-reverse': 'flex-col-reverse',
-}
+};

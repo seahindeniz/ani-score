@@ -1,10 +1,10 @@
-/* eslint-disable no-template-curly-in-string */
-import type { Config } from 'release-it'
-import { outputDirectory } from './scripts/constants'
+import type { Config } from 'release-it';
+
+import { outputDirectory } from './scripts/constants';
 
 export default {
   hooks: {
-    'after:bump': 'pnpm run pack',
+    'after:bump': 'bun run pack',
   },
   npm: {
     publish: false,
@@ -18,9 +18,11 @@ export default {
     ],
     comments: {
       submit: true,
-      issue: ':rocket: _This issue has been resolved in v${version}. '
+      issue:
+        ':rocket: _This issue has been resolved in v${version}. '
         + 'See [${releaseName}](${releaseUrl}) for release notes._',
-      pr: ':rocket: _This pull request has been resolved in v${version}. '
+      pr:
+        ':rocket: _This pull request has been resolved in v${version}. '
         + 'See [${releaseName}](${releaseUrl}) for release notes._',
     },
   },
@@ -35,4 +37,4 @@ export default {
       },
     },
   },
-} satisfies Config
+} satisfies Config;

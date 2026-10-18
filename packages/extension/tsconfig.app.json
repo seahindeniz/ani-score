@@ -3,42 +3,27 @@
     "target": "ESNext",
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
-    "lib": [
-      "DOM",
-      "ESNext"
-    ],
+    "lib": ["DOM", "ESNext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {
-      "~/*": [
-        "./src/*"
-      ]
+      "~/*": ["./src/*"]
     },
     "resolveJsonModule": true,
-    "types": [
-      "vite/client",
-      "unplugin-icons/types/solid",
-      "chrome-types"
-    ],
+    "types": ["vite/client", "unplugin-icons/types/solid", "chrome-types"],
     "strict": true,
     "noUnusedLocals": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "skipLibCheck": true,
-    "plugins": [
-      {
-        "name": "typescript-plugin-css-modules"
-      }
-    ]
+    "skipLibCheck": true
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx"
-  ],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": [
     "dist",
-    "node_modules"
+    "node_modules",
+    "src/**/__tests__/**",
+    "src/utils/contentScripts.ts"
   ]
 }

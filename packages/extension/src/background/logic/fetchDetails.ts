@@ -1,229 +1,296 @@
-import type { TypedDocumentNode } from '@urql/core'
-import type { FieldNode } from 'graphql'
-import type { EpisodeCard } from '~/contentScripts/site/base'
-import type { BatchAnimeTemplateQuery, Exact } from '~/gql/graphql'
-import { Kind } from 'graphql'
-import { useTokenStore } from '~/logic'
-import { logger } from '~/utils/logger'
-import { wait } from '~/utils/wait'
-import { anilistClient } from '../client/anilist'
-import { batchTemplate, singleAnimeQuery } from '../gql-queries/anilist'
-import { searchAnimeByTitle } from './loadDatabase'
+import type { TypedDocumentNode } from '@urql/core';
+import type { FieldNode } from 'graphql';
+import { Kind } from 'graphql';
+
+import type { EpisodeCard } from '~/contentScripts/site/base';
+import type {
+  BatchAnimeTemplateQuery,
+  BatchAnimeTemplateQueryVariables,
+} from '~/gql/graphql';
+import { useTokenStore } from '~/logic';
+import { logger } from '~/utils/logger';
+import { wait } from '~/utils/wait';
+
+import { anilistClient } from '../client/anilist';
+import { batchTemplate, singleAnimeQuery } from '../gql-queries/anilist';
+import { searchAnimeByTitle } from './loadDatabase';
 
 interface Props {
-  cards: Pick<EpisodeCard, 'title' | 'episodeNumber'>[]
+  cards: Pick<EpisodeCard, 'title' | 'episodeNumber'>[];
 }
 
-const maxAnimePerQuery = 5
-const maxAliasCharacters = 70
+const maxAnimePerQuery = 5;
+const maxAliasCharacters = 70;
 
-const _inheritType = anilistClient.query(singleAnimeQuery, {})
+const _inheritType = anilistClient.query(singleAnimeQuery, {});
 
-export type AnimeDetails = NonNullable<NonNullable<NonNullable<NonNullable<Awaited<typeof _inheritType>['data']>['one_piece']>['results']>[0]>
+export type AnimeDetails = NonNullable<
+  NonNullable<
+    NonNullable<
+      NonNullable<Awaited<typeof _inheritType>['data']>['one_piece']
+    >['results']
+  >[0]
+>;
 
 function createAlias(title: string, index: number): string {
   const cleanTitle = title
     .slice(0, maxAliasCharacters)
     .replace(/[^a-z0-9\s]/gi, '')
     .replace(/\s+/g, '_')
-    .toLowerCase()
+    .toLowerCase();
 
-  return `a_${index + 1}_${cleanTitle}`
+  return `a_${index + 1}_${cleanTitle}`;
 }
 
-function escapeGraphQLString(str: string): string {
-  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')
-}
+function generateBatchQuery(
+  animeList: ReturnType<typeof findAnimeListInDatabase>,
+) {
+  let currentChunk: FieldNode[] = [];
+  let chunkIndex = 0;
 
-function generateBatchQuery(animeList: ReturnType<typeof findAnimeListInDatabase>) {
-  let currentChunk: FieldNode[] = []
-  let chunkIndex = 0
+  return animeList.reduce(
+    (acc, { title, anilist, mal }, index) => {
+      const alias = createAlias(title, index);
+      const source = anilist ? 'withId' : mal ? `withIdMal` : `withSearch`;
+      const [batchQueryKeyDefinition] = batchTemplate.definitions;
 
-  return animeList.reduce((acc, { title, anilist, mal }, index) => {
-    const alias = createAlias(title, index)
-    const source = anilist ? 'withId' : mal ? `withIdMal` : `withSearch`
-    const [batchQueryKeyDefinition] = batchTemplate.definitions
+      if (batchQueryKeyDefinition.kind === Kind.OPERATION_DEFINITION) {
+        const template = batchQueryKeyDefinition.selectionSet.selections.find(
+          (selection) => {
+            return (
+              selection.kind === Kind.FIELD && selection.alias?.value === source
+            );
+          },
+        ) as FieldNode | undefined;
 
-    if (batchQueryKeyDefinition.kind === Kind.OPERATION_DEFINITION) {
-      const template = batchQueryKeyDefinition.selectionSet.selections.find((selection) => {
-        return selection.kind === Kind.FIELD && selection.alias?.value === source
-      }) as FieldNode | undefined
+        const query = structuredClone(template);
 
-      const query = structuredClone(template)
+        if (query?.selectionSet) {
+          Object.assign(query.alias!, { value: alias });
 
-      if (query?.selectionSet) {
-        Object.assign(query.alias!, { value: alias })
+          const [resultsField] = query.selectionSet.selections;
 
-        const [resultsField] = query.selectionSet.selections
+          if (resultsField.kind === Kind.FIELD) {
+            if (resultsField.arguments) {
+              const [, idOrSearchArgument] = resultsField.arguments;
 
-        if (resultsField.kind === Kind.FIELD) {
-          if (resultsField.arguments) {
-            const [, idOrSearchArgument] = resultsField.arguments
-
-            if (idOrSearchArgument.value.kind === Kind.INT || idOrSearchArgument.value.kind === Kind.STRING) {
-              Object.assign(idOrSearchArgument.value, {
-                value: source === 'withId' ? anilist! : source === 'withIdMal' ? mal! : escapeGraphQLString(title),
-              })
+              if (
+                idOrSearchArgument.value.kind === Kind.INT
+                || idOrSearchArgument.value.kind === Kind.STRING
+              ) {
+                Object.assign(idOrSearchArgument.value, {
+                  // The query printer escapes string values, so the title goes in as is
+                  value:
+                    source === 'withId'
+                      ? anilist!
+                      : source === 'withIdMal'
+                        ? mal!
+                        : title,
+                });
+              }
             }
-          }
 
-          if (resultsField.selectionSet) {
-            const [singleQueryKeyDefinition] = singleAnimeQuery.definitions
+            if (resultsField.selectionSet) {
+              const [singleQueryKeyDefinition] = singleAnimeQuery.definitions;
 
-            if (singleQueryKeyDefinition.kind === Kind.OPERATION_DEFINITION) {
-              const [singleAnimeAliasKeyField] = singleQueryKeyDefinition.selectionSet.selections
+              if (singleQueryKeyDefinition.kind === Kind.OPERATION_DEFINITION) {
+                const [singleAnimeAliasKeyField] =
+                  singleQueryKeyDefinition.selectionSet.selections;
 
-              if (singleAnimeAliasKeyField.kind === Kind.FIELD && singleAnimeAliasKeyField.selectionSet) {
-                const [singleResultsField] = singleAnimeAliasKeyField.selectionSet.selections
+                if (
+                  singleAnimeAliasKeyField.kind === Kind.FIELD
+                  && singleAnimeAliasKeyField.selectionSet
+                ) {
+                  const [singleResultsField] =
+                    singleAnimeAliasKeyField.selectionSet.selections;
 
-                if (singleResultsField.kind === Kind.FIELD)
-                  Object.assign(resultsField.selectionSet, { selections: singleResultsField.selectionSet?.selections })
+                  if (singleResultsField.kind === Kind.FIELD)
+                    Object.assign(resultsField.selectionSet, {
+                      selections: singleResultsField.selectionSet?.selections,
+                    });
+                }
               }
             }
           }
-        }
 
-        currentChunk.push(query)
+          currentChunk.push(query);
 
-        if (currentChunk.length === maxAnimePerQuery || index === animeList.length - 1) {
-          const compiledQuery = structuredClone(batchTemplate)
-          const [batchQueryKeyDefinition] = compiledQuery.definitions
+          if (
+            currentChunk.length === maxAnimePerQuery
+            || index === animeList.length - 1
+          ) {
+            const compiledQuery = structuredClone(batchTemplate);
+            const [batchQueryKeyDefinition] = compiledQuery.definitions;
 
-          if (batchQueryKeyDefinition.kind === Kind.OPERATION_DEFINITION) {
-            if (batchQueryKeyDefinition.name) {
-              Object.assign(batchQueryKeyDefinition.name!, { value: `BatchAnimeSearch${chunkIndex}` })
+            if (batchQueryKeyDefinition.kind === Kind.OPERATION_DEFINITION) {
+              if (batchQueryKeyDefinition.name) {
+                Object.assign(batchQueryKeyDefinition.name!, {
+                  value: `BatchAnimeSearch${chunkIndex}`,
+                });
+              }
+
+              batchQueryKeyDefinition.selectionSet.selections = currentChunk;
             }
 
-            batchQueryKeyDefinition.selectionSet.selections = currentChunk
+            acc.push(compiledQuery);
+
+            currentChunk = [];
+            chunkIndex++;
           }
-
-          acc.push(compiledQuery)
-
-          currentChunk = []
-          chunkIndex++
         }
       }
-    }
 
-    return acc
-  }, [] as (TypedDocumentNode<BatchAnimeTemplateQuery, Exact<{
-    [key: string]: never
-  }>>)[])
+      return acc;
+    },
+    [] as TypedDocumentNode<
+      BatchAnimeTemplateQuery,
+      BatchAnimeTemplateQueryVariables
+    >[],
+  );
 }
 
 function removeAllBeforeSlash(url: string): string {
-  return url.replace(/.*\//, '')
+  return url.replace(/.*\//, '');
 }
 
 function findSourceInDatabase(title: string) {
-  const anime = searchAnimeByTitle(title)
+  const anime = searchAnimeByTitle(title);
 
   if (!anime) {
-    return undefined
+    return undefined;
   }
 
-  return anime.sources?.sort(
-    (a, b) => (Number.parseInt(removeAllBeforeSlash(a)) - Number.parseInt(removeAllBeforeSlash(b))),
-  ).reduce((map, item) => {
-    if (item.includes('anilist.co')) {
-      map.anilist = removeAllBeforeSlash(item)
-    }
+  return anime.sources
+    ?.sort(
+      (a, b) =>
+        Number.parseInt(removeAllBeforeSlash(a))
+        - Number.parseInt(removeAllBeforeSlash(b)),
+    )
+    .reduce(
+      (map, item) => {
+        if (item.includes('anilist.co')) {
+          map.anilist = removeAllBeforeSlash(item);
+        }
 
-    if (item.includes('myanimelist.net')) {
-      map.mal = removeAllBeforeSlash(item)
-    }
+        if (item.includes('myanimelist.net')) {
+          map.mal = removeAllBeforeSlash(item);
+        }
 
-    return map
-  }, {} as { anilist?: string, mal?: string })
+        return map;
+      },
+      {} as { anilist?: string; mal?: string },
+    );
 }
 
 function findAnimeListInDatabase(titles: string[]) {
   return titles.map((title) => {
-    const sources = findSourceInDatabase(title)
+    const sources = findSourceInDatabase(title);
 
-    return ({ title, ...sources })
-  })
+    return { title, ...sources };
+  });
 }
 
-type FetchResult = Record<string, {
-  pageInfo: { hasNextPage: boolean }
-  results: AnimeDetails[]
-} | null>
+type FetchResult = Record<
+  string,
+  {
+    pageInfo: { hasNextPage: boolean };
+    results: AnimeDetails[];
+  } | null
+>;
 
 export async function fetchDetails(props: Props) {
-  const uniqueTitles = [...new Set(props.cards.map(card => card.title))]
+  const uniqueTitles = [...new Set(props.cards.map((card) => card.title))];
 
   if (uniqueTitles.length === 0) {
-    return undefined
+    return undefined;
   }
 
-  logger.log('Fetching details for titles:', uniqueTitles)
+  logger.log('Fetching details for titles:', uniqueTitles);
 
   try {
-    const dbResult = findAnimeListInDatabase(uniqueTitles)
-    const queries = generateBatchQuery(dbResult)
-    const queryPromises = []
+    const dbResult = findAnimeListInDatabase(uniqueTitles);
+    const queries = generateBatchQuery(dbResult);
+    const queryPromises = [];
 
     for (const query of queries) {
       queryPromises.push(
-        anilistClient.query<FetchResult>(query, {}, {
-          requestPolicy: 'network-only',
-        }).toPromise(),
-      )
+        anilistClient
+          .query<FetchResult>(
+            query,
+            {},
+            {
+              requestPolicy: 'network-only',
+            },
+          )
+          .toPromise()
+          // urql reports failures through `error`; a rejection here is unexpected, and is handled right away so it
+          // isn't left unhandled while the next batch waits
+          .catch((error: unknown) => ({
+            data: undefined,
+            error: error instanceof Error ? error : new Error(String(error)),
+          })),
+      );
 
-      await wait(150)
+      await wait(150);
     }
 
-    const results = await Promise.allSettled(queryPromises)
+    const results = await Promise.all(queryPromises);
 
-    for (const result of results) {
-      if (result.status === 'rejected' && result.reason.error) {
-        logger.error('GraphQL query error:', result.reason.error)
+    for (const { error } of results) {
+      if (!error) continue;
 
-        if (result.reason?.error?.message?.includes('Invalid token')) {
-          const tokenStore = useTokenStore()
+      logger.error('GraphQL query error:', error);
 
-          tokenStore.setData({ ...tokenStore.data(), anilist: '' })
+      if (error.message.includes('Invalid token')) {
+        const tokenStore = useTokenStore();
 
-          browser.notifications.create('open-side-panel', {
-            type: 'basic',
-            iconUrl: browser.runtime.getURL('assets/icon-512.png'),
-            title: 'AniScore',
-            message: 'Anilist token is invalid. Please click on the AniScore extension icon and re-authenticate.',
-            priority: 2,
-          })
-        }
+        tokenStore.setData({ ...tokenStore.data(), anilist: '' });
 
-        return undefined
+        browser.notifications.create('open-side-panel', {
+          type: 'basic',
+          iconUrl: browser.runtime.getURL('assets/icon-512.png'),
+          title: 'AniScore',
+          message:
+            'Anilist token is invalid. Please click on the AniScore extension icon and re-authenticate.',
+          priority: 2,
+        });
+
+        return undefined;
       }
     }
 
+    // Other errors only lose their own batch; the titles in it come back as not found
     const mergedData = results.reduce(
       (map, result) => {
-        if (result.status === 'fulfilled' && result.value.data) {
-          Object.assign(map, result.value.data)
+        if (result.data) {
+          Object.assign(map, result.data);
         }
 
-        return map
+        return map;
       },
-      {} as Record<string, {
-        pageInfo: { hasNextPage: boolean }
-        results: AnimeDetails[]
-      } | null>,
-    )
+      {} as Record<
+        string,
+        {
+          pageInfo: { hasNextPage: boolean };
+          results: AnimeDetails[];
+        } | null
+      >,
+    );
 
-    return uniqueTitles.reduce((map, title, index) => {
-      const alias = createAlias(title, index)
-      const animeData = mergedData[alias]
+    return uniqueTitles.reduce(
+      (map, title, index) => {
+        const alias = createAlias(title, index);
+        const animeData = mergedData[alias];
 
-      map[title] = animeData?.results[0] || null
+        map[title] = animeData?.results[0] || null;
 
-      return map
-    }, {} as Record<string, AnimeDetails | null>)
-  }
-  catch (error) {
-    logger.error('Error fetching anime details:', error)
+        return map;
+      },
+      {} as Record<string, AnimeDetails | null>,
+    );
+  } catch (error) {
+    logger.error('Error fetching anime details:', error);
 
-    return undefined
+    return undefined;
   }
 }

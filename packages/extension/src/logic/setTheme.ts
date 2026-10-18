@@ -1,16 +1,17 @@
-import { debounce } from '@solid-primitives/scheduled'
-import { createEffect, on } from 'solid-js'
-import { useThemeStore } from './storage'
+import { debounce } from '@solid-primitives/scheduled';
+import { createEffect, on } from 'solid-js';
 
-export type Theme = 'light' | 'dark' | 'system'
-export type ResolvedTheme = Exclude<Theme, 'system'>
+import { useThemeStore } from './storage';
 
-const isDarkQuery = () => window.matchMedia('(prefers-color-scheme: dark)')
-const determineTheme = (matches: boolean) => matches ? 'dark' : 'light'
-const getSystemTheme = () => determineTheme(isDarkQuery().matches)
+export type Theme = 'light' | 'dark' | 'system';
+export type ResolvedTheme = Exclude<Theme, 'system'>;
+
+const isDarkQuery = () => window.matchMedia('(prefers-color-scheme: dark)');
+const determineTheme = (matches: boolean) => (matches ? 'dark' : 'light');
+const getSystemTheme = () => determineTheme(isDarkQuery().matches);
 
 export function applyTheme(root: HTMLElement, theme: ResolvedTheme) {
-  root.setAttribute('data-kb-theme', theme)
+  root.setAttribute('data-kb-theme', theme);
 }
 
 /**
@@ -26,32 +27,37 @@ export async function watchTheme(
   // A fixed theme doesn't depend on the stored setting, so apply it before storage loads; otherwise the light
   // defaults show until then
   if (theme && theme !== 'system') {
-    onChange(theme)
+    onChange(theme);
 
-    return
+    return;
   }
 
-  const themeStore = useThemeStore()
+  const themeStore = useThemeStore();
 
-  await themeStore.dataReady
+  await themeStore.dataReady;
 
-  const storedTheme = themeStore.data()
+  const storedTheme = themeStore.data();
 
   if (!storedTheme) {
-    themeStore.setData('system')
+    themeStore.setData('system');
   }
 
-  createEffect(on(themeStore.data, (currentTheme) => {
-    onChange(currentTheme === 'system' ? getSystemTheme() : currentTheme)
-  }))
+  createEffect(
+    on(themeStore.data, (currentTheme) => {
+      onChange(currentTheme === 'system' ? getSystemTheme() : currentTheme);
+    }),
+  );
 
-  isDarkQuery().addEventListener('change', debounce((event) => {
-    const currentTheme = themeStore.data()
+  isDarkQuery().addEventListener(
+    'change',
+    debounce((event) => {
+      const currentTheme = themeStore.data();
 
-    if (currentTheme === 'system') {
-      onChange(determineTheme(event.matches))
-    }
-  }, 200))
+      if (currentTheme === 'system') {
+        onChange(determineTheme(event.matches));
+      }
+    }, 200),
+  );
 }
 
 export async function setTheme(
@@ -61,5 +67,5 @@ export async function setTheme(
    */
   theme?: Theme,
 ) {
-  await watchTheme(resolvedTheme => applyTheme(root, resolvedTheme), theme)
+  await watchTheme((resolvedTheme) => applyTheme(root, resolvedTheme), theme);
 }

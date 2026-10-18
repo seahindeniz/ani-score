@@ -1,3 +1,3 @@
-export const liveInterval = 5000
+export const liveInterval = 5000;
 
-export const rootContainerClass = `${__NAME__}-portal-root`
+export const rootContainerClass = `${__NAME__}-portal-root`;

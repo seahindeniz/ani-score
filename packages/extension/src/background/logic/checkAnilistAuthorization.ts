@@ -1,22 +1,24 @@
-import { createEffect, on } from 'solid-js'
-import { useTokenStore } from '~/logic'
+import { createEffect, createRoot, on } from 'solid-js';
+
+import { useTokenStore } from '~/logic';
 
 export async function checkAnilistAuthorization() {
-  const tokenStore = useTokenStore()
+  const tokenStore = useTokenStore();
 
-  await tokenStore.dataReady
+  await tokenStore.dataReady;
 
-  if (tokenStore.data().anilist) {
-    return
-  }
-
-  browser.action.setBadgeText({ text: 'Login' })
-  browser.action.setBadgeBackgroundColor({ color: '#DD0303' })
-
-  createEffect(on(tokenStore.data, (data) => {
-    if (data.anilist) {
-      browser.action.setBadgeText({ text: '' })
-      browser.action.setBadgeBackgroundColor({ color: '' })
-    }
-  }, { defer: true }))
+  // The badge asks the viewer to sign in for as long as there's no token, including after signing out
+  createRoot(() => {
+    createEffect(
+      on(
+        () => Boolean(tokenStore.data().anilist),
+        (signedIn) => {
+          browser.action.setBadgeText({ text: signedIn ? '' : 'Login' });
+          browser.action.setBadgeBackgroundColor({
+            color: signedIn ? '' : '#DD0303',
+          });
+        },
+      ),
+    );
+  });
 }

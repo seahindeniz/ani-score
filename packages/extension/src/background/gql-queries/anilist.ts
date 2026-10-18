@@ -1,4 +1,4 @@
-import { graphql } from '~/gql'
+import { graphql } from '~/gql';
 
 export const singleAnimeQuery = graphql(/* GraphQL */ `
 query SingleAnimeTemplate  {
@@ -84,7 +84,7 @@ query SingleAnimeTemplate  {
     }
   }
 }
-`)
+`);
 
 export const batchTemplate = graphql(/* GraphQL */ `
 query BatchAnimeTemplate {
@@ -104,7 +104,7 @@ query BatchAnimeTemplate {
     }
   }
 }
-`)
+`);
 
 export const makeMediaFavoriteQuery = graphql(/* GraphQL */ `
 mutation MakeMediaFavorite (
@@ -148,10 +148,10 @@ mutation MakeMediaFavorite (
     }
   }
 }
-`)
+`);
 
 export const genreCollectionQuery = graphql(/* GraphQL */ `
   query GenreCollection {
     GenreCollection
   }
-`)
+`);

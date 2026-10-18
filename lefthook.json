@@ -1,10 +1,22 @@
 {
   "$schema": "https://raw.githubusercontent.com/evilmartians/lefthook/master/schema.json",
   "assert_lefthook_installed": true,
+  "pre-commit": {
+    "jobs": [
+      {
+        "name": "format staged files",
+        "run": "bun fmt --no-script --staged"
+      },
+      {
+        "name": "lint staged files",
+        "run": "bun lint --no-script --staged"
+      }
+    ]
+  },
   "commit-msg": {
     "commands": {
       "lint commit message": {
-        "run": "pnpm commitlint --edit {1}"
+        "run": "bunx --bun commitlint --edit {1}"
       }
     }
   },
@@ -12,11 +24,11 @@
     "parallel": true,
     "commands": {
       "lint": {
-        "run": "pnpm lint"
+        "run": "bun run lint"
       },
       "test": {
         "skip": true,
-        "run": "pnpm test"
+        "run": "bun run test"
       }
     }
   }

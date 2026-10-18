@@ -1,26 +1,20 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib",
+  // TypeScript 7 (the version `bun check` uses) through the TypeScript Native Preview extension
+  "js/ts.experimental.useTsgo": true,
   "vite.autoStart": false,
-  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
-  "[json]": {
-    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
-  },
-  "[jsonc]": {
-    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
-  },
-  "editor.formatOnSave": true,
-  "eslint.format.enable": true,
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
-    "source.fixAll": "never"
+  // `bun fmt` has no editor integration yet, so the Run on Save extension runs it after each save
+  "editor.formatOnSave": false,
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": "\\.(?:[cm]?[jt]sx?|json|jsonc|ya?ml|toml|md|mdx|css|scss|html)$",
+        "cmd": "bun fmt --no-script \"${file}\""
+      }
+    ]
   },
   "files.associations": {
     "*.css": "postcss"
   },
   "svg.preview.background": "custom",
-  "typescript.preferences.quoteStyle": "single",
-  "javascript.preferences.quoteStyle": "single",
-  "[html]": {
-    "editor.defaultFormatter": "vscode.html-language-features"
-  }
+  "js/ts.preferences.quoteStyle": "single"
 }

@@ -1,8 +1,9 @@
-import { render } from 'solid-js/web'
-import Popup from './Popup'
-import '../styles'
+import { render } from 'solid-js/web';
 
-const root = document.getElementById('app')
+import Popup from './Popup';
+import '../styles';
+
+const root = document.getElementById('app');
 if (root) {
-  render(() => <Popup />, root)
+  render(() => <Popup />, root);
 }

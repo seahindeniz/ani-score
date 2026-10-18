@@ -1,32 +1,50 @@
-import glob from 'fast-glob'
+import { basename, sep } from 'node:path';
 
-const removeExtension = (filename: string) => filename.replace(/\.(ts|tsx)$/, '')
+const removeExtension = (filename: string) =>
+  filename.replace(/\.(ts|tsx)$/, '');
 
-export function getContentScriptScope(entry: glob.Entry) {
-  const pieces = entry.path.replace(/.*src\/contentScripts\//g, '').split('/')
-  let name = pieces.pop()!
-  let directory = pieces.join('/')
-  const relativePath = entry.path.replace(/^.*?(?=src)/g, '')
+/**
+ * @param path Absolute path of a content script entry, using `/` as the separator
+ */
+export function getContentScriptScope(path: string) {
+  const pieces = path.replace(/.*src\/contentScripts\//g, '').split('/');
+  let name = pieces.pop()!;
+  let directory = pieces.join('/');
+  const relativePath = path.replace(/^.*?(?=src)/g, '');
 
   if (!directory) {
-    directory = `root/${removeExtension(name)}`
-    name = 'main'
+    directory = `root/${removeExtension(name)}`;
+    name = 'main';
   }
 
   return {
-    path: entry.path,
+    path,
     directory,
     relativePath,
-    relativeDir: relativePath.replace(entry.name, ''),
+    relativeDir: relativePath.replace(basename(path), ''),
     name: `${removeExtension(name)}.js`,
-  }
+  };
 }
 
-const messageGatewayPath = './src/contentScripts/messageGateway.ts'
+// Absolute paths relative to the working directory, sorted since the scan order isn't guaranteed
+function findEntries(pattern: string, exclude = (_path: string) => false) {
+  return Array.from(
+    new Bun.Glob(pattern).scanSync({ absolute: true }),
+    (path) => path.replaceAll(sep, '/'),
+  )
+    .filter((path) => !exclude(path))
+    .sort();
+}
+
+const messageGatewayPath = 'src/contentScripts/messageGateway.ts';
 
 export const contentScriptPaths = [
-  ...glob.sync(messageGatewayPath, { absolute: true, stats: true }),
-  ...glob.sync('src/contentScripts/*/main.{ts,tsx}', { ignore: ['**/widget'], absolute: true, stats: true }),
-  ...glob.sync('src/contentScripts/site/*/main.{ts,tsx}', { absolute: true, stats: true }),
-  ...glob.sync('src/contentScripts/*.{ts,tsx}', { absolute: true, stats: true, ignore: [messageGatewayPath] }),
-].map(getContentScriptScope)
+  ...findEntries(messageGatewayPath),
+  ...findEntries('src/contentScripts/*/main.{ts,tsx}', (path) =>
+    path.includes('/contentScripts/widget/'),
+  ),
+  ...findEntries('src/contentScripts/site/*/main.{ts,tsx}'),
+  ...findEntries('src/contentScripts/*.{ts,tsx}', (path) =>
+    path.endsWith(`/${messageGatewayPath}`),
+  ),
+].map(getContentScriptScope);

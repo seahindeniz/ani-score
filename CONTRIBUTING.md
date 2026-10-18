@@ -6,26 +6,39 @@ you get started with development.
 ## Development Setup
 
 1. **Prerequisites**
-   - Node.js (v18+)
-   - pnpm package manager
+   - [Bun](https://bun.sh) canary (package manager, runtime, linter and formatter): `bun upgrade --canary`.
+     The project needs `bun lint` and `bun fmt`, which aren't in a stable release until Bun 1.4.4.
+   - VS Code: install the recommended extensions. Run on Save formats files with `bun fmt` when you save them.
 
 2. **Installation**
+
    ```bash
    git clone https://github.com/seahindeniz/ani-score.git
    cd ani-score
-   pnpm install
+   bun install
    ```
 
 3. **Development**
+
    ```bash
-   pnpm dev        # For Chrome/Chromium
-   pnpm dev-firefox # For Firefox
+   bun run dev         # For Chrome/Chromium
+   bun run dev-firefox # For Firefox
    ```
 
 4. **Build for Production**
+
    ```bash
-   pnpm build
+   bun run build
    ```
+
+5. **Lint and Format**
+
+   ```bash
+   bun run lint    # bun lint, bun fmt --check and type checks
+   bun run format  # format the repo with bun fmt
+   ```
+
+   The pre-commit hook formats and lints your staged files.
 
 ## Project Structure
 
@@ -39,6 +52,7 @@ you get started with development.
 To add support for a new anime streaming site or database:
 
 1. **Clone the existing implementation**
+
    ```bash
    cp -r src/contentScripts/site/anizm src/contentScripts/site/your-site-name
    ```
@@ -51,11 +65,11 @@ To add support for a new anime streaming site or database:
 3. **Key files to modify**:
    - `meta.ts` - Define URL patterns where the extension should activate
    - `main.ts` - Implement the `SiteBaseConfig` interface to identify anime
-    cards and episodes
+     cards and episodes
    - `global.scss` - Add any custom styling needed for the site
 
-1. **Testing your implementation**
-   - Run `pnpm dev` to start development mode
+4. **Testing your implementation**
+   - Run `bun run dev` to start development mode
    - Navigate to your target website
    - Verify that anime ratings appear correctly
 

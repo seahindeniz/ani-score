@@ -1,109 +1,118 @@
-import { createPersistedStore } from './createPersistedStore'
+import { createPersistedStore } from './createPersistedStore';
 
-export const useStorageComposable = createPersistedStore('webext-demo', 'Storage Demo')
+export const useStorageComposable = createPersistedStore(
+  'webext-demo',
+  'Storage Demo',
+);
 
-export const useThemeStore = createPersistedStore<'light' | 'dark' | 'system'>('theme', 'system', { target: 'sync' })
+export const useThemeStore = createPersistedStore<'light' | 'dark' | 'system'>(
+  'theme',
+  'system',
+  { target: 'sync' },
+);
 
-export const useTokenStore = createPersistedStore('token', { anilist: '' })
+export const useTokenStore = createPersistedStore('token', { anilist: '' });
 
 export interface ColorEntry {
-  id: string
-  name: string
-  color: string
+  id: string;
+  name: string;
+  color: string;
 }
 
 /**
  * Color settings used to be a record keyed by random UUIDs, but `chrome.storage` returns object keys sorted,
  * which shuffled the entries. Arrays keep their order, so the record shape is only read for migration.
  */
-type ColorSettings = ColorEntry[] | Record<string, Omit<ColorEntry, 'id'>>
+type ColorSettings = ColorEntry[] | Record<string, Omit<ColorEntry, 'id'>>;
 
 export function toColorEntries(settings: ColorSettings): ColorEntry[] {
-  return Array.isArray(settings) ? settings : Object.entries(settings).map(([id, entry]) => ({ ...entry, id }))
+  return Array.isArray(settings)
+    ? settings
+    : Object.entries(settings).map(([id, entry]) => ({ ...entry, id }));
 }
 
 export const useSettingsStore = createPersistedStore('settings', {
   genreColor: [] as ColorSettings,
   tagColor: [] as ColorSettings,
-})
+});
 
 interface AnimeSeason {
-  season: 'SPRING' | 'SUMMER' | 'FALL' | 'WINTER' | 'UNDEFINED'
-  year: number | null
+  season: 'SPRING' | 'SUMMER' | 'FALL' | 'WINTER' | 'UNDEFINED';
+  year: number | null;
 }
 
 interface Duration {
-  value: number
-  unit: 'SECONDS'
+  value: number;
+  unit: 'SECONDS';
 }
 
 interface Score {
-  arithmeticGeometricMean: number
-  arithmeticMean: number
-  median: number
+  arithmeticGeometricMean: number;
+  arithmeticMean: number;
+  median: number;
 }
 
 export interface AnimeData {
   /**
    * URLs to the pages of the meta data providers for this anime.
    */
-  sources: string[]
+  sources: string[];
   /**
    * Main title.
    */
-  title: string
+  title: string;
   /**
    * Distribution type.
    */
-  type: 'TV' | 'MOVIE' | 'OVA' | 'ONA' | 'SPECIAL' | 'UNKNOWN'
+  type: 'TV' | 'MOVIE' | 'OVA' | 'ONA' | 'SPECIAL' | 'UNKNOWN';
   /**
    * Number of episodes, movies or parts.
    */
-  episodes: number
+  episodes: number;
   /**
    * Status of distribution.
    */
-  status: 'FINISHED' | 'ONGOING' | 'UPCOMING' | 'UNKNOWN'
+  status: 'FINISHED' | 'ONGOING' | 'UPCOMING' | 'UNKNOWN';
   /**
    * Data on when the anime was first distributed.
    */
-  animeSeason: AnimeSeason
+  animeSeason: AnimeSeason;
   /**
    * URL of a picture which represents the anime.
    */
-  picture: string
+  picture: string;
   /**
    * URL of a smaller version of the picture.
    */
-  thumbnail: string
+  thumbnail: string;
   /**
    * Duration. Normally this is per episode.
    */
-  duration: Duration | null
+  duration: Duration | null;
   /**
    * Score calculated using all available scores from meta data providers. Original scores are rescaled if necessary.
    */
-  score: Score | null
+  score: Score | null;
   /**
    * Alternative titles and spellings under which the anime is also known. Duplicate free (case sensitive). Doesn't contain the `title`
    */
-  synonyms: string[]
+  synonyms: string[];
   /**
    * Lower case studio names. In general a duplicate free list, but might contain duplicates for different writings.
    */
-  studios: string[]
+  studios: string[];
   /**
    * Lower case producers names. Companies only. In general a duplicate free list, but might contain duplicates for different writings.
    */
-  producers: string[]
+  producers: string[];
   /**
    * URLs to the meta data providers for anime that are somehow related to this anime.
    */
-  relatedAnime: string[]
+  relatedAnime: string[];
   /**
    * A non-curated list of tags and genres which describe the anime. All entries are lower case.
    */
-  tags: string[]
+  tags: string[];
 }
 
 export const useAnimeDatabaseStore = createPersistedStore('animeDatabase', {
@@ -113,12 +122,18 @@ export const useAnimeDatabaseStore = createPersistedStore('animeDatabase', {
    */
   source: '',
   data: '',
-})
+});
 
-export const useAnimeDatabaseSearchCacheStore = createPersistedStore('animeDatabaseResult', {} as Record<string, {
-  id: string
-  title: AnimeData['title']
-  type: AnimeData['type']
-  sources: AnimeData['sources']
-  synonyms: AnimeData['synonyms']
-}>)
+export const useAnimeDatabaseSearchCacheStore = createPersistedStore(
+  'animeDatabaseResult',
+  {} as Record<
+    string,
+    {
+      id: string;
+      title: AnimeData['title'];
+      type: AnimeData['type'];
+      sources: AnimeData['sources'];
+      synonyms: AnimeData['synonyms'];
+    }
+  >,
+);

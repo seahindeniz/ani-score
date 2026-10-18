@@ -1,50 +1,50 @@
-import { liveInterval } from '~/constants/main'
-import { logger } from '~/utils/logger'
+import { liveInterval } from '~/constants/main';
+import { logger } from '~/utils/logger';
 
-let intervalId: NodeJS.Timeout | null = null
-const op = (text: MessageEvent) => String(text.data)
+let intervalId: number | null = null;
+const op = (text: MessageEvent) => String(text.data);
 
 function createWebSocketConnection() {
   if (intervalId) {
-    clearInterval(intervalId)
-    intervalId = null
+    clearInterval(intervalId);
+    intervalId = null;
   }
 
-  const ws = new WebSocket('wss://ws.ifelse.io/')
+  const ws = new WebSocket('wss://ws.ifelse.io/');
 
   ws.onopen = () => {
-    logger.log('WebSocket connection established')
+    logger.log('WebSocket connection established');
     intervalId = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(`get-stamp-${Date.now()}`)
+        ws.send(`get-stamp-${Date.now()}`);
       }
-    }, liveInterval)
-  }
+    }, liveInterval);
+  };
 
   ws.onmessage = (event) => {
-    op(event)
-  }
+    op(event);
+  };
 
   ws.onclose = () => {
-    logger.log('WebSocket connection closed')
+    logger.log('WebSocket connection closed');
 
     if (intervalId) {
-      clearInterval(intervalId)
-      intervalId = null
+      clearInterval(intervalId);
+      intervalId = null;
     }
     setTimeout(() => {
-      logger.log('Attempting to reconnect WebSocket...')
-      createWebSocketConnection()
-    }, 3000)
-  }
+      logger.log('Attempting to reconnect WebSocket...');
+      createWebSocketConnection();
+    }, 3000);
+  };
 
   ws.onerror = (error) => {
-    logger.error('WebSocket error:', error)
-  }
+    logger.error('WebSocket error:', error);
+  };
 
-  return ws
+  return ws;
 }
 
 export function connectToWS() {
-  return createWebSocketConnection()
+  return createWebSocketConnection();
 }

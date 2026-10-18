@@ -1,13 +1,14 @@
-import browser from 'webextension-polyfill'
-import Logo from '~/components/Logo'
-import { useStorageComposable } from '~/logic/storage'
+import browser from 'webextension-polyfill';
+
+import Logo from '~/components/Logo';
+import { useStorageComposable } from '~/logic/storage';
 
 function openOptionsPage() {
-  browser.runtime.openOptionsPage()
+  browser.runtime.openOptionsPage();
 }
 
 export default function Popup() {
-  const storageComposable = useStorageComposable()
+  const storageComposable = useStorageComposable();
 
   return (
     <main class="w-[300px] px-4 py-5 text-center text-gray-700">
@@ -18,10 +19,8 @@ export default function Popup() {
         Open Options
       </button>
       <div class="mt-2">
-        <span class="opacity-50">Storage:</span>
-        {' '}
-        {storageComposable.data()}
+        <span class="opacity-50">Storage:</span> {storageComposable.data()}
       </div>
     </main>
-  )
+  );
 }

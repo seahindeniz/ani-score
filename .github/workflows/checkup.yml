@@ -13,42 +13,75 @@ concurrency:
 jobs:
   checkup:
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
-    timeout-minutes: 8
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
-          app-id: ${{ secrets.APP_ID }}
+          client-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
           ref: ${{ github.head_ref }}
           persist-credentials: false
 
-      - name: Install PNPM
-        uses: pnpm/action-setup@v2
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          run_install: false
+          # `bun lint` and `bun fmt` are only in canary builds; switch back to `bun-version-file: package.json` once Bun 1.4.4 is released
+          bun-version: canary
 
-      - name: Use NodeJS
-        uses: actions/setup-node@v4
+      - name: Cache Bun dependencies
+        uses: actions/cache@v6
         with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      # - name: Install OS Dependencies for Playwright
-      #   run: pnpm dlx playwright install --with-deps
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
 
       - name: Install dependencies
-        run: pnpm install
+        run: bun install --frozen-lockfile
 
       - name: Lint files
-        run: pnpm lint
+        run: bun run lint
 
       - name: Run tests
-        run: pnpm test
+        run: bun run test
+
+      - name: Get Playwright version
+        id: playwright
+        run: echo "version=$(bun -e "console.log(require('@playwright/test/package.json').version)")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      # The tests launch full Chromium (headless shell can't load extensions), so the shell isn't downloaded
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: packages/extension
+        run: bunx --bun playwright install --with-deps --no-shell chromium
+
+      # System libraries aren't part of the cache
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: packages/extension
+        run: bunx --bun playwright install-deps chromium
+
+      - name: Run E2E tests
+        run: bun run --filter ani-score test:e2e
+
+      - name: Upload E2E results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-results
+          path: packages/extension/test-results
+          retention-days: 7

@@ -1,21 +1,21 @@
-import { logger } from '~/utils/logger'
-import { checkAnilistAuthorization } from './checkAnilistAuthorization'
-import { loadDatabase } from './loadDatabase'
+import { logger } from '~/utils/logger';
 
-let initialized = false
+import { checkAnilistAuthorization } from './checkAnilistAuthorization';
+import { loadDatabase } from './loadDatabase';
+
+let initialized = false;
 
 export async function engage() {
   if (initialized) {
-    return
+    return;
   }
 
-  initialized = true
+  initialized = true;
 
   try {
-    await checkAnilistAuthorization()
-    await loadDatabase()
-  }
-  catch (error) {
-    logger.error(error)
+    await checkAnilistAuthorization();
+    await loadDatabase();
+  } catch (error) {
+    logger.error(error);
   }
 }

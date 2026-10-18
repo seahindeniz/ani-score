@@ -1,26 +1,38 @@
-import type { Component, JSX } from 'solid-js'
-import { createContext, createMemo, createSignal, onMount, splitProps, useContext } from 'solid-js'
-import { cn } from '~/utils'
+import type { Component, JSX } from 'solid-js';
+import {
+  createContext,
+  createMemo,
+  createSignal,
+  onMount,
+  splitProps,
+  useContext,
+} from 'solid-js';
+
+import { cn } from '~/utils';
 
 interface AccordionContextValue {
-  expandedItems: () => Set<string>
-  toggleItem: (value: string) => void
-  multiple: boolean
-  collapsible: boolean
+  expandedItems: () => Set<string>;
+  toggleItem: (value: string) => void;
 }
 
-const AccordionContext = createContext<AccordionContextValue>()
+const AccordionContext = createContext<AccordionContextValue>();
 
 interface AccordionProps {
-  multiple?: boolean
-  collapsible?: boolean
-  class?: string
-  children: JSX.Element
-  defaultValue?: string | string[]
+  multiple?: boolean;
+  collapsible?: boolean;
+  class?: string;
+  children: JSX.Element;
+  defaultValue?: string | string[];
 }
 
 export const Accordion: Component<AccordionProps> = (props) => {
-  const [local, others] = splitProps(props, ['multiple', 'collapsible', 'class', 'children', 'defaultValue'])
+  const [local, others] = splitProps(props, [
+    'multiple',
+    'collapsible',
+    'class',
+    'children',
+    'defaultValue',
+  ]);
 
   const initialExpanded = new Set<string>(
     local.defaultValue
@@ -28,40 +40,34 @@ export const Accordion: Component<AccordionProps> = (props) => {
         ? local.defaultValue
         : [local.defaultValue]
       : [],
-  )
+  );
 
-  const [expandedItems, setExpandedItems] = createSignal<Set<string>>(initialExpanded)
+  const [expandedItems, setExpandedItems] =
+    createSignal<Set<string>>(initialExpanded);
 
   const toggleItem = (value: string) => {
     setExpandedItems((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
 
       if (next.has(value)) {
-        if (local.collapsible) {
-          next.delete(value)
+        if (local.collapsible ?? true) {
+          next.delete(value);
         }
-      }
-      else {
+      } else {
         if (!local.multiple) {
-          next.clear()
+          next.clear();
         }
-        next.add(value)
+        next.add(value);
       }
 
-      return next
-    })
-  }
+      return next;
+    });
+  };
 
   const contextValue: AccordionContextValue = {
     expandedItems,
     toggleItem,
-    get multiple() {
-      return local.multiple ?? false
-    },
-    get collapsible() {
-      return local.collapsible ?? true
-    },
-  }
+  };
 
   return (
     <AccordionContext.Provider value={contextValue}>
@@ -69,38 +75,43 @@ export const Accordion: Component<AccordionProps> = (props) => {
         {local.children}
       </div>
     </AccordionContext.Provider>
-  )
-}
+  );
+};
 
 interface AccordionItemProps {
-  value: string
-  class?: string
-  trigger: JSX.Element
-  children: JSX.Element
+  value: string;
+  class?: string;
+  trigger: JSX.Element;
+  children: JSX.Element;
 }
 
 export const AccordionItem: Component<AccordionItemProps> = (props) => {
-  let contentRef: HTMLDivElement | undefined
-  let innerRef: HTMLDivElement | undefined
-  const [local, others] = splitProps(props, ['value', 'class', 'trigger', 'children'])
-  const context = useContext(AccordionContext)
-  const [height, setHeight] = createSignal<number>(0)
+  let contentRef: HTMLDivElement | undefined;
+  let innerRef: HTMLDivElement | undefined;
+  const [local, others] = splitProps(props, [
+    'value',
+    'class',
+    'trigger',
+    'children',
+  ]);
+  const context = useContext(AccordionContext);
+  const [height, setHeight] = createSignal<number>(0);
 
   if (!context) {
-    throw new Error('AccordionItem must be used within an Accordion')
+    throw new Error('AccordionItem must be used within an Accordion');
   }
 
-  const isExpanded = createMemo(() => context.expandedItems().has(local.value))
+  const isExpanded = createMemo(() => context.expandedItems().has(local.value));
 
   const handleToggle = () => {
-    context.toggleItem(local.value)
-  }
+    context.toggleItem(local.value);
+  };
 
   onMount(() => {
     if (contentRef && innerRef) {
-      setHeight(innerRef.offsetHeight)
+      setHeight(innerRef.offsetHeight);
     }
-  })
+  });
 
   return (
     <div
@@ -122,7 +133,9 @@ export const AccordionItem: Component<AccordionItemProps> = (props) => {
           data-key={local.value}
           onClick={handleToggle}
           class="flex flex-1 items-center justify-between py-2 text-sm font-medium transition-all [&[data-expanded]>svg]:rotate-180 hover:underline"
-          aria-controls={isExpanded() ? `accordion-content-${local.value}` : undefined}
+          aria-controls={
+            isExpanded() ? `accordion-content-${local.value}` : undefined
+          }
         >
           {local.trigger}
           <svg
@@ -154,5 +167,5 @@ export const AccordionItem: Component<AccordionItemProps> = (props) => {
         <div ref={innerRef}>{local.children}</div>
       </div>
     </div>
-  )
-}
+  );
+};

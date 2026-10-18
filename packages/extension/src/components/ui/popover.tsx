@@ -1,22 +1,25 @@
-import type { PolymorphicProps } from '@kobalte/core/polymorphic'
-import type { Component, ValidComponent } from 'solid-js'
+import type { PolymorphicProps } from '@kobalte/core/polymorphic';
+import * as PopoverPrimitive from '@kobalte/core/popover';
+import type { Component, ValidComponent } from 'solid-js';
+import { splitProps } from 'solid-js';
 
-import * as PopoverPrimitive from '@kobalte/core/popover'
-import { splitProps } from 'solid-js'
+import { cn } from '~/utils';
 
-import { cn } from '~/utils'
-
-const PopoverTrigger = PopoverPrimitive.Trigger
+const PopoverTrigger = PopoverPrimitive.Trigger;
 
 const Popover: Component<PopoverPrimitive.PopoverRootProps> = (props) => {
-  return <PopoverPrimitive.Root gutter={4} {...props} />
-}
+  return <PopoverPrimitive.Root gutter={4} {...props} />;
+};
 
-type PopoverContentProps<T extends ValidComponent = 'div'>
-  = PopoverPrimitive.PopoverContentProps<T> & { class?: string | undefined }
+type PopoverContentProps<T extends ValidComponent = 'div'> =
+  PopoverPrimitive.PopoverContentProps<T> & {
+    class?: string | undefined;
+  };
 
-function PopoverContent<T extends ValidComponent = 'div'>(props: PolymorphicProps<T, PopoverContentProps<T>>) {
-  const [local, others] = splitProps(props as PopoverContentProps, ['class'])
+function PopoverContent<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, PopoverContentProps<T>>,
+) {
+  const [local, others] = splitProps(props as PopoverContentProps, ['class']);
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -27,7 +30,7 @@ function PopoverContent<T extends ValidComponent = 'div'>(props: PolymorphicProp
         {...others}
       />
     </PopoverPrimitive.Portal>
-  )
+  );
 }
 
-export { Popover, PopoverContent, PopoverTrigger }
+export { Popover, PopoverContent, PopoverTrigger };

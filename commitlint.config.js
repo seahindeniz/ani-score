@@ -6,4 +6,4 @@ export default {
     'subject-case': [0],
     'footer-max-line-length': [0],
   },
-}
+};
