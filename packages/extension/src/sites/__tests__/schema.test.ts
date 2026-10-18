@@ -158,6 +158,30 @@ describe('parseSiteConfig', () => {
     );
   });
 
+  it("keeps a layout's container from writing CSS of its own", () => {
+    const withContainer = (container: string) =>
+      config({
+        pages: [
+          {
+            ...config().pages[0],
+            layout: [{ container, mode: 'grid', gap: 8 }],
+          },
+        ],
+      });
+
+    expect(errorOf(withContainer('main > .grid'))).toBeUndefined();
+
+    for (const container of [
+      '.a {} .b { background: red }',
+      '.a; .b',
+      '.a /* x */',
+    ]) {
+      expect(errorOf(withContainer(container))).toContain(
+        'A container selector cannot contain {, }, ; or comments',
+      );
+    }
+  });
+
   it('keeps CSS from loading anything', () => {
     const cssError =
       'CSS may not load other resources: @import, image-set(), src() and url() other than data: URLs are not allowed';

@@ -206,7 +206,15 @@ const Page = v.strictObject({
     v.pipe(
       v.array(
         v.strictObject({
-          container: Selector,
+          container: v.pipe(
+            Selector,
+            // It's written into CSS, where these could end its rule and start another (the build can't parse
+            // selectors, so it doesn't catch them otherwise)
+            v.check(
+              (selector) => !/[{};]|\/\*|\*\//.test(selector),
+              'A container selector cannot contain {, }, ; or comments',
+            ),
+          ),
           mode: v.picklist(['grid', 'flex']),
           gap: v.optional(v.pipe(v.number(), v.minValue(0), v.maxValue(200))),
           minCardWidth: v.optional(
