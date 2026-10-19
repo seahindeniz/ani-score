@@ -37,12 +37,8 @@ jobs:
             site:
               - 'packages/site/**'
               - '.github/workflows/site.yml'
-              # The prebuilt anime index the site publishes, and what its build imports
-              - 'packages/extension/scripts/anime-index.ts'
-              - 'packages/extension/src/background/logic/animeIndex.ts'
-              - 'packages/extension/src/background/logic/databaseSources.ts'
-              - 'packages/extension/src/logic/animeData.ts'
-              - 'packages/extension/src/utils/wait.ts'
+              # The anime index the site builds and publishes
+              - 'packages/anime-index/**'
 
   release:
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}

@@ -1,15 +1,10 @@
-import type { BrowserContext, Route } from '@playwright/test';
-
+import type { AnimeData } from '@ani-score/anime-index';
 import {
-  animeIndexFormat,
   buildAnimeIndex,
-  packAnimeIndex,
-} from '../src/background/logic/animeIndex';
-import {
+  createPrebuiltIndex,
   prebuiltIndexURLs,
-  sha256,
-} from '../src/background/logic/databaseSources';
-import type { AnimeData } from '../src/logic/animeData';
+} from '@ani-score/anime-index';
+import type { BrowserContext, Route } from '@playwright/test';
 
 /**
  * The fields of an anime-offline-database entry that the extension indexes.
@@ -250,27 +245,21 @@ export async function mockNetwork(
   );
 
   // The site's prebuilt index, built from the same entries as the upstream database
-  const prebuiltFile = packAnimeIndex(
+  const prebuilt = await createPrebuiltIndex(
+    { source: 'cedya77/anime-offline-database', lastUpdate: '2026-10-01' },
     buildAnimeIndex(database as unknown as AnimeData[]).stored,
   );
-  const prebuiltSha256 = await sha256(prebuiltFile);
   await context.route(prebuiltIndexURLs.metadata, (route) =>
     prebuiltIndexDown
       ? route.fulfill({ status: 404 })
-      : json(route, {
-          format: animeIndexFormat,
-          source: 'cedya77/anime-offline-database',
-          lastUpdate: '2026-10-01',
-          checkedAt: new Date().toISOString(),
-          sha256: prebuiltSha256,
-        }),
+      : json(route, prebuilt.metadata),
   );
   await context.route(
     (url) => url.href.startsWith(prebuiltIndexURLs.index),
     (route) => {
       recorded.databaseDownloads.push(route.request().url());
 
-      return route.fulfill({ body: Buffer.from(Bun.gzipSync(prebuiltFile)) });
+      return route.fulfill({ body: Buffer.from(Bun.gzipSync(prebuilt.file)) });
     },
   );
 

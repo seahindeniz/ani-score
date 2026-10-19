@@ -1,30 +1,24 @@
-// Builds the prebuilt anime index the site publishes, which the extension downloads in place of an upstream database:
+// Builds the anime index the site publishes, which the extension downloads in place of an upstream database:
 // `bun scripts/anime-index.ts <directory>` writes the index and its metadata into the directory.
 import { join } from 'node:path';
 
-import * as v from 'valibot';
-
-import {
-  animeIndexFormat,
-  packAnimeIndex,
-} from '../src/background/logic/animeIndex';
 import type {
   DatabaseSource,
   PrebuiltIndexMetadata,
-} from '../src/background/logic/databaseSources';
+} from '@ani-score/anime-index';
 import {
+  createPrebuiltIndex,
   fetchBytes,
   fetchJSON,
   fetchRelease,
   isGzip,
+  parsePrebuiltIndexMetadata,
   prebuiltIndexDownloadURL,
   prebuiltIndexFiles,
-  PrebuiltIndexMetadataSchema,
   prebuiltIndexURLs,
   readPrebuiltFile,
-  sha256,
   upstreamSources,
-} from '../src/background/logic/databaseSources';
+} from '@ani-score/anime-index';
 
 const directory = process.argv[2];
 
@@ -52,18 +46,15 @@ async function buildFrom(source: DatabaseSource) {
     const release = await fetchRelease(source, (attempt, retries) =>
       console.warn(`Asking ${source.name} again (${attempt}/${retries})`),
     );
-    const { stored } = await release.download();
-    const file = packAnimeIndex(stored);
-    const metadata: PrebuiltIndexMetadata & typeof license = {
-      format: animeIndexFormat,
-      source: release.source,
-      lastUpdate: release.lastUpdate,
-      checkedAt: new Date().toISOString(),
-      sha256: await sha256(file),
-      ...license,
-    };
+    const { metadata, file } = await createPrebuiltIndex(
+      release,
+      (await release.download()).stored,
+    );
 
-    return { metadata, file: Bun.gzipSync(file, { level: 9 }) };
+    return {
+      metadata: { ...metadata, ...license },
+      file: Bun.gzipSync(file, { level: 9 }),
+    };
   } catch (error) {
     console.warn(`Could not build the index from ${source.name}:`, error);
 
@@ -80,7 +71,7 @@ async function copyPublished(
 ) {
   try {
     const published = await fetchJSON<object>(prebuiltIndexURLs.metadata);
-    const metadata = v.parse(PrebuiltIndexMetadataSchema, published);
+    const metadata = parsePrebuiltIndexMetadata(published);
 
     if (!accept(metadata)) return undefined;
 

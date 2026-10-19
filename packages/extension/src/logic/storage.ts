@@ -1,4 +1,5 @@
-import type { AnimeMatch } from './animeData';
+import type { AnimeMatch } from '@ani-score/anime-index';
+
 import { createPersistedStore } from './createPersistedStore';
 
 export const useStorageComposable = createPersistedStore(

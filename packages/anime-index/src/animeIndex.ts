@@ -1,4 +1,4 @@
-import type { AnimeData, AnimeMatch } from '~/logic/animeData';
+import type { AnimeData, AnimeMatch } from './animeData';
 
 /**
  * The anime database as stored: the entries, and for each term the entries whose title or synonyms contain it.

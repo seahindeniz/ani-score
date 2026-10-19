@@ -8,6 +8,8 @@ root = "src"
 preload = ["./test/preload.ts"]
 coverageSkipTestFiles = true
 coveragePathIgnorePatterns = [
+  # Covered by its own tests
+  "../anime-index/**",
   "src/gql/**",
   "src/**/__tests__/**",
   "test/**",

@@ -1,5 +1,5 @@
-import type { AnimeIndexData } from './animeIndex';
-import { animeIndexFormat } from './animeIndex';
+import type { AnimeIndexData } from '@ani-score/anime-index';
+import { animeIndexFormat } from '@ani-score/anime-index';
 
 export interface DatabaseInfo {
   lastUpdate: string;

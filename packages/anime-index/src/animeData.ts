@@ -1,5 +1,4 @@
-// The anime-offline-database entry, in a module of its own: the build scripts use the database code that reads it
-// (`scripts/anime-index.ts`), and can't import the extension's stores
+// An anime-offline-database entry, as the upstream sources publish it
 
 interface AnimeSeason {
   season: 'SPRING' | 'SUMMER' | 'FALL' | 'WINTER' | 'UNDEFINED';

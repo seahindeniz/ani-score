@@ -39,8 +39,8 @@ jobs:
 
       # A Pages deploy replaces the whole site, so every deploy carries the index
       - name: Build anime index
-        working-directory: packages/extension
-        run: bun run anime-index ../site/.output/public
+        working-directory: packages/site
+        run: bun run anime-index .output/public
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5

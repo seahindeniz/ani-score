@@ -41,11 +41,11 @@
     "test": "bun test --conditions development --conditions browser --coverage && bun scripts/check-coverage.ts",
     "test:e2e": "playwright test",
     "codegen": "graphql-codegen",
-    "anime-index": "bun scripts/anime-index.ts",
     "release": "release-it",
     "test:watch": "bun test --conditions development --conditions browser --watch"
   },
   "dependencies": {
+    "@ani-score/anime-index": "workspace:*",
     "@floating-ui/dom": "1.8.0",
     "@kobalte/core": "^0.13.14",
     "@nozbe/microfuzz": "1.0.0",

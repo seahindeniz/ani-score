@@ -1,13 +1,13 @@
 import { spyOn } from 'bun:test';
 
-import type { AnimeData } from '~/logic';
-
-import { buildAnimeIndex, packAnimeIndex } from '../logic/animeIndex';
 import {
+  buildAnimeIndex,
+  createPrebuiltIndex,
   prebuiltIndexDownloadURL,
   prebuiltIndexURLs,
-  sha256,
-} from '../logic/databaseSources';
+} from '@ani-score/anime-index';
+
+import type { AnimeData } from '~/logic';
 
 type Handler = (request: Request) => Response | Promise<Response>;
 
@@ -124,20 +124,17 @@ export async function prebuiltRoutes(
     format = 1,
     serve = (file: Uint8Array<ArrayBuffer>) => Bun.gzipSync(file),
   } = options;
-  const file = packAnimeIndex(buildAnimeIndex(entries).stored);
-  const hash = await sha256(file);
-  const indexURL = prebuiltIndexDownloadURL({ sha256: hash });
+  const { metadata, file } = await createPrebuiltIndex(
+    { source: 'cedya77/anime-offline-database', lastUpdate },
+    buildAnimeIndex(entries).stored,
+    new Date(checkedAt),
+  );
+  const indexURL = prebuiltIndexDownloadURL(metadata);
 
   return {
     indexURL,
     routes: {
-      [prebuiltIndexURLs.metadata]: {
-        format,
-        source: 'cedya77/anime-offline-database',
-        lastUpdate,
-        checkedAt: new Date(checkedAt).toISOString(),
-        sha256: hash,
-      },
+      [prebuiltIndexURLs.metadata]: { ...metadata, format },
       [indexURL]: () => new Response(serve(file)),
     },
   };

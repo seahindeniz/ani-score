@@ -1,6 +1,6 @@
+import { prebuiltIndexFiles } from '@ani-score/anime-index';
 import type { Page } from '@playwright/test';
 
-import { prebuiltIndexFiles } from '../src/background/logic/databaseSources';
 import { expect, test } from './fixtures';
 import { anizmNewEpisodesPage, frieren, mockNetwork } from './mocks';
 

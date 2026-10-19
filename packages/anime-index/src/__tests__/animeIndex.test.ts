@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { AnimeData } from '~/logic';
-
+import type { AnimeData } from '../animeData';
 import {
   buildAnimeIndex,
   packAnimeIndex,

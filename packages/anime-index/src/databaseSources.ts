@@ -1,17 +1,17 @@
 import * as v from 'valibot';
 
-import type { AnimeData } from '~/logic/animeData';
-import { wait } from '~/utils/wait';
-
-import type { BuiltAnimeIndex } from './animeIndex';
+import type { AnimeData } from './animeData';
+import type { AnimeIndexData, BuiltAnimeIndex } from './animeIndex';
 import {
   animeIndexFormat,
   buildAnimeIndex,
+  packAnimeIndex,
   readAnimeIndex,
   unpackAnimeIndex,
 } from './animeIndex';
 
-// Imported by `scripts/anime-index.ts` too, so nothing here may need the extension's build (e.g. the logger)
+const wait = (milliseconds: number) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 /**
  * A request that failed, and whether asking again may work: after a network or server error, or a body that broke
@@ -198,7 +198,7 @@ export const prebuiltIndexDownloadURL = (metadata: { sha256: string }) =>
   `${prebuiltIndexURLs.index}?sha256=${metadata.sha256}`;
 
 /**
- * The prebuilt index's metadata, as `scripts/anime-index.ts` writes it next to the index.
+ * The prebuilt index's metadata, as the site publishes it next to the index.
  */
 export const PrebuiltIndexMetadataSchema = v.object({
   format: v.literal(animeIndexFormat),
@@ -217,6 +217,9 @@ export const PrebuiltIndexMetadataSchema = v.object({
 export type PrebuiltIndexMetadata = v.InferOutput<
   typeof PrebuiltIndexMetadataSchema
 >;
+
+export const parsePrebuiltIndexMetadata = (input: unknown) =>
+  v.parse(PrebuiltIndexMetadataSchema, input);
 
 /**
  * How long a prebuilt index may go without being built again before the upstream sources are asked instead, e.g. once
@@ -268,8 +271,7 @@ export const prebuiltSource: DatabaseSource = {
   // Only once: the upstream sources still answer while the site is down, and a first install waits for them
   retries: 1,
   fetchRelease: async () => {
-    const metadata = v.parse(
-      PrebuiltIndexMetadataSchema,
+    const metadata = parsePrebuiltIndexMetadata(
       // Asks the site even when the browser holds a recent copy, which could describe a file a deploy since replaced
       await fetchJSON(prebuiltIndexURLs.metadata, { cache: 'no-cache' }),
     );
@@ -297,3 +299,23 @@ export const prebuiltSource: DatabaseSource = {
     };
   },
 };
+
+/**
+ * The index of a release as the site publishes it: the packed file (which it gzips) and its metadata.
+ */
+export async function createPrebuiltIndex(
+  release: Pick<DatabaseRelease, 'source' | 'lastUpdate'>,
+  stored: AnimeIndexData,
+  checkedAt = new Date(),
+) {
+  const file = packAnimeIndex(stored);
+  const metadata: PrebuiltIndexMetadata = {
+    format: animeIndexFormat,
+    source: release.source,
+    lastUpdate: release.lastUpdate,
+    checkedAt: checkedAt.toISOString(),
+    sha256: await sha256(file),
+  };
+
+  return { metadata, file };
+}

@@ -1,3 +1,10 @@
+import type { AnimeIndex, DatabaseRelease } from '@ani-score/anime-index';
+import {
+  fetchRelease,
+  prebuiltSource,
+  readAnimeIndex,
+  upstreamSources,
+} from '@ani-score/anime-index';
 import type { FuzzyResult } from '@nozbe/microfuzz';
 import microfuzz from '@nozbe/microfuzz';
 
@@ -5,14 +12,6 @@ import type { AnimeMatch } from '~/logic';
 import { useAnimeDatabaseSearchCacheStore } from '~/logic';
 import { logger } from '~/utils/logger';
 
-import type { AnimeIndex } from './animeIndex';
-import { readAnimeIndex } from './animeIndex';
-import type { DatabaseRelease } from './databaseSources';
-import {
-  fetchRelease,
-  prebuiltSource,
-  upstreamSources,
-} from './databaseSources';
 import type { DatabaseInfo } from './databaseStorage';
 import {
   readDatabaseIndex,
