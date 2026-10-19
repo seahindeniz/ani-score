@@ -42,8 +42,8 @@ jobs:
   release:
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
     needs: checkup
-    # The Chrome Web Store upload can take up to 2 minutes on top of the release
-    timeout-minutes: 11
+    # Room for slow AMO signing, plus up to 2 minutes of polling for the Chrome Web Store upload
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     environment: Production
     steps:

@@ -52,6 +52,21 @@ jobs:
       - name: Run tests
         run: bun run test
 
+      # Dependency updates can break the site's prerender too. On main, the release workflow builds it instead
+      - uses: dorny/paths-filter@v4
+        id: changes
+        if: github.ref != 'refs/heads/main'
+        with:
+          filters: |
+            site:
+              - 'packages/site/**'
+              - 'package.json'
+              - 'bun.lock'
+
+      - name: Build site
+        if: steps.changes.outputs.site == 'true'
+        run: bun run build:site
+
       - name: Get Playwright version
         id: playwright
         run: echo "version=$(bun -e "console.log(require('@playwright/test/package.json').version)")" >> "$GITHUB_OUTPUT"
