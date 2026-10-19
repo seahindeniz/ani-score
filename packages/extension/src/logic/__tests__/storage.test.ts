@@ -31,11 +31,6 @@ describe('stores', () => {
       genreColor: [],
       tagColor: [],
     });
-    expect(stores.useAnimeDatabaseStore().data()).toEqual({
-      lastUpdate: '',
-      source: '',
-      data: '',
-    });
     expect(stores.useAnimeDatabaseSearchCacheStore().data()).toEqual({});
     expect(stores.useThemeStore().data()).toBe('system');
     expect(stores.useStorageComposable().data()).toBe('Storage Demo');

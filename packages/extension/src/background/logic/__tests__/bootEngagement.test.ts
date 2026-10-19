@@ -3,7 +3,11 @@ import { afterEach, beforeEach, expect, spyOn, test } from 'bun:test';
 import { useTokenStore } from '~/logic';
 
 import { fakeBrowser } from '../../../../test/fake-browser';
-import { databaseURLs, mockFetch } from '../../__tests__/network';
+import {
+  databaseRoutes,
+  databaseURLs,
+  mockFetch,
+} from '../../__tests__/network';
 
 const realSetTimeout = globalThis.setTimeout;
 let fetchMock: ReturnType<typeof mockFetch>;
@@ -51,7 +55,24 @@ test('checks the sign-in and loads the database only once', async () => {
   expect(updateChecks()).toHaveLength(1);
 });
 
-test('keeps going when the sign-in check fails', async () => {
+test('sets the sign-in badge before the database download, which then leaves it alone', async () => {
+  const engage = await importEngage('badge order');
+
+  fetchMock.mockRestore();
+  fetchMock = mockFetch(databaseRoutes());
+
+  await engage();
+
+  expect(fakeBrowser.action.setBadgeText).toHaveBeenCalledWith({
+    text: 'Login',
+  });
+  // The download found a badge shown, so it showed no loading one over it
+  expect(fakeBrowser.action.setBadgeText).not.toHaveBeenCalledWith({
+    text: ' ',
+  });
+});
+
+test('still loads the database when the sign-in check fails', async () => {
   const engage = await importEngage('failure');
 
   fakeBrowser.action.setBadgeText.mockImplementationOnce(() => {
@@ -59,6 +80,5 @@ test('keeps going when the sign-in check fails', async () => {
   });
 
   expect(await engage()).toBeUndefined();
-  // The database isn't loaded after a failed check
-  expect(updateChecks()).toHaveLength(0);
+  expect(updateChecks()).toHaveLength(1);
 });

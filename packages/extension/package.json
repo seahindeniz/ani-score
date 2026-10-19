@@ -52,7 +52,6 @@
     "@solid-primitives/scheduled": "1.5.3",
     "@solidjs/router": "1.0.0",
     "@urql/core": "6.0.3",
-    "minisearch": "7.2.0",
     "solid-js": "^1.9.17",
     "valibot": "1.5.0"
   },
@@ -82,6 +81,7 @@
     "clsx": "2.1.1",
     "crx": "^5.0.1",
     "eslint-plugin-solid": "^0.18.1",
+    "fake-indexeddb": "6.2.6",
     "graphql": "16.11.0",
     "release-it": "21.1.1",
     "sass": "1.97.3",

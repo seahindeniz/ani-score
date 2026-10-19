@@ -13,6 +13,7 @@ import { wait } from '~/utils/wait';
 
 import { anilistClient } from '../client/anilist';
 import { batchTemplate, singleAnimeQuery } from '../gql-queries/anilist';
+import { listSiteHosts } from './animeIndex';
 import { cacheDetails, readCachedDetails } from './detailsCache';
 import { searchAnimeByTitle } from './loadDatabase';
 
@@ -49,7 +50,7 @@ function createAlias(title: string, index: number): string {
 }
 
 function generateBatchQuery(
-  animeList: ReturnType<typeof findAnimeListInDatabase>,
+  animeList: Awaited<ReturnType<typeof findAnimeListInDatabase>>,
 ) {
   let currentChunk: FieldNode[] = [];
   let chunkIndex = 0;
@@ -159,26 +160,27 @@ function removeAllBeforeSlash(url: string): string {
   return url.replace(/.*\//, '');
 }
 
-function findSourceInDatabase(title: string) {
-  const anime = searchAnimeByTitle(title);
+async function findSourceInDatabase(title: string) {
+  const anime = await searchAnimeByTitle(title);
 
   if (!anime) {
     return undefined;
   }
 
+  // `toSorted`: the sources belong to the index and the search cache
   return anime.sources
-    ?.sort(
+    ?.toSorted(
       (a, b) =>
         Number.parseInt(removeAllBeforeSlash(a))
         - Number.parseInt(removeAllBeforeSlash(b)),
     )
     .reduce(
       (map, item) => {
-        if (item.includes('anilist.co')) {
+        if (item.includes(listSiteHosts.anilist)) {
           map.anilist = removeAllBeforeSlash(item);
         }
 
-        if (item.includes('myanimelist.net')) {
+        if (item.includes(listSiteHosts.mal)) {
           map.mal = removeAllBeforeSlash(item);
         }
 
@@ -189,11 +191,13 @@ function findSourceInDatabase(title: string) {
 }
 
 function findAnimeListInDatabase(titles: string[]) {
-  return titles.map((title) => {
-    const sources = findSourceInDatabase(title);
+  return Promise.all(
+    titles.map(async (title) => {
+      const sources = await findSourceInDatabase(title);
 
-    return { title, ...sources };
-  });
+      return { title, ...sources };
+    }),
+  );
 }
 
 type FetchResult = Record<
@@ -220,7 +224,7 @@ export async function fetchDetails(props: Props) {
   logger.log('Fetching details for titles:', missing);
 
   try {
-    const dbResult = findAnimeListInDatabase(missing);
+    const dbResult = await findAnimeListInDatabase(missing);
     const queries = generateBatchQuery(dbResult);
     const queryPromises = [];
 
