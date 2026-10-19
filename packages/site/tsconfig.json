@@ -16,5 +16,7 @@
     "paths": {
       "~/*": ["./src/*"]
     }
-  }
+  },
+  // The build scripts run on Bun, and have a project of their own
+  "exclude": ["node_modules", ".output", "scripts"]
 }

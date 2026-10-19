@@ -1,4 +1,4 @@
-import type { AnimeData, AnimeMatch } from '~/logic';
+import type { AnimeData, AnimeMatch } from './animeData';
 
 /**
  * The anime database as stored: the entries, and for each term the entries whose title or synonyms contain it.
@@ -31,6 +31,14 @@ export interface AnimeIndex {
   search: (title: string, limit: number) => AnimeMatch[];
 }
 
+/**
+ * An index ready to search, with the form to store it in.
+ */
+export interface BuiltAnimeIndex {
+  index: AnimeIndex;
+  stored: AnimeIndexData;
+}
+
 // MiniSearch's default tokenizer, which the index used to be built with
 const termSeparator = /[\n\r\p{Z}\p{P}]+/u;
 
@@ -42,10 +50,86 @@ function termsOf(text: string) {
 }
 
 /**
- * The version of the stored form: a stored index of another version is downloaded again. Bump it whenever the
- * tokenizer, the entry fields or the layout changes.
+ * The version of the stored and the published form: a stored index of another version is downloaded again, and an
+ * extension only fetches the prebuilt index of its own version. Bump it whenever the tokenizer, the entry fields, the
+ * layout or the file packing changes.
  */
 export const animeIndexFormat = 1;
+
+const fileMagic = new TextEncoder().encode('ANIX');
+const fileHeaderSize = fileMagic.length + 16;
+
+/**
+ * Packs the stored index into one file, as the site publishes it prebuilt: "ANIX", the byte lengths of the four parts
+ * as little-endian `uint32`s, then the entries and the terms as UTF-8, then the offsets and the postings. The magic
+ * keeps a file served decompressed from starting like a gzip one.
+ */
+export function packAnimeIndex(
+  stored: AnimeIndexData,
+): Uint8Array<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  const parts = [
+    encoder.encode(stored.entries),
+    encoder.encode(stored.terms),
+    new Uint8Array(stored.offsets),
+    new Uint8Array(stored.postings),
+  ];
+  const file = new Uint8Array(
+    parts.reduce((size, part) => size + part.byteLength, fileHeaderSize),
+  );
+  const header = new DataView(file.buffer);
+  let position = fileHeaderSize;
+
+  file.set(fileMagic);
+  parts.forEach((part, index) => {
+    header.setUint32(fileMagic.length + index * 4, part.byteLength, true);
+    file.set(part, position);
+    position += part.byteLength;
+  });
+
+  return file;
+}
+
+/**
+ * Throws for a file that isn't a packed index, or whose parts don't add up, e.g. a truncated download.
+ */
+export function unpackAnimeIndex(file: ArrayBuffer): AnimeIndexData {
+  const header = new DataView(file);
+  const isPacked =
+    file.byteLength >= fileHeaderSize
+    && fileMagic.every((byte, index) => header.getUint8(index) === byte);
+  const lengths = isPacked
+    ? [0, 1, 2, 3].map((index) =>
+        header.getUint32(fileMagic.length + index * 4, true),
+      )
+    : [];
+
+  if (
+    !isPacked
+    || lengths.reduce((size, length) => size + length, fileHeaderSize)
+      !== file.byteLength
+  ) {
+    throw new TypeError('The anime index file is malformed');
+  }
+
+  const decoder = new TextDecoder();
+  let position = fileHeaderSize;
+  const next = (length: number) => [position, (position += length)] as const;
+  const text = (length: number) => {
+    const [start] = next(length);
+
+    return decoder.decode(new Uint8Array(file, start, length));
+  };
+  // Copied, as a `Uint32Array` needs its own buffer at an offset that's a multiple of 4
+  const buffer = (length: number) => file.slice(...next(length));
+
+  return {
+    entries: text(lengths[0]),
+    terms: text(lengths[1]),
+    offsets: buffer(lengths[2]),
+    postings: buffer(lengths[3]),
+  };
+}
 
 /**
  * Hosts of the sites whose IDs AniList can be asked about: its own, and MyAnimeList's.
@@ -62,7 +146,7 @@ const isListSource = (source: string) =>
  * Indexes the entries with an AniList or MyAnimeList source. Gives the index to search right away, and the form to
  * store it in.
  */
-export function buildAnimeIndex(data: AnimeData[]) {
+export function buildAnimeIndex(data: AnimeData[]): BuiltAnimeIndex {
   const entries: AnimeMatch[] = [];
   const positionsByTerm = new Map<string, number[]>();
 

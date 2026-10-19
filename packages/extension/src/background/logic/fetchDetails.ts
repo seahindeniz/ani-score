@@ -1,3 +1,4 @@
+import { listSiteHosts } from '@ani-score/anime-index';
 import type { TypedDocumentNode } from '@urql/core';
 import type { FieldNode } from 'graphql';
 import { Kind } from 'graphql';
@@ -13,7 +14,6 @@ import { wait } from '~/utils/wait';
 
 import { anilistClient } from '../client/anilist';
 import { batchTemplate, singleAnimeQuery } from '../gql-queries/anilist';
-import { listSiteHosts } from './animeIndex';
 import { cacheDetails, readCachedDetails } from './detailsCache';
 import { searchAnimeByTitle } from './loadDatabase';
 

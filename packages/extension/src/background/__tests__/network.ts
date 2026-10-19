@@ -1,5 +1,11 @@
 import { spyOn } from 'bun:test';
 
+import { buildAnimeIndex, prebuiltIndexURLs } from '@ani-score/anime-index';
+import {
+  createPrebuiltIndex,
+  prebuiltIndexDownloadURL,
+} from '@ani-score/anime-index/publish';
+
 import type { AnimeData } from '~/logic';
 
 type Handler = (request: Request) => Response | Promise<Response>;
@@ -87,6 +93,49 @@ export function databaseRoutes(
   return {
     [databaseURLs.primaryLastUpdate]: { lastUpdate },
     [databaseURLs.primary]: { data: entries },
+  };
+}
+
+/**
+ * The site's prebuilt index of the entries, as `scripts/anime-index.ts` publishes it. Its download URL carries the
+ * file's SHA-256, which `indexURL` gives.
+ */
+export async function prebuiltRoutes(
+  options: {
+    lastUpdate?: string;
+    entries?: AnimeData[];
+    /**
+     * When the site last built it.
+     * @default now
+     */
+    checkedAt?: number;
+    format?: number;
+    /**
+     * Served as the index in place of the packed entries, e.g. a truncated copy.
+     */
+    serve?: (file: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
+  } = {},
+) {
+  const {
+    lastUpdate = '2026-10-01',
+    entries = databaseEntries,
+    checkedAt = Date.now(),
+    format = 1,
+    serve = (file: Uint8Array<ArrayBuffer>) => Bun.gzipSync(file),
+  } = options;
+  const { metadata, file } = await createPrebuiltIndex(
+    { source: 'cedya77/anime-offline-database', lastUpdate },
+    buildAnimeIndex(entries).stored,
+    new Date(checkedAt),
+  );
+  const indexURL = prebuiltIndexDownloadURL(metadata);
+
+  return {
+    indexURL,
+    routes: {
+      [prebuiltIndexURLs.metadata]: { ...metadata, format },
+      [indexURL]: () => new Response(serve(file)),
+    },
   };
 }
 

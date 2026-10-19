@@ -1,11 +1,23 @@
+import { resolve } from 'node:path';
 import process from 'node:process';
-
-import { log, r } from './utils';
+import { styleText } from 'node:util';
 
 /**
  * `bun test --coverage` only reports files that some test imported, so an untested file would silently count as
  * covered. This fails unless every source file with runtime code is in the report at 100% lines and functions.
+ *
+ * Run it from a package after its tests: `bun ../../scripts/check-coverage.ts [directory in src to skip...]`.
  */
+
+// The package the tests ran in
+const r = (...paths: string[]) => resolve(process.cwd(), ...paths);
+const skipped = process.argv
+  .slice(2)
+  .map((directory) => `${directory.replace(/\/$/, '')}/`);
+
+function log(message: string) {
+  console.log(styleText(['black', 'bgCyan'], ' COVERAGE '), message);
+}
 
 interface FileCoverage {
   /**
@@ -73,10 +85,7 @@ function hasRuntimeCode(file: string, source: string) {
 const lcovPath = r('coverage/lcov.info');
 
 if (!(await Bun.file(lcovPath).exists())) {
-  log(
-    'COVERAGE',
-    `error: ${lcovPath} not found, run the tests with coverage first`,
-  );
+  log(`error: ${lcovPath} not found, run the tests with coverage first`);
   process.exit(1);
 }
 
@@ -88,7 +97,7 @@ const sourceFiles = Array.from(
 )
   .filter(
     (file) =>
-      !file.startsWith('src/gql/')
+      !skipped.some((directory) => file.startsWith(directory))
       && !file.endsWith('.d.ts')
       && !file.includes('/__tests__/')
       && !file.includes('node_modules/'),
@@ -122,8 +131,8 @@ for (const relative of sourceFiles) {
 }
 
 if (problems.length) {
-  log('COVERAGE', `${problems.length} problem(s):\n  ${problems.join('\n  ')}`);
+  log(`${problems.length} problem(s):\n  ${problems.join('\n  ')}`);
   process.exit(1);
 }
 
-log('COVERAGE', `all ${sourceFiles.length} source files are fully covered`);
+log(`all ${sourceFiles.length} source files are fully covered`);

@@ -1,3 +1,7 @@
+import type { AnimeData } from '@ani-score/anime-index';
+import { buildAnimeIndex, prebuiltIndexURLs } from '@ani-score/anime-index';
+// Stands in for the site, which publishes the index
+import { createPrebuiltIndex } from '@ani-score/anime-index/publish';
 import type { BrowserContext, Route } from '@playwright/test';
 
 /**
@@ -196,7 +200,12 @@ export async function mockNetwork(
   options: {
     media?: MediaFixture[];
     /**
-     * Makes the preferred database source fail, so the fallback source is used.
+     * Makes the site's prebuilt index unavailable, so the upstream sources are used.
+     * @default false
+     */
+    prebuiltIndexDown?: boolean;
+    /**
+     * Makes the preferred upstream source fail, so the fallback source is used.
      * @default false
      */
     primaryDatabaseDown?: boolean;
@@ -206,7 +215,12 @@ export async function mockNetwork(
     pages?: Record<string, string>;
   } = {},
 ) {
-  const { media = [], primaryDatabaseDown = false, pages = {} } = options;
+  const {
+    media = [],
+    prebuiltIndexDown = false,
+    primaryDatabaseDown = false,
+    pages = {},
+  } = options;
   const recorded = {
     lookups: [] as AnimeLookup[],
     authorizations: [] as (string | undefined)[],
@@ -226,6 +240,25 @@ export async function mockNetwork(
   );
   await context.route(databaseURLs.fallbackLastUpdate, (route) =>
     json(route, { published_at: '2026-10-01T00:00:00Z' }),
+  );
+
+  // The site's prebuilt index, built from the same entries as the upstream database
+  const prebuilt = await createPrebuiltIndex(
+    { source: 'cedya77/anime-offline-database', lastUpdate: '2026-10-01' },
+    buildAnimeIndex(database as unknown as AnimeData[]).stored,
+  );
+  await context.route(prebuiltIndexURLs.metadata, (route) =>
+    prebuiltIndexDown
+      ? route.fulfill({ status: 404 })
+      : json(route, prebuilt.metadata),
+  );
+  await context.route(
+    (url) => url.href.startsWith(prebuiltIndexURLs.index),
+    (route) => {
+      recorded.databaseDownloads.push(route.request().url());
+
+      return route.fulfill({ body: Buffer.from(Bun.gzipSync(prebuilt.file)) });
+    },
   );
 
   for (const url of [databaseURLs.primary, databaseURLs.fallback]) {

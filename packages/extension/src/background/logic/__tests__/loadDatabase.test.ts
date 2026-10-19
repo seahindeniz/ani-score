@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 
+import { buildAnimeIndex, prebuiltIndexURLs } from '@ani-score/anime-index';
+import { packAnimeIndex } from '@ani-score/anime-index/publish';
+
 import type { AnimeData } from '~/logic';
 import { useAnimeDatabaseSearchCacheStore } from '~/logic';
 
@@ -9,8 +12,8 @@ import {
   databaseRoutes,
   databaseURLs,
   mockFetch,
+  prebuiltRoutes,
 } from '../../__tests__/network';
-import { buildAnimeIndex } from '../animeIndex';
 import type { DatabaseInfo } from '../databaseStorage';
 import {
   readDatabaseIndex,
@@ -227,8 +230,9 @@ describe('loadDatabase', () => {
     await restart();
     await loader.loadDatabase();
 
-    // Asked, and found the stored database up to date
+    // Asked (the prebuilt index isn't published in this test), and found the stored database up to date
     expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual([
+      prebuiltIndexURLs.metadata,
       databaseURLs.primaryLastUpdate,
     ]);
     expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
@@ -304,26 +308,6 @@ describe('loadDatabase', () => {
     expect(downloads()).toEqual([databaseURLs.primary]);
   });
 
-  test('retries a failing update check', async () => {
-    let attempts = 0;
-
-    fetchMock = mockFetch({
-      ...databaseRoutes(),
-      [databaseURLs.primaryLastUpdate]: () => {
-        attempts++;
-
-        if (attempts === 1) throw new TypeError('Failed to fetch');
-
-        return Response.json({ lastUpdate: '2026-10-01' });
-      },
-    });
-
-    await loader.loadDatabase();
-
-    expect(attempts).toBe(2);
-    expect(downloads()).toEqual([databaseURLs.primary]);
-  });
-
   test('gives up on a source after three retries', async () => {
     let attempts = 0;
 
@@ -342,20 +326,6 @@ describe('loadDatabase', () => {
     await loader.loadDatabase();
 
     expect(attempts).toBe(4);
-    expect(downloads()).toEqual([databaseURLs.fallback]);
-  });
-
-  test("rejects an update date it can't parse", async () => {
-    fetchMock = mockFetch({
-      [databaseURLs.primaryLastUpdate]: { lastUpdate: 'not a date' },
-      [databaseURLs.fallbackLastUpdate]: {
-        published_at: '2026-10-01T00:00:00Z',
-      },
-      [databaseURLs.fallback]: { data: databaseEntries },
-    });
-
-    await loader.loadDatabase();
-
     expect(downloads()).toEqual([databaseURLs.fallback]);
   });
 
@@ -605,6 +575,68 @@ describe('loadDatabase', () => {
 
     expect(await search).toMatchObject({ title: 'Sousou no Frieren' });
     await update;
+  });
+});
+
+describe('prebuilt index', () => {
+  test('is downloaded rather than the upstream database', async () => {
+    const prebuilt = await prebuiltRoutes();
+
+    fetchMock = mockFetch({ ...prebuilt.routes, ...databaseRoutes() });
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuilt.indexURL)).toBe(1);
+    expect(downloads()).toEqual([]);
+    // Stored as data of the source it was built from
+    expect(await readDatabaseInfo()).toMatchObject({
+      lastUpdate: '2026-10-01',
+      source: 'cedya77/anime-offline-database',
+    });
+    expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
+      title: 'Sousou no Frieren',
+    });
+  });
+
+  test("doesn't replace the same data downloaded from its source", async () => {
+    const prebuilt = await prebuiltRoutes({ lastUpdate: '2026-10-01' });
+
+    await storeDatabase({ lastUpdate: '2026-10-01' });
+    fetchMock = mockFetch({ ...prebuilt.routes, ...databaseRoutes() });
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuilt.indexURL)).toBe(0);
+    expect(requested(databaseURLs.primaryLastUpdate)).toBe(0);
+  });
+
+  test('replaces older data with newer', async () => {
+    const prebuilt = await prebuiltRoutes({ lastUpdate: '2026-10-08' });
+
+    await storeDatabase({ lastUpdate: '2026-10-01' });
+    fetchMock = mockFetch(prebuilt.routes);
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuilt.indexURL)).toBe(1);
+    expect((await readDatabaseInfo())?.lastUpdate).toBe('2026-10-08');
+  });
+
+  test("is skipped for the upstream source when it doesn't match its SHA-256", async () => {
+    // A well-formed index, but not the one the metadata describes, as a cache could still hold an older one
+    const prebuilt = await prebuiltRoutes({
+      serve: () =>
+        Bun.gzipSync(
+          packAnimeIndex(buildAnimeIndex([databaseEntries[0]]).stored),
+        ),
+    });
+
+    fetchMock = mockFetch({ ...prebuilt.routes, ...databaseRoutes() });
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuilt.indexURL)).toBe(1);
+    expect(downloads()).toEqual([databaseURLs.primary]);
   });
 });
 

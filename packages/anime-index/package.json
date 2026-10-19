@@ -1,0 +1,20 @@
+{
+  "name": "@ani-score/anime-index",
+  "type": "module",
+  "private": true,
+  "description": "The anime index AniScore matches titles with: its format, the sources it's built from, and publishing it",
+  "exports": {
+    ".": "./src/index.ts",
+    "./publish": "./src/publish.ts"
+  },
+  "scripts": {
+    "test": "bun test --coverage && bun ../../scripts/check-coverage.ts",
+    "lint": "bun check"
+  },
+  "dependencies": {
+    "valibot": "1.5.0"
+  },
+  "engines": {
+    "bun": ">=1.4"
+  }
+}

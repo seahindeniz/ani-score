@@ -1,8 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { AnimeData } from '~/logic';
-
-import { buildAnimeIndex, readAnimeIndex } from '../animeIndex';
+import type { AnimeData } from '../animeData';
+import {
+  buildAnimeIndex,
+  packAnimeIndex,
+  readAnimeIndex,
+  unpackAnimeIndex,
+} from '../animeIndex';
 
 function entry(title: string, synonyms: string[] = [], id = 1) {
   return {
@@ -124,6 +128,37 @@ describe('anime index', () => {
     expect(() => readAnimeIndex({ ...stored, entries: '{}' })).toThrow(
       'malformed',
     );
+  });
+
+  test('packs the stored index into one file and back', () => {
+    const { stored } = buildAnimeIndex([
+      entry('Sousou no Frieren', ["Frieren: Beyond Journey's End"]),
+      entry('Kusuriya no Hitorigoto'),
+    ]);
+
+    expect(unpackAnimeIndex(packAnimeIndex(stored).buffer)).toEqual(stored);
+  });
+
+  test('refuses a file whose parts do not add up', () => {
+    const file = packAnimeIndex(buildAnimeIndex([entry('Frieren')]).stored);
+
+    // Truncated, with a byte too many, and shorter than its header
+    for (const broken of [
+      file.slice(0, -1),
+      new Uint8Array([...file, 0]),
+      file.slice(0, 8),
+    ]) {
+      expect(() => unpackAnimeIndex(broken.buffer)).toThrow('malformed');
+    }
+  });
+
+  test("refuses a file that isn't a packed index", () => {
+    const file = packAnimeIndex(buildAnimeIndex([entry('Frieren')]).stored);
+
+    // Gzip's own first bytes, as a file the host served without decompressing
+    file.set([0x1f, 0x8b]);
+
+    expect(() => unpackAnimeIndex(file.buffer)).toThrow('malformed');
   });
 
   test('can be empty', () => {

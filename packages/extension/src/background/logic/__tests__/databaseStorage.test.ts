@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
-import { buildAnimeIndex } from '../animeIndex';
+import { buildAnimeIndex } from '@ani-score/anime-index';
+
 import {
   readDatabaseIndex,
   readDatabaseInfo,
