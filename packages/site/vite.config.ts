@@ -1,54 +1,33 @@
-import { withSolidBase } from '@kobalte/solidbase/config';
-import { defineConfig } from '@solidjs/start/config';
+import { createSolidBase } from '@kobalte/solidbase/config';
+import defaultTheme from '@kobalte/solidbase/default-theme';
+import { solidStart } from '@solidjs/start/config';
+import { nitro } from 'nitro/vite';
+import { defineConfig } from 'vite';
 
-export default defineConfig(
-  withSolidBase(
+const solidBase = createSolidBase(defaultTheme);
+
+export default defineConfig({
+  plugins: [
     {
-      ssr: true,
-      server: {
-        preset: 'static',
-        prerender: {
-          crawlLinks: true,
-          routes: [
-            '/',
-            '/tr',
-            '/tr/guide',
-            '/tr/guide/installation',
-            '/tr/guide/ratings',
-            '/tr/guide/watch-tracking',
-            '/tr/guide/add-a-site',
-          ],
-        },
+      // The default theme's header imports DocSearch statically, which adds
+      // ~490 kB to every page, though it only renders when search is set up
+      name: 'aniscore:no-docsearch',
+      enforce: 'pre',
+      resolveId(id, importer) {
+        if (
+          id.endsWith('/vendor/DocSearch.jsx')
+          && importer?.includes('@kobalte/solidbase')
+        )
+          return '\0aniscore:no-docsearch';
       },
-      vite: ({
-        router,
-      }: {
-        router: 'server' | 'client' | 'server-function';
-      }) => ({
-        build:
-          router === 'client'
-            ? {
-                target: 'esnext',
-                rollupOptions: {
-                  output: {
-                    manualChunks: {
-                      'solid-runtime': [
-                        'solid-js',
-                        'solid-js/web',
-                        'solid-js/store',
-                      ],
-                      router: ['@solidjs/router'],
-                      kobalte: ['@kobalte/core'],
-                    },
-                  },
-                },
-              }
-            : {},
-      }),
+      load(id) {
+        if (id === '\0aniscore:no-docsearch')
+          return 'export default function DocSearch() { return null; }';
+      },
     },
-    {
+    solidBase.plugin({
       title: 'AniScore',
-      titleTemplate: '%s | AniScore',
+      titleTemplate: ':title | AniScore',
       description:
         'See anime ratings, genres, and your watch progress directly on streaming sites. Powered by AniList.',
       logo: '/logo.svg',
@@ -154,6 +133,51 @@ export default defineConfig(
           },
         },
       },
+    }),
+    solidStart(solidBase.startConfig()),
+    nitro({
+      preset: 'static',
+      prerender: {
+        crawlLinks: true,
+        // Otherwise a page that fails to render is skipped, and the build still deploys
+        failOnError: true,
+        routes: [
+          '/',
+          '/tr',
+          '/tr/guide',
+          '/tr/guide/installation',
+          '/tr/guide/ratings',
+          '/tr/guide/watch-tracking',
+          '/tr/guide/add-a-site',
+        ],
+      },
+    }),
+  ],
+  environments: {
+    client: {
+      build: {
+        target: 'esnext',
+        rolldownOptions: {
+          output: {
+            codeSplitting: {
+              groups: [
+                {
+                  name: 'solid-runtime',
+                  test: /node_modules\/solid-js\//,
+                },
+                {
+                  name: 'router',
+                  test: /node_modules\/@solidjs\/router\//,
+                },
+                {
+                  name: 'kobalte',
+                  test: /node_modules\/@kobalte\/core\//,
+                },
+              ],
+            },
+          },
+        },
+      },
     },
-  ),
-);
+  },
+});

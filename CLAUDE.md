@@ -28,7 +28,7 @@ Always use `bun run test` / `bun run build`. Bare `bun build` invokes Bun's bund
 
 ### Bun runtime
 
-- `[run] bun = true` makes `node` and node-based CLIs (Vite, vinxi) run on Bun. Bun reads `bunfig.toml` only from the current directory, so it is set in the root and in each package.
+- `[run] bun = true` makes `node` and node-based CLIs (such as Vite) run on Bun. Bun reads `bunfig.toml` only from the current directory, so it is set in the root and in each package.
 - E2E runs Playwright on Bun, which needs `@playwright/test` ≥1.64 (older versions crash loading TS on Bun). The tests launch the full `chromium` channel because headless shell can't load extensions, so install it with `bunx playwright install chromium`.
 
 ### Unit tests
