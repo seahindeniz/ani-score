@@ -42,11 +42,10 @@ jobs:
   release:
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
     needs: checkup
-    timeout-minutes: 8
+    # Room for slow AMO signing, plus up to 2 minutes of polling for the Chrome Web Store upload
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     environment: Production
-    outputs:
-      version: ${{ steps.release.outputs.version }}
     steps:
       - uses: actions/create-github-app-token@v3
         id: app-token
@@ -103,38 +102,11 @@ jobs:
           WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
           WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
 
-  # A separate job, so a failed upload can be retried with "Re-run failed jobs" without releasing again
-  publish-chrome:
-    # Skipped until the Chrome Web Store access is set up (see CONTRIBUTING.md)
-    if: ${{ vars.CHROME_PUBLISHER_ID != '' && needs.release.outputs.version != '' }}
-    needs: release
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    environment: Production
-    permissions:
-      contents: read
-      id-token: write
-    env:
-      RELEASE_VERSION: ${{ needs.release.outputs.version }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          # `bun lint` and `bun fmt` are only in canary builds; switch back to `bun-version-file: package.json` once Bun 1.4.4 is released
-          bun-version: canary
-
-      - name: Download the release zip
-        working-directory: packages/extension
-        run: gh release download "$RELEASE_VERSION" --pattern "extension-$RELEASE_VERSION.zip" --dir release
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      # Keyless: GitHub's OIDC token is exchanged for a short-lived token of the service account
+      # Keyless: GitHub's OIDC token is exchanged for a short-lived token of the service account, which only trusts main
       - name: Authenticate to Google Cloud
         id: google
+        # Skipped until the Chrome Web Store access is set up (see CONTRIBUTING.md)
+        if: github.ref == 'refs/heads/main' && steps.release.outputs.version != '' && vars.CHROME_PUBLISHER_ID != ''
         # Pinned to a commit: this action handles the credential that can publish to the store
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
@@ -145,9 +117,11 @@ jobs:
           create_credentials_file: false
 
       - name: Publish to the Chrome Web Store
+        if: steps.google.outcome == 'success'
         working-directory: packages/extension
         run: bun scripts/publish-chrome.ts
         env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
           CHROME_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
           CHROME_PUBLISHER_ID: ${{ vars.CHROME_PUBLISHER_ID }}
           CHROME_EXTENSION_ID: pjioojkbcigohkncmfoedipogbejlkko

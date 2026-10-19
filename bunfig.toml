@@ -5,7 +5,7 @@ linker = "hoisted"
 exact = true
 
 [run]
-# Run `node` and node-shebang bins (vite, vinxi, tsc, ...) on Bun
+# Run `node` and node-shebang bins (vite, tsc, ...) on Bun
 bun = true
 
 [fmt]
