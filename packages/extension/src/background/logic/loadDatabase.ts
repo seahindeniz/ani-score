@@ -95,14 +95,13 @@ const unstoredRetryInterval = 60 * 60 * 1000;
  */
 let update: Promise<unknown> = Promise.resolve();
 /**
- * Settles once a running download has replaced the index. Searches wait for it rather than read the index it's
- * replacing, but not for the new one to be stored.
- */
-let replacing: Promise<unknown> = Promise.resolve();
-/**
  * Read on the first search that misses the cache, so a restart that only meets cached titles never reads it.
  */
 let animeIndex: Promise<AnimeIndex | undefined> | undefined;
+/**
+ * Counts the downloads that replaced the index, to tell whether one did while a search or a recovery was under way.
+ */
+let indexVersion = 0;
 
 const logFailure = (message: string) => (error: unknown) => {
   logger.error(message, error);
@@ -197,14 +196,13 @@ function isDatabaseOutdated(
   return new Date(lastUpdate) > new Date(info.lastUpdate);
 }
 
-async function downloadDatabase(
-  source: DatabaseSource,
-  lastUpdate: string,
-  onReplaced: () => void,
-) {
+async function downloadDatabase(source: DatabaseSource, lastUpdate: string) {
   const startTime = performance.now();
-  // Searches wait for the download, so the badge shows one is running; a badge that's already shown is left alone
+  // A first install's searches wait for the download, so the badge shows one is running; a badge that's already shown
+  // is left alone
   const showsProgress = !(await getBadgeText());
+  // The loading badge has no text, so a badge with text was set meanwhile, e.g. to ask for signing in again
+  const showsOwnBadge = async () => showsProgress && !(await getBadgeText());
 
   if (showsProgress) {
     await browser.action.setBadgeText({ text: ' ' });
@@ -221,15 +219,15 @@ async function downloadDatabase(
     );
     built = buildAnimeIndex(data);
   } catch (error) {
-    if (showsProgress) await browser.action.setBadgeText({ text: '' });
+    if (await showsOwnBadge()) await browser.action.setBadgeText({ text: '' });
 
     throw error;
   }
 
   animeIndex = Promise.resolve(built.index);
+  indexVersion++;
   // The new database can hold a closer match, e.g. a season the old one lacked
   animeDatabaseSearchCacheStore.setData({});
-  onReplaced();
 
   try {
     // The checked date is stored rather than the file's own `lastUpdate`, so the next check compares like with like
@@ -251,12 +249,25 @@ async function downloadDatabase(
       .catch(logFailure('Error noting the unstored database:'));
   }
 
-  if (showsProgress) {
+  if (await showsOwnBadge()) {
     browser.action.setBadgeBackgroundColor({ color: '#00ff00' });
-    setTimeout(() => {
-      browser.action.setBadgeText({ text: '' });
+    setTimeout(async () => {
+      if (await showsOwnBadge()) browser.action.setBadgeText({ text: '' });
     }, 2000);
   }
+}
+
+async function downloadedUnstoredRecently() {
+  const unstoredAt = (
+    await browser.storage.local
+      .get(unstoredDownloadKey)
+      .catch(logFailure('Error reading extension storage:'))
+  )?.[unstoredDownloadKey];
+
+  return (
+    typeof unstoredAt === 'number'
+    && isRecent(unstoredAt, unstoredRetryInterval)
+  );
 }
 
 async function updateDatabase() {
@@ -271,22 +282,16 @@ async function updateDatabase() {
     void browser.storage.local
       .remove('animeDatabase')
       .catch(logFailure('Error removing the old database:'));
+  }
 
-    const unstoredAt = (
-      await browser.storage.local
-        .get(unstoredDownloadKey)
-        .catch(logFailure('Error reading extension storage:'))
-    )?.[unstoredDownloadKey];
+  // Whether nothing is stored or an older database is: its replacement would fail to be stored again
+  if (await downloadedUnstoredRecently()) {
+    logger.log("Recently downloaded a database that couldn't be stored.");
 
-    if (
-      typeof unstoredAt === 'number'
-      && isRecent(unstoredAt, unstoredRetryInterval)
-    ) {
-      logger.log("Recently downloaded a database that couldn't be stored.");
+    return;
+  }
 
-      return;
-    }
-  } else if (isRecent(info.checkedAt, updateCheckInterval)) {
+  if (info && isRecent(info.checkedAt, updateCheckInterval)) {
     logger.log('Checked for database updates recently.');
 
     return;
@@ -310,16 +315,7 @@ async function updateDatabase() {
       logger.log(
         `Database is outdated or not present. Fetching new data from ${source.name}...`,
       );
-
-      const replaced = Promise.withResolvers<void>();
-
-      replacing = replaced.promise;
-
-      try {
-        await downloadDatabase(source, lastUpdate, replaced.resolve);
-      } finally {
-        replaced.resolve();
-      }
+      await downloadDatabase(source, lastUpdate);
 
       return;
     } catch (error) {
@@ -341,6 +337,7 @@ export function loadDatabase(after: Promise<unknown> = Promise.resolve()) {
 
 async function readStoredIndex() {
   const startTime = performance.now();
+  const version = indexVersion;
   let data;
 
   try {
@@ -366,9 +363,11 @@ async function readStoredIndex() {
       'The stored database is unreadable; downloading it again:',
       error,
     );
-    // After the update that may be running. Without its index nothing counts as stored, so the update downloads it,
-    // and searches wait for it.
+    // After the update that may be running, unless that one replaced it. Without its index nothing counts as stored, so
+    // the update downloads it, and searches wait for it.
     update = Promise.allSettled([update]).then(async () => {
+      if (indexVersion !== version) return;
+
       await removeDatabaseIndex().catch(
         logFailure('Error removing the unreadable database:'),
       );
@@ -383,23 +382,26 @@ async function readStoredIndex() {
  * The index to search, and whether it's still the current one: a download can replace it while a search runs.
  */
 async function readIndex() {
+  const version = indexVersion;
   const reading = (animeIndex ??= readStoredIndex());
   const index = await reading;
 
   // The next search reads again, unless a download has replaced it meanwhile
   if (!index && animeIndex === reading) animeIndex = undefined;
 
-  return { index, isCurrent: () => animeIndex === reading };
+  return { index, isCurrent: () => indexVersion === version };
 }
 
+/**
+ * The stored index, or the one a download replaced it with. A download running meanwhile doesn't hold searches up:
+ * they use the index it replaces, and don't cache what they find there. Only when nothing is stored, as on a first
+ * install, do they wait for the update.
+ */
 async function getAnimeIndex() {
-  await Promise.allSettled([replacing]);
-
   const read = await readIndex();
 
   if (read.index) return read;
 
-  // None stored, as on a first install: the running update may download one
   await Promise.allSettled([update]);
 
   return readIndex();

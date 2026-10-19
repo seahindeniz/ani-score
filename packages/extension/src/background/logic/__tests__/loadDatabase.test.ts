@@ -502,6 +502,86 @@ describe('loadDatabase', () => {
     expect(downloads()).toEqual([databaseURLs.primary, databaseURLs.primary]);
   });
 
+  test("also waits an hour when the replacement of a stored database couldn't be stored", async () => {
+    await storeDatabase({ lastUpdate: '2026-09-01' });
+    failWrites();
+    fetchMock = mockFetch(databaseRoutes({ lastUpdate: '2026-10-01' }));
+    await loader.loadDatabase();
+
+    await restart();
+    await loader.loadDatabase();
+
+    expect(downloads()).toEqual([databaseURLs.primary]);
+    // The older database is searched meanwhile
+    expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
+      title: 'Sousou no Frieren',
+    });
+  });
+
+  test('downloads once when a download replaces an unreadable index meanwhile', async () => {
+    const checking = Promise.withResolvers<void>();
+    const answerCheck = Promise.withResolvers<void>();
+
+    await writeDatabase(
+      {
+        lastUpdate: '2026-09-01',
+        source: 'cedya77/anime-offline-database',
+        checkedAt: 0,
+      },
+      {
+        entries: '[not json',
+        terms: '',
+        offsets: new ArrayBuffer(4),
+        postings: new ArrayBuffer(0),
+      },
+    );
+    fetchMock = mockFetch({
+      ...databaseRoutes({ lastUpdate: '2026-10-01' }),
+      [databaseURLs.primaryLastUpdate]: async () => {
+        checking.resolve();
+        await answerCheck.promise;
+
+        return Response.json({ lastUpdate: '2026-10-01' });
+      },
+    });
+
+    const update = loader.loadDatabase();
+
+    await checking.promise;
+
+    // Finds the index unreadable while the update, which will replace it, checks for one
+    const search = loader.searchAnimeByTitle('Sousou no Frieren');
+
+    answerCheck.resolve();
+
+    expect(await search).toMatchObject({ title: 'Sousou no Frieren' });
+    await update;
+    expect(downloads()).toEqual([databaseURLs.primary]);
+    expect(await readDatabaseIndex()).toBeDefined();
+  });
+
+  test('leaves a sign-in badge that was set during the download', async () => {
+    fetchMock = mockFetch({
+      ...databaseRoutes(),
+      [databaseURLs.primary]: async () => {
+        // Signed out meanwhile
+        await fakeBrowser.action.setBadgeText({ text: 'Login' });
+
+        return Response.json({ data: databaseEntries });
+      },
+    });
+
+    await loader.loadDatabase();
+    await new Promise((resolve) => realSetTimeout(resolve, 10));
+
+    expect(fakeBrowser.action.setBadgeText.mock.calls.at(-1)).toEqual([
+      { text: 'Login' },
+    ]);
+    expect(fakeBrowser.action.setBadgeBackgroundColor).not.toHaveBeenCalledWith(
+      { color: '#00ff00' },
+    );
+  });
+
   test('still downloads when the database earlier versions kept cannot be removed', async () => {
     fakeBrowser.storage.local.remove.mockRejectedValueOnce(new Error('busy'));
     fetchMock = mockFetch(databaseRoutes());
@@ -578,7 +658,7 @@ describe('searchAnimeByTitle', () => {
     await update;
   });
 
-  test('waits for a running download rather than reading the database it replaces', async () => {
+  test('searches the stored database while a download runs, and the new one after', async () => {
     const newAnime = {
       title: 'Brand New Anime',
       type: 'TV',
@@ -604,15 +684,18 @@ describe('searchAnimeByTitle', () => {
 
     await downloadStarted.promise;
 
-    // The new index is searched before it's stored
-    const releaseStore = await holdStore();
-    const search = loader.searchAnimeByTitle('Brand New Anime');
+    // Answered while the download stalls
+    expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
+      title: 'Sousou no Frieren',
+    });
+    expect(await loader.searchAnimeByTitle('Brand New Anime')).toBeUndefined();
 
     finishDownload.resolve();
-
-    expect(await search).toMatchObject({ title: 'Brand New Anime' });
-    releaseStore();
     await update;
+
+    expect(await loader.searchAnimeByTitle('Brand New Anime')).toMatchObject({
+      title: 'Brand New Anime',
+    });
   });
 
   test("doesn't cache a match from an index that a download replaced meanwhile", async () => {

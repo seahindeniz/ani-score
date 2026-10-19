@@ -69,6 +69,9 @@ const toStored = (info: DatabaseInfo): StoredInfo => ({
   format: animeIndexFormat,
 });
 
+const isCurrentFormat = (info: unknown): info is StoredInfo =>
+  (info as StoredInfo | undefined)?.format === animeIndexFormat;
+
 /**
  * The info of the stored database, unless its index is missing or of another version; then nothing counts as stored,
  * so it's downloaded again.
@@ -81,7 +84,7 @@ export const readDatabaseInfo = () =>
     return (): DatabaseInfo | undefined => {
       const stored = info.result as StoredInfo | undefined;
 
-      if (index.result === undefined || stored?.format !== animeIndexFormat) {
+      if (index.result === undefined || !isCurrentFormat(stored)) {
         return undefined;
       }
 
@@ -91,11 +94,18 @@ export const readDatabaseInfo = () =>
     };
   });
 
+/**
+ * The stored index, unless it's of another version.
+ */
 export const readDatabaseIndex = () =>
   withStore('readonly', (store) => {
+    const info = store.get('info');
     const index = store.get('index');
 
-    return () => index.result as AnimeIndexData | undefined;
+    return () =>
+      isCurrentFormat(info.result)
+        ? (index.result as AnimeIndexData | undefined)
+        : undefined;
   });
 
 export const writeDatabaseInfo = (info: DatabaseInfo) =>

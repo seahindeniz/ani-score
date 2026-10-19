@@ -66,7 +66,8 @@ export function buildAnimeIndex(data: AnimeData[]) {
   const entries: AnimeMatch[] = [];
   const positionsByTerm = new Map<string, number[]>();
 
-  for (const { title, type, synonyms, sources } of data) {
+  // The schema lists synonyms for every entry, but a missing list shouldn't drop the whole download
+  for (const { title, type, synonyms = [], sources } of data) {
     const listSources = sources.filter(isListSource);
 
     if (!listSources.length) continue;
@@ -108,13 +109,25 @@ export function buildAnimeIndex(data: AnimeData[]) {
   };
 }
 
+/**
+ * Throws for an index of the wrong shape, which is then downloaded again rather than searched.
+ */
 export function readAnimeIndex(data: AnimeIndexData) {
-  return createAnimeIndex(
-    JSON.parse(data.entries) as AnimeMatch[],
-    data.terms.split('\n'),
-    new Uint32Array(data.offsets),
-    new Uint32Array(data.postings),
-  );
+  const entries = JSON.parse(data.entries) as AnimeMatch[];
+  // An empty index has no terms, which joined make an empty string
+  const terms = data.terms ? data.terms.split('\n') : [];
+  const offsets = new Uint32Array(data.offsets);
+  const postings = new Uint32Array(data.postings);
+
+  if (
+    !Array.isArray(entries)
+    || offsets.length !== terms.length + 1
+    || offsets[terms.length] !== postings.length
+  ) {
+    throw new TypeError('The stored anime index is malformed');
+  }
+
+  return createAnimeIndex(entries, terms, offsets, postings);
 }
 
 function createAnimeIndex(

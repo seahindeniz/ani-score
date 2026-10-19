@@ -104,6 +104,28 @@ describe('anime index', () => {
     expect(index.search('Frieren', 10)).toHaveLength(1);
   });
 
+  test('indexes an entry without synonyms', () => {
+    const { synonyms: _, ...withoutSynonyms } = entry('Sousou no Frieren');
+
+    expect(
+      titles(storedIndex([withoutSynonyms as AnimeData]).search('Frieren', 10)),
+    ).toEqual(['Sousou no Frieren']);
+  });
+
+  test('refuses a stored index of the wrong shape', () => {
+    const { stored } = buildAnimeIndex([entry('Sousou no Frieren')]);
+
+    expect(() =>
+      readAnimeIndex({ ...stored, offsets: new ArrayBuffer(4) }),
+    ).toThrow('malformed');
+    expect(() =>
+      readAnimeIndex({ ...stored, postings: new ArrayBuffer(0) }),
+    ).toThrow('malformed');
+    expect(() => readAnimeIndex({ ...stored, entries: '{}' })).toThrow(
+      'malformed',
+    );
+  });
+
   test('can be empty', () => {
     expect(storedIndex([]).search('Frieren', 10)).toEqual([]);
     expect(buildAnimeIndex([]).index.search('Frieren', 10)).toEqual([]);

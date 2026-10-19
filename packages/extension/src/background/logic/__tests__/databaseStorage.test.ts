@@ -65,6 +65,7 @@ describe('database storage', () => {
     });
 
     expect(await readDatabaseInfo()).toBeUndefined();
+    expect(await readDatabaseIndex()).toBeUndefined();
   });
 
   test('counts info without its index as nothing stored', async () => {
