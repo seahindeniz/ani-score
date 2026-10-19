@@ -45,7 +45,11 @@ function termsOf(text: string) {
 const isListSource = (source: string) =>
   source.includes('anilist.co') || source.includes('myanimelist.net');
 
-export function buildAnimeIndex(data: AnimeData[]): AnimeIndexData {
+/**
+ * Indexes the entries with an AniList or MyAnimeList source. Gives the index to search right away, and the form to
+ * store it in.
+ */
+export function buildAnimeIndex(data: AnimeData[]) {
   const entries: AnimeMatch[] = [];
   const positionsByTerm = new Map<string, number[]>();
 
@@ -78,20 +82,34 @@ export function buildAnimeIndex(data: AnimeData[]): AnimeIndexData {
     postings.set(positionsByTerm.get(term)!, offsets[index]);
   });
 
-  return {
+  const stored: AnimeIndexData = {
     entries: JSON.stringify(entries),
     terms: terms.join('\n'),
     offsets: offsets.buffer,
     postings: postings.buffer,
   };
+
+  return {
+    stored,
+    index: createAnimeIndex(entries, terms, offsets, postings),
+  };
 }
 
-export function readAnimeIndex(data: AnimeIndexData): AnimeIndex {
-  const entries = JSON.parse(data.entries) as AnimeMatch[];
-  const terms = data.terms.split('\n');
-  const offsets = new Uint32Array(data.offsets);
-  const postings = new Uint32Array(data.postings);
+export function readAnimeIndex(data: AnimeIndexData) {
+  return createAnimeIndex(
+    JSON.parse(data.entries) as AnimeMatch[],
+    data.terms.split('\n'),
+    new Uint32Array(data.offsets),
+    new Uint32Array(data.postings),
+  );
+}
 
+function createAnimeIndex(
+  entries: AnimeMatch[],
+  terms: string[],
+  offsets: Uint32Array,
+  postings: Uint32Array,
+): AnimeIndex {
   function findTerm(term: string) {
     let low = 0;
     let high = terms.length - 1;
@@ -128,10 +146,17 @@ export function readAnimeIndex(data: AnimeIndexData): AnimeIndex {
         }
       }
 
-      return [...scores]
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, limit)
-        .map(([position]) => entries[position]);
+      return (
+        [...scores]
+          // Of entries sharing the same words, a series has a shorter title than its movies and specials
+          .sort(
+            ([a, aScore], [b, bScore]) =>
+              bScore - aScore
+              || entries[a].title.length - entries[b].title.length,
+          )
+          .slice(0, limit)
+          .map(([position]) => entries[position])
+      );
     },
   };
 }

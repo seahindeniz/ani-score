@@ -10,7 +10,14 @@ import {
   databaseURLs,
   mockFetch,
 } from '../../__tests__/network';
-import { readDatabaseInfo, writeDatabaseInfo } from '../databaseStorage';
+import { buildAnimeIndex } from '../animeIndex';
+import type { DatabaseInfo } from '../databaseStorage';
+import {
+  readDatabaseIndex,
+  readDatabaseInfo,
+  removeDatabaseIndex,
+  writeDatabase,
+} from '../databaseStorage';
 
 const realSetTimeout = globalThis.setTimeout;
 const realNow = Date.now;
@@ -46,6 +53,46 @@ function downloads() {
 function routesAgain(routes: Parameters<typeof mockFetch>[0]) {
   fetchMock?.mockRestore();
   fetchMock = mockFetch(routes);
+}
+
+function requested(url: string) {
+  return fetchMock!.mock.calls.filter(([input]) => String(input) === url)
+    .length;
+}
+
+/**
+ * Stores the test database as if it was downloaded with this info.
+ */
+function storeDatabase(info: Partial<DatabaseInfo> = {}) {
+  return writeDatabase(
+    {
+      lastUpdate: '2026-10-01',
+      source: 'cedya77/anime-offline-database',
+      checkedAt: 0,
+      ...info,
+    },
+    buildAnimeIndex(databaseEntries).stored,
+  );
+}
+
+/**
+ * Makes each IndexedDB write fail, as when the disk is full.
+ */
+function failWrites() {
+  const put = IDBObjectStore.prototype.put;
+
+  spies.push(
+    spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
+      this: IDBObjectStore,
+      ...args: Parameters<IDBObjectStore['put']>
+    ) {
+      const request = put.apply(this, args);
+
+      this.transaction.abort();
+
+      return request;
+    }),
+  );
 }
 
 const cachedMatch = {
@@ -212,11 +259,7 @@ describe('loadDatabase', () => {
   });
 
   test('switches back to the preferred source once it answers again', async () => {
-    await writeDatabaseInfo({
-      lastUpdate: '2026-10-01',
-      source: 'athanasso/anime-offline-database',
-      checkedAt: 0,
-    });
+    await storeDatabase({ source: 'athanasso/anime-offline-database' });
     fetchMock = mockFetch(databaseRoutes({ lastUpdate: '2026-10-01' }));
 
     await loader.loadDatabase();
@@ -228,11 +271,7 @@ describe('loadDatabase', () => {
   });
 
   test('replaces data from an unknown source', async () => {
-    await writeDatabaseInfo({
-      lastUpdate: '2026-10-01',
-      source: 'manami-project/anime-offline-database',
-      checkedAt: 0,
-    });
+    await storeDatabase({ source: 'manami-project/anime-offline-database' });
     fetchMock = mockFetch(databaseRoutes({ lastUpdate: '2026-10-01' }));
 
     await loader.loadDatabase();
@@ -331,20 +370,7 @@ describe('loadDatabase', () => {
   });
 
   test("uses a database it couldn't store until the background restarts", async () => {
-    const put = IDBObjectStore.prototype.put;
-
-    spies.push(
-      spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
-        this: IDBObjectStore,
-        ...args: Parameters<IDBObjectStore['put']>
-      ) {
-        const request = put.apply(this, args);
-
-        this.transaction.abort();
-
-        return request;
-      }),
-    );
+    failWrites();
     fetchMock = mockFetch(databaseRoutes());
 
     await loader.loadDatabase();
@@ -369,10 +395,88 @@ describe('loadDatabase', () => {
 
     await loader.loadDatabase();
 
+    // Downloaded all the same, and kept in memory
+    expect(downloads()).toEqual([databaseURLs.primary]);
+    expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
+      title: 'Sousou no Frieren',
+    });
+  });
+
+  test("doesn't ask the next source when the update check can't be stored", async () => {
+    await storeDatabase();
+    failWrites();
+    fetchMock = mockFetch(databaseRoutes());
+
+    await loader.loadDatabase();
+
+    expect(requested(databaseURLs.primaryLastUpdate)).toBe(1);
+    expect(requested(databaseURLs.fallbackLastUpdate)).toBe(0);
     expect(downloads()).toEqual([]);
+  });
+
+  test('checks for updates when the last check seems to be in the future', async () => {
+    // The clock was set back after the check
+    await storeDatabase({ checkedAt: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+    fetchMock = mockFetch(databaseRoutes());
+
+    await loader.loadDatabase();
+
+    expect(requested(databaseURLs.primaryLastUpdate)).toBe(1);
+  });
+
+  test('downloads the database again when its index is missing', async () => {
+    await storeDatabase({ checkedAt: Date.now() });
+    await removeDatabaseIndex();
+    fetchMock = mockFetch(databaseRoutes());
+
+    await loader.loadDatabase();
+
+    expect(downloads()).toEqual([databaseURLs.primary]);
+  });
+
+  test("drops a stored index it can't read, so the next start downloads it again", async () => {
+    await writeDatabase(
+      {
+        lastUpdate: '2026-10-01',
+        source: 'cedya77/anime-offline-database',
+        checkedAt: Date.now(),
+      },
+      {
+        entries: '[not json',
+        terms: '',
+        offsets: new ArrayBuffer(4),
+        postings: new ArrayBuffer(0),
+      },
+    );
+    fetchMock = mockFetch(databaseRoutes());
+    await loader.loadDatabase();
+
     expect(
       await loader.searchAnimeByTitle('Sousou no Frieren'),
     ).toBeUndefined();
+    expect(await readDatabaseIndex()).toBeUndefined();
+    expect(downloads()).toEqual([]);
+
+    await restart();
+    await loader.loadDatabase();
+
+    expect(downloads()).toEqual([databaseURLs.primary]);
+  });
+
+  test('a search made before the update starts waits for it when nothing is stored', async () => {
+    // The update starts after the sign-in check, which `engage` passes
+    const signInCheck = Promise.withResolvers<void>();
+
+    fetchMock = mockFetch(databaseRoutes());
+
+    const update = loader.loadDatabase(signInCheck.promise);
+    const search = loader.searchAnimeByTitle('Sousou no Frieren');
+
+    // Long enough for the search to find nothing stored and wait for the update
+    realSetTimeout(signInCheck.resolve, 50);
+
+    expect(await search).toMatchObject({ title: 'Sousou no Frieren' });
+    await update;
   });
 });
 
@@ -401,29 +505,91 @@ describe('searchAnimeByTitle', () => {
     expect(indexReads()).toBe(1);
   });
 
-  test('waits for a running update rather than reading the database it replaces', async () => {
+  test('searches the stored database while the update check runs', async () => {
+    const check = Promise.withResolvers<void>();
+
+    routesAgain({
+      ...databaseRoutes(),
+      [databaseURLs.primaryLastUpdate]: async () => {
+        await check.promise;
+
+        return Response.json({ lastUpdate: '2026-10-01' });
+      },
+    });
+    aDayLater();
+    await restart();
+
+    const update = loader.loadDatabase();
+
+    // Answered while the check waits for GitHub
+    expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
+      title: 'Sousou no Frieren',
+    });
+
+    check.resolve();
+    await update;
+  });
+
+  test('waits for a running download rather than reading the database it replaces', async () => {
     const newAnime = {
       title: 'Brand New Anime',
       type: 'TV',
       sources: ['https://anilist.co/anime/3'],
       synonyms: [],
     } as unknown as AnimeData;
+    const downloadStarted = Promise.withResolvers<void>();
+    const finishDownload = Promise.withResolvers<void>();
 
-    routesAgain(
-      databaseRoutes({
-        lastUpdate: '2026-10-08',
-        entries: [...databaseEntries, newAnime],
-      }),
-    );
+    routesAgain({
+      ...databaseRoutes({ lastUpdate: '2026-10-08' }),
+      [databaseURLs.primary]: async () => {
+        downloadStarted.resolve();
+        await finishDownload.promise;
+
+        return Response.json({ data: [...databaseEntries, newAnime] });
+      },
+    });
     aDayLater();
     await restart();
 
     const update = loader.loadDatabase();
 
-    expect(await loader.searchAnimeByTitle('Brand New Anime')).toMatchObject({
-      title: 'Brand New Anime',
-    });
+    await downloadStarted.promise;
+
+    const search = loader.searchAnimeByTitle('Brand New Anime');
+
+    finishDownload.resolve();
+
+    expect(await search).toMatchObject({ title: 'Brand New Anime' });
     await update;
+  });
+
+  test('reads the stored database again after a failed read', async () => {
+    const get = IDBObjectStore.prototype.get;
+    let failures = 0;
+
+    spies.push(
+      spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (
+        this: IDBObjectStore,
+        key: IDBValidKey | IDBKeyRange,
+      ) {
+        // Both reads of the first search: before and after waiting for the update
+        if (key === 'index' && failures++ < 2) {
+          throw new DOMException('Read failed', 'UnknownError');
+        }
+
+        return get.call(this, key);
+      }),
+    );
+    await restart();
+    await loader.loadDatabase();
+
+    expect(
+      await loader.searchAnimeByTitle('Sousou no Frieren'),
+    ).toBeUndefined();
+    expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
+      title: 'Sousou no Frieren',
+    });
   });
 
   test('returns a cached match without searching', async () => {

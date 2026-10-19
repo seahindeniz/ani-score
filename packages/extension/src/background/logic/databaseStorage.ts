@@ -27,18 +27,21 @@ function openDatabase() {
   });
 }
 
+/**
+ * Runs `use` in a transaction, and resolves with what the function it returns gives once the transaction completes.
+ */
 async function withStore<Result>(
   mode: IDBTransactionMode,
-  use: (store: IDBObjectStore) => IDBRequest,
+  use: (store: IDBObjectStore) => () => Result,
 ) {
   const database = await openDatabase();
 
   try {
     return await new Promise<Result>((resolve, reject) => {
       const transaction = database.transaction(storeName, mode);
-      const request = use(transaction.objectStore(storeName));
+      const result = use(transaction.objectStore(storeName));
 
-      transaction.oncomplete = () => resolve(request.result as Result);
+      transaction.oncomplete = () => resolve(result());
       // A failed request aborts its transaction; one the browser aborts (e.g. on shutdown) has no error
       transaction.onabort = () =>
         reject(
@@ -51,16 +54,36 @@ async function withStore<Result>(
   }
 }
 
+const noResult = () => undefined;
+
+/**
+ * The info of the stored database, unless its index is missing; then nothing counts as stored, so it's downloaded
+ * again.
+ */
 export const readDatabaseInfo = () =>
-  withStore<DatabaseInfo | undefined>('readonly', (store) => store.get('info'));
+  withStore('readonly', (store) => {
+    const info = store.get('info');
+    const index = store.getKey('index');
+
+    return () =>
+      index.result === undefined
+        ? undefined
+        : (info.result as DatabaseInfo | undefined);
+  });
 
 export const readDatabaseIndex = () =>
-  withStore<AnimeIndexData | undefined>('readonly', (store) =>
-    store.get('index'),
-  );
+  withStore('readonly', (store) => {
+    const index = store.get('index');
+
+    return () => index.result as AnimeIndexData | undefined;
+  });
 
 export const writeDatabaseInfo = (info: DatabaseInfo) =>
-  withStore('readwrite', (store) => store.put(info, 'info'));
+  withStore('readwrite', (store) => {
+    store.put(info, 'info');
+
+    return noResult;
+  });
 
 /**
  * Saves both in one transaction, so the info never describes an index that isn't stored.
@@ -68,6 +91,17 @@ export const writeDatabaseInfo = (info: DatabaseInfo) =>
 export const writeDatabase = (info: DatabaseInfo, index: AnimeIndexData) =>
   withStore('readwrite', (store) => {
     store.put(index, 'index');
+    store.put(info, 'info');
 
-    return store.put(info, 'info');
+    return noResult;
+  });
+
+/**
+ * Drops an index that can't be read, so the next update check downloads the database again.
+ */
+export const removeDatabaseIndex = () =>
+  withStore('readwrite', (store) => {
+    store.delete('index');
+
+    return noResult;
   });

@@ -13,8 +13,9 @@ export async function engage() {
   initialized = true;
 
   try {
-    await checkAnilistAuthorization();
-    await loadDatabase();
+    // Runs after the sign-in check, so its badge is set before the loading one, yet a search made during the check
+    // already waits for the database
+    await loadDatabase(checkAnilistAuthorization());
   } catch (error) {
     logger.error(error);
   }

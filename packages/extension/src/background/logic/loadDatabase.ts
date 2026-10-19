@@ -12,6 +12,7 @@ import type { DatabaseInfo } from './databaseStorage';
 import {
   readDatabaseIndex,
   readDatabaseInfo,
+  removeDatabaseIndex,
   writeDatabase,
   writeDatabaseInfo,
 } from './databaseStorage';
@@ -78,9 +79,14 @@ const maxCandidates = 50;
 const animeDatabaseSearchCacheStore = useAnimeDatabaseSearchCacheStore();
 
 /**
- * The running (or last) update. Searches wait for it, rather than load the index it's replacing.
+ * The running (or last) update: the check, and the download it starts. Searches wait for it only while no database is
+ * stored, as on a first install.
  */
-let update = Promise.resolve();
+let update: Promise<unknown> = Promise.resolve();
+/**
+ * The running (or last) download. Searches wait for it, rather than read the index it's replacing.
+ */
+let download: Promise<unknown> = Promise.resolve();
 /**
  * Read on the first search that misses the cache, so a restart that only meets cached titles never reads it.
  */
@@ -178,7 +184,7 @@ async function downloadDatabase(source: DatabaseSource, lastUpdate: string) {
     await browser.action.setBadgeBackgroundColor({ color: '#ffd000ff' });
   }
 
-  let indexData;
+  let built;
 
   try {
     const { data } = await fetchJSON<{ data: AnimeData[] }>(source.databaseURL);
@@ -186,22 +192,22 @@ async function downloadDatabase(source: DatabaseSource, lastUpdate: string) {
     logger.log(
       `Database fetched, ${data.length} items. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`,
     );
-    indexData = buildAnimeIndex(data);
+    built = buildAnimeIndex(data);
   } catch (error) {
     if (showsProgress) await browser.action.setBadgeText({ text: '' });
 
     throw error;
   }
 
-  animeIndex = Promise.resolve(readAnimeIndex(indexData));
-  // Cached matches point at entries of the replaced database
+  animeIndex = Promise.resolve(built.index);
+  // The new database can hold a closer match, e.g. a season the old one lacked
   animeDatabaseSearchCacheStore.setData({});
 
   try {
     // The checked date is stored rather than the file's own `lastUpdate`, so the next check compares like with like
     await writeDatabase(
       { lastUpdate, source: source.name, checkedAt: Date.now() },
-      indexData,
+      built.stored,
     );
     logger.log(
       `Database stored. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`,
@@ -223,63 +229,82 @@ async function downloadDatabase(source: DatabaseSource, lastUpdate: string) {
 }
 
 async function updateDatabase() {
-  try {
-    const info = await readDatabaseInfo();
+  const info = await readDatabaseInfo().catch((error: unknown) => {
+    // Downloaded all the same, and kept in memory if it can't be stored either
+    logger.error('Error reading the stored database:', error);
 
-    if (!info) {
-      logger.log('No previous database found.');
-      // Earlier versions kept the database in extension storage, which sent it to every open tab on each change
-      void browser.storage.local.remove('animeDatabase');
-    } else if (Date.now() - info.checkedAt < updateCheckInterval) {
+    return undefined;
+  });
+
+  if (!info) {
+    logger.log('No previous database found.');
+    // Earlier versions kept the database in extension storage, which sent it to every open tab on each change
+    void browser.storage.local.remove('animeDatabase');
+  } else {
+    const sinceCheck = Date.now() - info.checkedAt;
+
+    // A check "in the future" means the clock was set back, so it doesn't count
+    if (sinceCheck >= 0 && sinceCheck < updateCheckInterval) {
       logger.log('Checked for database updates recently.');
 
       return;
     }
+  }
 
-    // The first source that answers decides whether an update is needed; later sources are only tried when it fails
-    for (const source of databaseSources) {
-      try {
-        const lastUpdate = await fetchLastUpdate(source);
+  // The first source that answers decides whether an update is needed; later sources are only tried when it fails
+  for (const source of databaseSources) {
+    try {
+      const lastUpdate = await fetchLastUpdate(source);
 
-        if (info && !isDatabaseOutdated(info, source, lastUpdate)) {
-          logger.log('Database is up-to-date.');
-          await writeDatabaseInfo({ ...info, checkedAt: Date.now() });
-
-          return;
-        }
-
-        logger.log(
-          `Database is outdated or not present. Fetching new data from ${source.name}...`,
+      if (info && !isDatabaseOutdated(info, source, lastUpdate)) {
+        logger.log('Database is up-to-date.');
+        // Not storing the check only means asking again on the next start; the next source isn't asked
+        await writeDatabaseInfo({ ...info, checkedAt: Date.now() }).catch(
+          (error: unknown) =>
+            logger.error('Error storing the update check:', error),
         );
-        await downloadDatabase(source, lastUpdate);
 
         return;
-      } catch (error) {
-        logger.error(`Error updating database from ${source.name}:`, error);
       }
+
+      logger.log(
+        `Database is outdated or not present. Fetching new data from ${source.name}...`,
+      );
+      download = downloadDatabase(source, lastUpdate);
+      await download;
+
+      return;
+    } catch (error) {
+      logger.error(`Error updating database from ${source.name}:`, error);
     }
-  } catch (error) {
-    logger.error('Error updating database:', error);
   }
 }
 
 /**
- * Checks for a newer database, at most once a day, and downloads it. The stored one is read by the first search.
+ * Checks for a newer database, at most once a day, and downloads it; the stored one is read by the first search. The
+ * check starts once `after` settles, but a search made before then already waits for it when no database is stored.
  */
-export function loadDatabase() {
-  update = updateDatabase();
+export function loadDatabase(after: Promise<unknown> = Promise.resolve()) {
+  update = after.then(updateDatabase);
 
   return update;
 }
 
 async function readStoredIndex() {
   const startTime = performance.now();
+  let data;
 
   try {
-    const data = await readDatabaseIndex();
+    data = await readDatabaseIndex();
+  } catch (error) {
+    logger.error('Error loading database:', error);
 
-    if (!data) return undefined;
+    return undefined;
+  }
 
+  if (!data) return undefined;
+
+  try {
     const index = readAnimeIndex(data);
 
     logger.log(
@@ -288,17 +313,34 @@ async function readStoredIndex() {
 
     return index;
   } catch (error) {
-    logger.error('Error loading database:', error);
+    logger.error('The stored database is unreadable:', error);
+    void removeDatabaseIndex();
 
     return undefined;
   }
 }
 
-async function getAnimeIndex() {
-  await update;
-  animeIndex ??= readStoredIndex();
+async function readIndex() {
+  const reading = (animeIndex ??= readStoredIndex());
+  const index = await reading;
 
-  return animeIndex;
+  // The next search reads again, unless a download has replaced it meanwhile
+  if (!index && animeIndex === reading) animeIndex = undefined;
+
+  return index;
+}
+
+async function getAnimeIndex() {
+  await Promise.allSettled([download]);
+
+  const index = await readIndex();
+
+  if (index) return index;
+
+  // None stored, as on a first install: the running update may download one
+  await Promise.allSettled([update]);
+
+  return readIndex();
 }
 
 function sortSearchResults(

@@ -4,6 +4,7 @@ import { buildAnimeIndex } from '../animeIndex';
 import {
   readDatabaseIndex,
   readDatabaseInfo,
+  removeDatabaseIndex,
   writeDatabase,
   writeDatabaseInfo,
 } from '../databaseStorage';
@@ -35,7 +36,7 @@ describe('database storage', () => {
         sources: ['https://anilist.co/anime/154587'],
         synonyms: [],
       } as never,
-    ]);
+    ]).stored;
 
     await writeDatabase(info, index);
 
@@ -45,6 +46,18 @@ describe('database storage', () => {
     await writeDatabaseInfo({ ...info, checkedAt: 2000 });
 
     expect(await readDatabaseInfo()).toEqual({ ...info, checkedAt: 2000 });
+  });
+
+  test('counts info without its index as nothing stored', async () => {
+    await writeDatabase(info, buildAnimeIndex([]).stored);
+    await removeDatabaseIndex();
+
+    expect(await readDatabaseIndex()).toBeUndefined();
+    expect(await readDatabaseInfo()).toBeUndefined();
+
+    await writeDatabaseInfo(info);
+
+    expect(await readDatabaseInfo()).toBeUndefined();
   });
 
   test("fails when the database can't be opened", async () => {
