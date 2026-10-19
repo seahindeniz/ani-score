@@ -49,7 +49,7 @@ function createAlias(title: string, index: number): string {
 }
 
 function generateBatchQuery(
-  animeList: ReturnType<typeof findAnimeListInDatabase>,
+  animeList: Awaited<ReturnType<typeof findAnimeListInDatabase>>,
 ) {
   let currentChunk: FieldNode[] = [];
   let chunkIndex = 0;
@@ -159,8 +159,8 @@ function removeAllBeforeSlash(url: string): string {
   return url.replace(/.*\//, '');
 }
 
-function findSourceInDatabase(title: string) {
-  const anime = searchAnimeByTitle(title);
+async function findSourceInDatabase(title: string) {
+  const anime = await searchAnimeByTitle(title);
 
   if (!anime) {
     return undefined;
@@ -189,11 +189,13 @@ function findSourceInDatabase(title: string) {
 }
 
 function findAnimeListInDatabase(titles: string[]) {
-  return titles.map((title) => {
-    const sources = findSourceInDatabase(title);
+  return Promise.all(
+    titles.map(async (title) => {
+      const sources = await findSourceInDatabase(title);
 
-    return { title, ...sources };
-  });
+      return { title, ...sources };
+    }),
+  );
 }
 
 type FetchResult = Record<
@@ -220,7 +222,7 @@ export async function fetchDetails(props: Props) {
   logger.log('Fetching details for titles:', missing);
 
   try {
-    const dbResult = findAnimeListInDatabase(missing);
+    const dbResult = await findAnimeListInDatabase(missing);
     const queries = generateBatchQuery(dbResult);
     const queryPromises = [];
 

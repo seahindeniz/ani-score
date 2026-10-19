@@ -1,15 +1,20 @@
 import type { FuzzyResult } from '@nozbe/microfuzz';
 import microfuzz from '@nozbe/microfuzz';
-import type { Options, SearchResult } from 'minisearch';
-import MiniSearch from 'minisearch';
 
-import type { AnimeData } from '~/logic';
-import {
-  useAnimeDatabaseSearchCacheStore,
-  useAnimeDatabaseStore,
-} from '~/logic';
+import type { AnimeData, AnimeMatch } from '~/logic';
+import { useAnimeDatabaseSearchCacheStore } from '~/logic';
 import { logger } from '~/utils/logger';
 import { wait } from '~/utils/wait';
+
+import type { AnimeIndex } from './animeIndex';
+import { buildAnimeIndex, readAnimeIndex } from './animeIndex';
+import type { DatabaseInfo } from './databaseStorage';
+import {
+  readDatabaseIndex,
+  readDatabaseInfo,
+  writeDatabase,
+  writeDatabaseInfo,
+} from './databaseStorage';
 
 // microfuzz is CommonJS with its function on `exports.default`. Vite 8 follows Node and imports `module.exports`
 // as the default, while Bun (unit tests) imports `exports.default`, so take the function from either shape.
@@ -57,49 +62,32 @@ const databaseSources: DatabaseSource[] = [
   },
 ];
 
-const animeDatabaseStore = useAnimeDatabaseStore();
+/**
+ * The sources publish weekly and each check is a request to GitHub, while the background restarts whenever it has been
+ * idle for a while (30 seconds on Chrome), so it checks at most this often.
+ */
+const updateCheckInterval = 24 * 60 * 60 * 1000;
+
+/**
+ * How many of the entries the index finds are compared with the title. A common word like "no" makes it find
+ * thousands, and comparing all of them took over 100 ms per title. The index ranks entries sharing the title's rarer
+ * words first, and in 600 sample titles the closest entry was among the first 50.
+ */
+const maxCandidates = 50;
+
 const animeDatabaseSearchCacheStore = useAnimeDatabaseSearchCacheStore();
 
-let deepSearch: MiniSearch<AnimeData>;
+/**
+ * The running (or last) update. Searches wait for it, rather than load the index it's replacing.
+ */
+let update = Promise.resolve();
+/**
+ * Read on the first search that misses the cache, so a restart that only meets cached titles never reads it.
+ */
+let animeIndex: Promise<AnimeIndex | undefined> | undefined;
 
 const getBadgeText = async () =>
   (await browser.action.getBadgeText({ tabId: undefined })).trim();
-
-async function setDeepSearchInstance(
-  props:
-    | { data: AnimeData[]; lastUpdate: string; source: string }
-    | { index: string },
-) {
-  const options = {
-    fields: ['title', 'synonyms'],
-    storeFields: ['title', 'type', 'sources', 'synonyms'],
-  } as Options<AnimeData>;
-
-  deepSearch = new MiniSearch<AnimeData>(options);
-
-  if ('data' in props) {
-    await deepSearch.addAllAsync(props.data);
-    animeDatabaseStore.setData({
-      lastUpdate: props.lastUpdate,
-      source: props.source,
-      data: JSON.stringify(deepSearch),
-    });
-    // Cached matches point at entries of the replaced database
-    animeDatabaseSearchCacheStore.setData({});
-  } else {
-    deepSearch = await MiniSearch.loadJSONAsync<AnimeData>(
-      props.index,
-      options,
-    );
-  }
-
-  if (!(await getBadgeText())) {
-    browser.action.setBadgeBackgroundColor({ color: '#00ff00' });
-    setTimeout(() => {
-      browser.action.setBadgeText({ text: '' });
-    }, 2000);
-  }
-}
 
 class FetchError extends Error {
   constructor(
@@ -157,18 +145,13 @@ async function fetchLastUpdate(
   return lastUpdate;
 }
 
-function isDatabaseOutdated(source: DatabaseSource, lastUpdate: string) {
-  const { lastUpdate: currentLastUpdate, source: currentSource } =
-    animeDatabaseStore.data();
-
-  if (!currentLastUpdate) {
-    logger.log('No previous database found.');
-
-    return true;
-  }
-
+function isDatabaseOutdated(
+  info: DatabaseInfo,
+  source: DatabaseSource,
+  lastUpdate: string,
+) {
   const currentSourceIndex = databaseSources.findIndex(
-    ({ name }) => name === currentSource,
+    ({ name }) => name === info.source,
   );
 
   // Replace data from an unknown source, or from a fallback once a preferred source answers again, regardless of dates.
@@ -177,108 +160,150 @@ function isDatabaseOutdated(source: DatabaseSource, lastUpdate: string) {
     currentSourceIndex === -1
     || databaseSources.indexOf(source) < currentSourceIndex
   ) {
-    logger.log(
-      `Stored database comes from ${currentSource || 'an unknown source'}.`,
-    );
+    logger.log(`Stored database comes from ${info.source}.`);
 
     return true;
   }
 
-  return new Date(lastUpdate) > new Date(currentLastUpdate);
+  return new Date(lastUpdate) > new Date(info.lastUpdate);
 }
 
-async function storeDatabase(data: {
-  data: AnimeData[];
-  lastUpdate: string;
-  source: string;
-}) {
+async function downloadDatabase(source: DatabaseSource, lastUpdate: string) {
   const startTime = performance.now();
+  // Searches wait for the download, so the badge shows one is running; a badge that's already shown is left alone
+  const showsProgress = !(await getBadgeText());
 
-  const filteredData = data.data
-    .filter((item) =>
-      item.sources.some(
-        (source) =>
-          source.includes('anilist.co') || source.includes('myanimelist.net'),
-      ),
-    )
-    .map((item) => ({ ...item, id: crypto.randomUUID() }));
+  if (showsProgress) {
+    await browser.action.setBadgeText({ text: ' ' });
+    await browser.action.setBadgeBackgroundColor({ color: '#ffd000ff' });
+  }
 
-  const newDatabase = {
-    data: filteredData,
-    lastUpdate: data.lastUpdate,
-    source: data.source,
-  };
-
-  await setDeepSearchInstance(newDatabase);
-  logger.log(
-    `Database stored. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`,
-  );
-}
-
-export async function loadDatabase() {
-  const startTime = performance.now();
+  let indexData;
 
   try {
-    if (!(await getBadgeText())) {
-      await browser.action.setBadgeText({ text: ' ' });
-      await browser.action.setBadgeBackgroundColor({ color: '#ffd000ff' });
-    }
+    const { data } = await fetchJSON<{ data: AnimeData[] }>(source.databaseURL);
 
-    await animeDatabaseStore.dataReady;
+    logger.log(
+      `Database fetched, ${data.length} items. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`,
+    );
+    indexData = buildAnimeIndex(data);
+  } catch (error) {
+    if (showsProgress) await browser.action.setBadgeText({ text: '' });
+
+    throw error;
+  }
+
+  animeIndex = Promise.resolve(readAnimeIndex(indexData));
+  // Cached matches point at entries of the replaced database
+  animeDatabaseSearchCacheStore.setData({});
+
+  try {
+    // The checked date is stored rather than the file's own `lastUpdate`, so the next check compares like with like
+    await writeDatabase(
+      { lastUpdate, source: source.name, checkedAt: Date.now() },
+      indexData,
+    );
+    logger.log(
+      `Database stored. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`,
+    );
+  } catch (error) {
+    // Rather than download it again from the next source
+    logger.error(
+      'Could not store the database; it is kept until the background restarts:',
+      error,
+    );
+  }
+
+  if (showsProgress) {
+    browser.action.setBadgeBackgroundColor({ color: '#00ff00' });
+    setTimeout(() => {
+      browser.action.setBadgeText({ text: '' });
+    }, 2000);
+  }
+}
+
+async function updateDatabase() {
+  try {
+    const info = await readDatabaseInfo();
+
+    if (!info) {
+      logger.log('No previous database found.');
+      // Earlier versions kept the database in extension storage, which sent it to every open tab on each change
+      void browser.storage.local.remove('animeDatabase');
+    } else if (Date.now() - info.checkedAt < updateCheckInterval) {
+      logger.log('Checked for database updates recently.');
+
+      return;
+    }
 
     // The first source that answers decides whether an update is needed; later sources are only tried when it fails
     for (const source of databaseSources) {
       try {
         const lastUpdate = await fetchLastUpdate(source);
 
-        if (!isDatabaseOutdated(source, lastUpdate)) {
+        if (info && !isDatabaseOutdated(info, source, lastUpdate)) {
           logger.log('Database is up-to-date.');
-          break;
+          await writeDatabaseInfo({ ...info, checkedAt: Date.now() });
+
+          return;
         }
 
         logger.log(
           `Database is outdated or not present. Fetching new data from ${source.name}...`,
         );
-
-        const { data } = await fetchJSON<{ data: AnimeData[] }>(
-          source.databaseURL,
-        );
-
-        logger.log(
-          `Database fetched, ${data.length} items. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`,
-        );
-        // The checked date is stored rather than the file's own `lastUpdate`, so the next check compares like with like
-        await storeDatabase({ data, lastUpdate, source: source.name });
+        await downloadDatabase(source, lastUpdate);
 
         return;
       } catch (error) {
         logger.error(`Error updating database from ${source.name}:`, error);
       }
     }
-
-    logger.log('Loading database from storage...');
-    await setDeepSearchInstance({ index: animeDatabaseStore.data().data });
-    logger.log(
-      `Database loaded. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`,
-    );
   } catch (error) {
-    logger.error('Error loading database:', error);
+    logger.error('Error updating database:', error);
   }
 }
 
-function mapResults(result: SearchResult) {
-  return {
-    id: result.id as string,
-    title: result.title as AnimeData['title'],
-    type: result.type as AnimeData['type'],
-    sources: result.sources as AnimeData['sources'],
-    synonyms: result.synonyms as AnimeData['synonyms'],
-  };
+/**
+ * Checks for a newer database, at most once a day, and downloads it. The stored one is read by the first search.
+ */
+export function loadDatabase() {
+  update = updateDatabase();
+
+  return update;
+}
+
+async function readStoredIndex() {
+  const startTime = performance.now();
+
+  try {
+    const data = await readDatabaseIndex();
+
+    if (!data) return undefined;
+
+    const index = readAnimeIndex(data);
+
+    logger.log(
+      `Database loaded. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`,
+    );
+
+    return index;
+  } catch (error) {
+    logger.error('Error loading database:', error);
+
+    return undefined;
+  }
+}
+
+async function getAnimeIndex() {
+  await update;
+  animeIndex ??= readStoredIndex();
+
+  return animeIndex;
 }
 
 function sortSearchResults(
-  a: FuzzyResult<ReturnType<typeof mapResults>>,
-  b: FuzzyResult<ReturnType<typeof mapResults>>,
+  a: FuzzyResult<AnimeMatch>,
+  b: FuzzyResult<AnimeMatch>,
 ) {
   if (a.score === b.score) {
     return a.item.type === 'TV' ? -1 : 1;
@@ -287,14 +312,18 @@ function sortSearchResults(
   return a.score - b.score;
 }
 
-export function searchAnimeByTitle(title: string) {
+export async function searchAnimeByTitle(title: string) {
+  // Until the cache has loaded, every title would look new, and the first match stored would replace the others
+  await animeDatabaseSearchCacheStore.dataReady;
+
   const anime = animeDatabaseSearchCacheStore.data()[title];
 
   if (anime) {
     return anime;
   }
 
-  const narrowedDb = deepSearch.search(title).map(mapResults);
+  const narrowedDb =
+    (await getAnimeIndex())?.search(title, maxCandidates) ?? [];
 
   if (!narrowedDb.length) {
     return undefined;
@@ -305,10 +334,7 @@ export function searchAnimeByTitle(title: string) {
   }
 
   const fuzzySearch = createFuzzySearch(narrowedDb, {
-    getText: (item: (typeof narrowedDb)[number]) => [
-      item.title,
-      ...(item.synonyms ?? []),
-    ],
+    getText: (item: AnimeMatch) => [item.title, ...(item.synonyms ?? [])],
   });
 
   const [result] = fuzzySearch(title).toSorted(sortSearchResults) || [];

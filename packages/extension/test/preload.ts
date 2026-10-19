@@ -1,6 +1,7 @@
 import { afterEach, mock } from 'bun:test';
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
+import 'fake-indexeddb/auto';
 import { plugin } from 'bun';
 
 import { fakeBrowser, resetFakeBrowser } from './fake-browser';
@@ -28,6 +29,8 @@ mock.module('webextension-polyfill', () => ({ default: fakeBrowser }));
 
 afterEach(() => {
   resetFakeBrowser();
+  // fake-indexeddb installs the IndexedDB globals; a new factory starts each test with no databases
+  globalThis.indexedDB = new IDBFactory();
   document.body.replaceChildren();
   document.head.replaceChildren();
 });

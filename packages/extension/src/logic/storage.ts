@@ -117,27 +117,17 @@ export interface AnimeData {
   tags: string[];
 }
 
-export const useAnimeDatabaseStore = createPersistedStore('animeDatabase', {
-  lastUpdate: '',
-  /**
-   * Name of the database source the stored data came from.
-   */
-  source: '',
-  data: '',
-});
+/**
+ * A database entry, with only the AniList and MyAnimeList sources.
+ */
+export type AnimeMatch = Pick<
+  AnimeData,
+  'title' | 'type' | 'sources' | 'synonyms'
+>;
 
 export const useAnimeDatabaseSearchCacheStore = createPersistedStore(
   'animeDatabaseResult',
-  {} as Record<
-    string,
-    {
-      id: string;
-      title: AnimeData['title'];
-      type: AnimeData['type'];
-      sources: AnimeData['sources'];
-      synonyms: AnimeData['synonyms'];
-    }
-  >,
+  {} as Record<string, AnimeMatch>,
 );
 
 /**
