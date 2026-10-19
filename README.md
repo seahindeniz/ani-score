@@ -30,7 +30,7 @@ with AniScore** (see [Add a Site](https://aniscore.link/guide/add-a-site)).
 
 - [Vitesse WebExt](https://github.com/antfu-collective/vitesse-webext) as the boilerplate for creating this extension
 - [Anilist.co](https://anilist.co/) as the live source for anime details
-- [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database) (with [athanasso/anime-offline-database](https://github.com/athanasso/anime-offline-database) as a fallback) as the source for anime search and match, both continuations of the archived [manami-project/anime-offline-database](https://github.com/manami-project/anime-offline-database)
+- [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database) (with [athanasso/anime-offline-database](https://github.com/athanasso/anime-offline-database) as a fallback) as the source for anime search and match, both continuations of the archived [manami-project/anime-offline-database](https://github.com/manami-project/anime-offline-database). The extension downloads it as an index that [aniscore.link](https://aniscore.link/guide/ratings) builds from it daily, shared under the same ODbL licence
 - Site-specific config structure is inspired by the [MALSync](https://github.com/MALSync/MALSync) extension
 - ...rest of the dependencies are in the package.json
 

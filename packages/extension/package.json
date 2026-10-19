@@ -41,6 +41,7 @@
     "test": "bun test --conditions development --conditions browser --coverage && bun scripts/check-coverage.ts",
     "test:e2e": "playwright test",
     "codegen": "graphql-codegen",
+    "anime-index": "bun scripts/anime-index.ts",
     "release": "release-it",
     "test:watch": "bun test --conditions development --conditions browser --watch"
   },

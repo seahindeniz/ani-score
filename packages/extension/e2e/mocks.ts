@@ -1,5 +1,17 @@
 import type { BrowserContext, Route } from '@playwright/test';
 
+import {
+  animeIndexFormat,
+  buildAnimeIndex,
+  packAnimeIndex,
+} from '../src/background/logic/animeIndex';
+import {
+  prebuiltIndexFiles,
+  prebuiltIndexSite,
+  sha256,
+} from '../src/background/logic/databaseSources';
+import type { AnimeData } from '../src/logic/animeData';
+
 /**
  * The fields of an anime-offline-database entry that the extension indexes.
  */
@@ -196,7 +208,12 @@ export async function mockNetwork(
   options: {
     media?: MediaFixture[];
     /**
-     * Makes the preferred database source fail, so the fallback source is used.
+     * Makes the site's prebuilt index unavailable, so the upstream sources are used.
+     * @default false
+     */
+    prebuiltIndexDown?: boolean;
+    /**
+     * Makes the preferred upstream source fail, so the fallback source is used.
      * @default false
      */
     primaryDatabaseDown?: boolean;
@@ -206,7 +223,12 @@ export async function mockNetwork(
     pages?: Record<string, string>;
   } = {},
 ) {
-  const { media = [], primaryDatabaseDown = false, pages = {} } = options;
+  const {
+    media = [],
+    prebuiltIndexDown = false,
+    primaryDatabaseDown = false,
+    pages = {},
+  } = options;
   const recorded = {
     lookups: [] as AnimeLookup[],
     authorizations: [] as (string | undefined)[],
@@ -226,6 +248,33 @@ export async function mockNetwork(
   );
   await context.route(databaseURLs.fallbackLastUpdate, (route) =>
     json(route, { published_at: '2026-10-01T00:00:00Z' }),
+  );
+
+  // The site's prebuilt index, built from the same entries as the upstream database
+  const prebuiltFile = packAnimeIndex(
+    buildAnimeIndex(database as unknown as AnimeData[]).stored,
+  );
+  const prebuiltSha256 = await sha256(prebuiltFile);
+  const prebuiltURL = (file: string) => new URL(file, prebuiltIndexSite).href;
+
+  await context.route(prebuiltURL(prebuiltIndexFiles.metadata), (route) =>
+    prebuiltIndexDown
+      ? route.fulfill({ status: 404 })
+      : json(route, {
+          format: animeIndexFormat,
+          source: 'cedya77/anime-offline-database',
+          lastUpdate: '2026-10-01',
+          checkedAt: new Date().toISOString(),
+          sha256: prebuiltSha256,
+        }),
+  );
+  await context.route(
+    (url) => url.href.startsWith(prebuiltURL(prebuiltIndexFiles.index)),
+    (route) => {
+      recorded.databaseDownloads.push(route.request().url());
+
+      return route.fulfill({ body: Buffer.from(Bun.gzipSync(prebuiltFile)) });
+    },
   );
 
   for (const url of [databaseURLs.primary, databaseURLs.fallback]) {

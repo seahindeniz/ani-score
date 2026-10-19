@@ -24,4 +24,6 @@ AniList'in detaylı içerik etiketleri (anime başına 5'e kadar) de görüntül
 
 Tüm veriler [AniList GraphQL API](https://anilist.gitbook.io/anilist-apiv2-docs/)'sinden gelir. AniScore, bulanık başlık eşleştirmesi için [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database)'ten (erişilemezse [athanasso/anime-offline-database](https://github.com/athanasso/anime-offline-database)'ten) çevrimdışı bir anime veritabanı kullanır, ardından AniList'ten detaylı bilgileri çeker.
 
+AniScore bu veritabanını, bu sitenin her gün oluşturduğu hazır bir dizin olarak indirir: kaynak veritabanının yaklaşık 60 MB'ına karşılık yaklaşık 5 MB. Dizin (`anime-index-v1.json` ve dosyası) türetilmiş bir veritabanıdır; aynı [Open Database License](https://opendatacommons.org/licenses/odbl/1-0/) altında, içeriği [Database Contents License](https://opendatacommons.org/licenses/dbcl/1-0/) altında paylaşılır ve [manami-project/anime-offline-database](https://github.com/manami-project/anime-offline-database) üzerine kuruludur. Site erişilemezse AniScore kaynak veritabanını indirir.
+
 Bu iki adımlı yaklaşım, izleme siteleri farklı başlık formatları veya yazım biçimleri kullansa bile doğru eşleştirme yapılmasını sağlar.

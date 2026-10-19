@@ -9,8 +9,10 @@ import {
   databaseRoutes,
   databaseURLs,
   mockFetch,
+  prebuiltRoutes,
+  prebuiltURLs,
 } from '../../__tests__/network';
-import { buildAnimeIndex } from '../animeIndex';
+import { buildAnimeIndex, packAnimeIndex } from '../animeIndex';
 import type { DatabaseInfo } from '../databaseStorage';
 import {
   readDatabaseIndex,
@@ -227,8 +229,9 @@ describe('loadDatabase', () => {
     await restart();
     await loader.loadDatabase();
 
-    // Asked, and found the stored database up to date
+    // Asked (the prebuilt index isn't published in this test), and found the stored database up to date
     expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual([
+      prebuiltURLs.metadata,
       databaseURLs.primaryLastUpdate,
     ]);
     expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
@@ -605,6 +608,104 @@ describe('loadDatabase', () => {
 
     expect(await search).toMatchObject({ title: 'Sousou no Frieren' });
     await update;
+  });
+});
+
+describe('prebuilt index', () => {
+  test('is downloaded rather than the upstream database', async () => {
+    const prebuilt = await prebuiltRoutes();
+
+    fetchMock = mockFetch({ ...prebuilt.routes, ...databaseRoutes() });
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuilt.indexURL)).toBe(1);
+    expect(downloads()).toEqual([]);
+    // Stored as data of the source it was built from
+    expect(await readDatabaseInfo()).toMatchObject({
+      lastUpdate: '2026-10-01',
+      source: 'cedya77/anime-offline-database',
+    });
+    expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
+      title: 'Sousou no Frieren',
+    });
+  });
+
+  test("doesn't replace the same data downloaded from its source", async () => {
+    const prebuilt = await prebuiltRoutes({ lastUpdate: '2026-10-01' });
+
+    await storeDatabase({ lastUpdate: '2026-10-01' });
+    fetchMock = mockFetch({ ...prebuilt.routes, ...databaseRoutes() });
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuilt.indexURL)).toBe(0);
+    expect(requested(databaseURLs.primaryLastUpdate)).toBe(0);
+  });
+
+  test('replaces older data with newer', async () => {
+    const prebuilt = await prebuiltRoutes({ lastUpdate: '2026-10-08' });
+
+    await storeDatabase({ lastUpdate: '2026-10-01' });
+    fetchMock = mockFetch(prebuilt.routes);
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuilt.indexURL)).toBe(1);
+    expect((await readDatabaseInfo())?.lastUpdate).toBe('2026-10-08');
+  });
+
+  test('is also read when served decompressed', async () => {
+    const prebuilt = await prebuiltRoutes({ serve: (file) => file });
+
+    fetchMock = mockFetch(prebuilt.routes);
+
+    await loader.loadDatabase();
+
+    expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
+      title: 'Sousou no Frieren',
+    });
+  });
+
+  test("is skipped for the upstream source when it doesn't match its SHA-256", async () => {
+    // A well-formed index, but not the one the metadata describes, as a cache could still hold an older one
+    const prebuilt = await prebuiltRoutes({
+      serve: () =>
+        Bun.gzipSync(
+          packAnimeIndex(buildAnimeIndex([databaseEntries[0]]).stored),
+        ),
+    });
+
+    fetchMock = mockFetch({ ...prebuilt.routes, ...databaseRoutes() });
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuilt.indexURL)).toBe(1);
+    expect(downloads()).toEqual([databaseURLs.primary]);
+  });
+
+  test('is skipped for the upstream source once the site stopped building it', async () => {
+    const prebuilt = await prebuiltRoutes({
+      checkedAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
+    });
+
+    fetchMock = mockFetch({ ...prebuilt.routes, ...databaseRoutes() });
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuilt.indexURL)).toBe(0);
+    expect(downloads()).toEqual([databaseURLs.primary]);
+  });
+
+  test('of another format is skipped for the upstream source, without retrying', async () => {
+    const prebuilt = await prebuiltRoutes({ format: 2 });
+
+    fetchMock = mockFetch({ ...prebuilt.routes, ...databaseRoutes() });
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuiltURLs.metadata)).toBe(1);
+    expect(downloads()).toEqual([databaseURLs.primary]);
   });
 });
 

@@ -1,13 +1,15 @@
 import type { FuzzyResult } from '@nozbe/microfuzz';
 import microfuzz from '@nozbe/microfuzz';
 
-import type { AnimeData, AnimeMatch } from '~/logic';
+import type { AnimeMatch } from '~/logic';
 import { useAnimeDatabaseSearchCacheStore } from '~/logic';
 import { logger } from '~/utils/logger';
 import { wait } from '~/utils/wait';
 
 import type { AnimeIndex } from './animeIndex';
-import { buildAnimeIndex, readAnimeIndex } from './animeIndex';
+import { readAnimeIndex } from './animeIndex';
+import type { DatabaseRelease, DatabaseSource } from './databaseSources';
+import { FetchError, prebuiltSource, upstreamSources } from './databaseSources';
 import type { DatabaseInfo } from './databaseStorage';
 import {
   readDatabaseIndex,
@@ -24,44 +26,13 @@ const createFuzzySearch: typeof microfuzz =
     ? microfuzz
     : (microfuzz as unknown as { default: typeof microfuzz }).default;
 
-interface DatabaseSource {
-  name: string;
-  databaseURL: string;
-  /**
-   * Resolves the source's last update date as `YYYY-MM-DD`.
-   */
-  fetchLastUpdate: () => Promise<string>;
-}
-
 /**
- * Continuations of the archived manami-project/anime-offline-database, in order of preference.
+ * Where releases are asked for, in order: the prebuilt index, then the upstream sources it's built from.
  */
-const databaseSources: DatabaseSource[] = [
-  {
-    name: 'cedya77/anime-offline-database',
-    databaseURL:
-      'https://github.com/cedya77/anime-offline-database/releases/download/latest/anime-offline-database-minified.json',
-    // A small file from the same release, so the update check doesn't download the whole database
-    fetchLastUpdate: async () =>
-      (
-        await fetchJSON<{ lastUpdate: string }>(
-          'https://github.com/cedya77/anime-offline-database/releases/download/latest/animenewsnetwork-minified.json',
-        )
-      ).lastUpdate,
-  },
-  {
-    name: 'athanasso/anime-offline-database',
-    databaseURL:
-      'https://github.com/athanasso/anime-offline-database/releases/latest/download/anime-offline-database-minified.json',
-    // No small metadata file is published and its `lastUpdate` is a Unix timestamp, so the release date is used instead
-    fetchLastUpdate: async () =>
-      (
-        await fetchJSON<{ published_at: string }>(
-          'https://api.github.com/repos/athanasso/anime-offline-database/releases/latest',
-        )
-      ).published_at.slice(0, 10),
-  },
-];
+const databaseSources = [prebuiltSource, ...upstreamSources];
+
+const upstreamRank = (name: string) =>
+  upstreamSources.findIndex((source) => source.name === name);
 
 /**
  * The sources publish weekly and each check is a request to GitHub, while the background restarts whenever it has been
@@ -117,86 +88,62 @@ function isRecent(time: number, interval: number) {
 const getBadgeText = async () =>
   (await browser.action.getBadgeText({ tabId: undefined })).trim();
 
-class FetchError extends Error {
-  constructor(
-    url: string,
-    readonly response: Response,
-  ) {
-    super(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
-  }
-}
-
-async function fetchJSON<T>(url: string) {
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new FetchError(url, response);
-  }
-
-  return (await response.json()) as T;
-}
-
-async function fetchLastUpdate(
+async function fetchRelease(
   source: DatabaseSource,
   retryCount = 0,
-): Promise<string> {
-  let lastUpdate: string;
+): Promise<DatabaseRelease> {
+  let release: DatabaseRelease;
 
   try {
     logger.log(`Fetching metadata from ${source.name} to check for updates...`);
 
-    lastUpdate = await source.fetchLastUpdate();
+    release = await source.fetchRelease();
   } catch (error) {
-    // 4xx responses (missing file, rate limit) won't recover by retrying
-    const isClientError =
+    // Only a failed request (a network or server error) may work when tried again; a missing file, a rate limit or
+    // unexpected metadata won't
+    const isRetryable =
       error instanceof FetchError
-      && error.response.status >= 400
-      && error.response.status < 500;
+        ? error.response.status >= 500
+        : error instanceof TypeError;
 
-    if (retryCount < 3 && !isClientError) {
+    if (retryCount < 3 && isRetryable) {
       logger.warn(`Retrying database update check... (${retryCount + 1}/3)`);
       await wait(1000 * 2 ** retryCount);
 
-      return fetchLastUpdate(source, retryCount + 1);
+      return fetchRelease(source, retryCount + 1);
     }
 
     throw error;
   }
 
   // An unparsable date would make every comparison false and silently keep the stored database forever
-  if (Number.isNaN(Date.parse(lastUpdate))) {
+  if (Number.isNaN(Date.parse(release.lastUpdate))) {
     throw new TypeError(
-      `Invalid last update date from ${source.name}: ${lastUpdate}`,
+      `Invalid last update date from ${source.name}: ${release.lastUpdate}`,
     );
   }
 
-  return lastUpdate;
+  return release;
 }
 
-function isDatabaseOutdated(
-  info: DatabaseInfo,
-  source: DatabaseSource,
-  lastUpdate: string,
-) {
-  const currentSourceIndex = databaseSources.findIndex(
-    ({ name }) => name === info.source,
-  );
+function isDatabaseOutdated(info: DatabaseInfo, release: DatabaseRelease) {
+  const currentSourceIndex = upstreamRank(info.source);
 
   // Replace data from an unknown source, or from a fallback once a preferred source answers again, regardless of dates.
   // A fallback answering for the stored source (e.g. a temporary outage) only replaces it when it has newer data.
   if (
     currentSourceIndex === -1
-    || databaseSources.indexOf(source) < currentSourceIndex
+    || upstreamRank(release.source) < currentSourceIndex
   ) {
     logger.log(`Stored database comes from ${info.source}.`);
 
     return true;
   }
 
-  return new Date(lastUpdate) > new Date(info.lastUpdate);
+  return new Date(release.lastUpdate) > new Date(info.lastUpdate);
 }
 
-async function downloadDatabase(source: DatabaseSource, lastUpdate: string) {
+async function downloadDatabase(release: DatabaseRelease) {
   const startTime = performance.now();
   // A first install's searches wait for the download, so the badge shows one is running; a badge that's already shown
   // is left alone
@@ -212,12 +159,10 @@ async function downloadDatabase(source: DatabaseSource, lastUpdate: string) {
   let built;
 
   try {
-    const { data } = await fetchJSON<{ data: AnimeData[] }>(source.databaseURL);
-
+    built = await release.download();
     logger.log(
-      `Database fetched, ${data.length} items. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`,
+      `Database downloaded. Time taken: ${((performance.now() - startTime) / 1000).toFixed(2)} s`,
     );
-    built = buildAnimeIndex(data);
   } catch (error) {
     if (await showsOwnBadge()) await browser.action.setBadgeText({ text: '' });
 
@@ -232,7 +177,11 @@ async function downloadDatabase(source: DatabaseSource, lastUpdate: string) {
   try {
     // The checked date is stored rather than the file's own `lastUpdate`, so the next check compares like with like
     await writeDatabase(
-      { lastUpdate, source: source.name, checkedAt: Date.now() },
+      {
+        lastUpdate: release.lastUpdate,
+        source: release.source,
+        checkedAt: Date.now(),
+      },
       built.stored,
     );
     logger.log(
@@ -300,9 +249,9 @@ async function updateDatabase() {
   // The first source that answers decides whether an update is needed; later sources are only tried when it fails
   for (const source of databaseSources) {
     try {
-      const lastUpdate = await fetchLastUpdate(source);
+      const release = await fetchRelease(source);
 
-      if (info && !isDatabaseOutdated(info, source, lastUpdate)) {
+      if (info && !isDatabaseOutdated(info, release)) {
         logger.log('Database is up-to-date.');
         // Not storing the check only means asking again on the next start; the next source isn't asked
         await writeDatabaseInfo({ ...info, checkedAt: Date.now() }).catch(
@@ -315,7 +264,7 @@ async function updateDatabase() {
       logger.log(
         `Database is outdated or not present. Fetching new data from ${source.name}...`,
       );
-      await downloadDatabase(source, lastUpdate);
+      await downloadDatabase(release);
 
       return;
     } catch (error) {

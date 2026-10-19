@@ -38,6 +38,10 @@ jobs:
           filters: |
             site:
               - 'packages/site/**'
+              # The prebuilt anime index the site publishes
+              - 'packages/extension/scripts/anime-index.ts'
+              - 'packages/extension/src/background/logic/animeIndex.ts'
+              - 'packages/extension/src/background/logic/databaseSources.ts'
 
   release:
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' }}
@@ -126,48 +130,7 @@ jobs:
           CHROME_PUBLISHER_ID: ${{ vars.CHROME_PUBLISHER_ID }}
           CHROME_EXTENSION_ID: pjioojkbcigohkncmfoedipogbejlkko
 
-  build-site:
+  site:
     if: ${{ needs.changes.outputs.site == 'true' }}
     needs: [checkup, changes]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          # `bun lint` and `bun fmt` are only in canary builds; switch back to `bun-version-file: package.json` once Bun 1.4.4 is released
-          bun-version: canary
-
-      - name: Cache Bun dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build site
-        run: bun run build:site
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: packages/site/.output/public
-
-  deploy-site:
-    needs: build-site
-    runs-on: ubuntu-latest
-    concurrency:
-      group: deploy-site
-      cancel-in-progress: true
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+    uses: ./.github/workflows/site.yml

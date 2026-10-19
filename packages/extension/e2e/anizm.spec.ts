@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { prebuiltIndexFiles } from '../src/background/logic/databaseSources';
 import { expect, test } from './fixtures';
 import { anizmNewEpisodesPage, frieren, mockNetwork } from './mocks';
 
@@ -33,6 +34,10 @@ test('shows AniList details on new episode cards', async ({
   const details = cardDetails(page, 'Sousou no Frieren');
 
   await expect(details.getByTitle('Add Favorite')).toHaveText('1234');
+  // From the site's prebuilt index, rather than an upstream database
+  expect(recorded.databaseDownloads).toEqual([
+    expect.stringContaining(prebuiltIndexFiles.index),
+  ]);
   await expect(details.getByTitle('Popularity [Visit AniList]')).toContainText(
     '250K',
   );
@@ -180,6 +185,7 @@ test('loads the fallback anime database when the preferred source is down', asyn
 }) => {
   const recorded = await mockNetwork(context, {
     media: [frieren],
+    prebuiltIndexDown: true,
     primaryDatabaseDown: true,
     pages: {
       [newEpisodesURL]: anizmNewEpisodesPage([

@@ -6,6 +6,10 @@
     "lib": ["ESNext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    // For the modules `scripts/anime-index.ts` shares with the extension
+    "paths": {
+      "~/*": ["./src/*"]
+    },
     "resolveJsonModule": true,
     "types": ["vite/client", "bun"],
     "strict": true,

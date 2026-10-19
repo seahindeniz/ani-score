@@ -41,7 +41,7 @@ Always use `bun run test` / `bun run build`. Bare `bun build` invokes Bun's bund
 
 ### Data Flow
 
-1. Background script loads anime database from [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database), falling back to [athanasso/anime-offline-database](https://github.com/athanasso/anime-offline-database) (both continue the archived manami-project dataset). It checks for updates at most once a day, and keeps the database in IndexedDB as a term index (`background/logic/animeIndex.ts`), which is read on the first title that isn't in the search cache
+1. Background script loads anime database from [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database), falling back to [athanasso/anime-offline-database](https://github.com/athanasso/anime-offline-database) (both continue the archived manami-project dataset), through the index the site builds from them daily (`scripts/anime-index.ts`, published by `.github/workflows/site.yml`; `background/logic/databaseSources.ts` falls back to the upstream sources when it's missing, stale, of another format or corrupt). It checks for updates at most once a day, and keeps the database in IndexedDB as a term index (`background/logic/animeIndex.ts`), which is read on the first title that isn't in the search cache
 2. Content scripts detect anime cards on supported sites using site-specific selectors
 3. Title is matched against the database to get AniList ID
 4. Background script queries AniList GraphQL API for ratings/details, and keeps them 15 minutes per title (`background/logic/detailsCache.ts`), until the AniList account changes; a card asks past that after the user favorites the anime, or opens its details more than a minute after they were fetched
