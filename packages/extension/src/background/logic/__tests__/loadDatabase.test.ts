@@ -10,9 +10,9 @@ import {
   databaseURLs,
   mockFetch,
   prebuiltRoutes,
-  prebuiltURLs,
 } from '../../__tests__/network';
 import { buildAnimeIndex, packAnimeIndex } from '../animeIndex';
+import { prebuiltIndexURLs } from '../databaseSources';
 import type { DatabaseInfo } from '../databaseStorage';
 import {
   readDatabaseIndex,
@@ -231,7 +231,7 @@ describe('loadDatabase', () => {
 
     // Asked (the prebuilt index isn't published in this test), and found the stored database up to date
     expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual([
-      prebuiltURLs.metadata,
+      prebuiltIndexURLs.metadata,
       databaseURLs.primaryLastUpdate,
     ]);
     expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
@@ -335,8 +335,18 @@ describe('loadDatabase', () => {
       [databaseURLs.primaryLastUpdate]: () => {
         attempts++;
 
+        // The connection drops after the first bytes
         return attempts === 1
-          ? new Response('{"lastUpdate": "2026-')
+          ? new Response(
+              new ReadableStream({
+                start(controller) {
+                  controller.enqueue(
+                    new TextEncoder().encode('{"lastUpdate": "2026-'),
+                  );
+                  controller.error(new TypeError('Connection reset'));
+                },
+              }),
+            )
           : Response.json({ lastUpdate: '2026-10-01' });
       },
     });
@@ -345,6 +355,18 @@ describe('loadDatabase', () => {
 
     expect(attempts).toBe(2);
     expect(downloads()).toEqual([databaseURLs.primary]);
+  });
+
+  test("doesn't retry a whole response that isn't JSON", async () => {
+    fetchMock = mockFetch({
+      // E.g. a captive portal's page
+      [databaseURLs.primaryLastUpdate]: () =>
+        new Response('<html>Sign in to the network</html>'),
+    });
+
+    await loader.loadDatabase();
+
+    expect(requested(databaseURLs.primaryLastUpdate)).toBe(1);
   });
 
   test("doesn't retry metadata of an unexpected shape", async () => {
@@ -728,6 +750,33 @@ describe('prebuilt index', () => {
     expect(downloads()).toEqual([databaseURLs.primary]);
   });
 
+  test('is asked once more, rather than three times, when the site fails', async () => {
+    fetchMock = mockFetch({
+      ...databaseRoutes(),
+      [prebuiltIndexURLs.metadata]: () =>
+        new Response('Service Unavailable', { status: 503 }),
+    });
+
+    await loader.loadDatabase();
+
+    expect(requested(prebuiltIndexURLs.metadata)).toBe(2);
+    expect(downloads()).toEqual([databaseURLs.primary]);
+  });
+
+  test("is asked for past the browser's cache", async () => {
+    const prebuilt = await prebuiltRoutes();
+
+    fetchMock = mockFetch(prebuilt.routes);
+
+    await loader.loadDatabase();
+
+    expect(
+      fetchMock.mock.calls.find(
+        ([input]) => String(input) === prebuiltIndexURLs.metadata,
+      )?.[1],
+    ).toMatchObject({ cache: 'no-cache' });
+  });
+
   test('of another format is skipped for the upstream source, without retrying', async () => {
     const prebuilt = await prebuiltRoutes({ format: 2 });
 
@@ -735,7 +784,7 @@ describe('prebuilt index', () => {
 
     await loader.loadDatabase();
 
-    expect(requested(prebuiltURLs.metadata)).toBe(1);
+    expect(requested(prebuiltIndexURLs.metadata)).toBe(1);
     expect(downloads()).toEqual([databaseURLs.primary]);
   });
 });

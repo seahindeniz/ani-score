@@ -218,8 +218,10 @@ async function updateDatabase() {
         `Fetching metadata from ${source.name} to check for updates...`,
       );
 
-      const release = await fetchRelease(source, (attempt) =>
-        logger.warn(`Retrying database update check... (${attempt}/3)`),
+      const release = await fetchRelease(source, (attempt, retries) =>
+        logger.warn(
+          `Retrying database update check... (${attempt}/${retries})`,
+        ),
       );
 
       if (info && !isDatabaseOutdated(info, release)) {

@@ -8,11 +8,15 @@ import {
   animeIndexFormat,
   packAnimeIndex,
 } from '../src/background/logic/animeIndex';
-import type { PrebuiltIndexMetadata } from '../src/background/logic/databaseSources';
+import type {
+  DatabaseSource,
+  PrebuiltIndexMetadata,
+} from '../src/background/logic/databaseSources';
 import {
   fetchBytes,
   fetchJSON,
   fetchRelease,
+  isGzip,
   prebuiltIndexDownloadURL,
   prebuiltIndexFiles,
   PrebuiltIndexMetadataSchema,
@@ -36,47 +40,61 @@ const license = {
     'Built from anime-offline-database (https://github.com/cedya77/anime-offline-database, or https://github.com/athanasso/anime-offline-database when it is unavailable), continuations of https://github.com/manami-project/anime-offline-database',
 };
 
-async function buildFromUpstream() {
-  for (const source of upstreamSources) {
-    try {
-      // Retried like the extension does, so one failed request doesn't make the index switch sources for a day
-      const release = await fetchRelease(source, (attempt) =>
-        console.warn(`Asking ${source.name} again (${attempt}/3)`),
-      );
-      const { stored } = await release.download();
-      const file = packAnimeIndex(stored);
-      const metadata: PrebuiltIndexMetadata & typeof license = {
-        format: animeIndexFormat,
-        source: release.source,
-        lastUpdate: release.lastUpdate,
-        checkedAt: new Date().toISOString(),
-        sha256: await sha256(file),
-        ...license,
-      };
+/**
+ * How long the published index is kept while the preferred source is down, before it's built from the fallback. Below
+ * the extension's 3 days, so it never goes stale while the fallback answers.
+ */
+const republishMaxAge = 2 * 24 * 60 * 60 * 1000;
 
-      return { metadata, file: Bun.gzipSync(file, { level: 9 }) };
-    } catch (error) {
-      console.warn(`Could not build the index from ${source.name}:`, error);
-    }
+async function buildFrom(source: DatabaseSource) {
+  try {
+    // Retried like the extension does, so one failed request doesn't make the index switch sources
+    const release = await fetchRelease(source, (attempt, retries) =>
+      console.warn(`Asking ${source.name} again (${attempt}/${retries})`),
+    );
+    const { stored } = await release.download();
+    const file = packAnimeIndex(stored);
+    const metadata: PrebuiltIndexMetadata & typeof license = {
+      format: animeIndexFormat,
+      source: release.source,
+      lastUpdate: release.lastUpdate,
+      checkedAt: new Date().toISOString(),
+      sha256: await sha256(file),
+      ...license,
+    };
+
+    return { metadata, file: Bun.gzipSync(file, { level: 9 }) };
+  } catch (error) {
+    console.warn(`Could not build the index from ${source.name}:`, error);
+
+    return undefined;
   }
-
-  return undefined;
 }
 
-// With no upstream source answering, the site keeps the index it has. Its metadata stays as it was, so extensions see
-// how long ago it was built, and ask the upstream sources themselves once it's too old.
-async function copyPublished() {
+/**
+ * The published index again, as is, if `accept` takes it. Its metadata stays as it was, so extensions see how long ago
+ * it was built, and ask the upstream sources themselves once it's too old.
+ */
+async function copyPublished(
+  accept: (metadata: PrebuiltIndexMetadata) => boolean = () => true,
+) {
   try {
     const published = await fetchJSON<object>(prebuiltIndexURLs.metadata);
     const metadata = v.parse(PrebuiltIndexMetadataSchema, published);
-    const packed = await readPrebuiltFile(
-      await fetchBytes(prebuiltIndexDownloadURL(metadata)),
-      metadata,
-    );
+
+    if (!accept(metadata)) return undefined;
+
+    const file = await fetchBytes(prebuiltIndexDownloadURL(metadata));
+    const packed = await readPrebuiltFile(file, metadata);
 
     console.warn('Publishing the current index again');
 
-    return { metadata: published, file: Bun.gzipSync(packed, { level: 9 }) };
+    return {
+      metadata: published,
+      file: isGzip(file)
+        ? new Uint8Array(file)
+        : Bun.gzipSync(packed, { level: 9 }),
+    };
   } catch (error) {
     console.warn('Could not copy the published index:', error);
 
@@ -84,7 +102,23 @@ async function copyPublished() {
   }
 }
 
-const index = (await buildFromUpstream()) ?? (await copyPublished());
+const [preferred, ...fallbacks] = upstreamSources;
+
+// While the preferred source is down briefly, the index it built stays. One built from a fallback would have users
+// download twice: the fallback's data, then the preferred source's once it's back.
+let index =
+  (await buildFrom(preferred))
+  ?? (await copyPublished(
+    (metadata) =>
+      metadata.source === preferred.name
+      && Date.now() - Date.parse(metadata.checkedAt) < republishMaxAge,
+  ));
+
+for (const source of fallbacks) {
+  index ??= await buildFrom(source);
+}
+
+index ??= await copyPublished();
 
 // E.g. the first deploy, or the first of a new format, while the upstream sources are down. The site's other changes
 // still go out, and extensions download from the upstream sources until a later deploy carries an index.

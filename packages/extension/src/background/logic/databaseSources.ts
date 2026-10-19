@@ -29,12 +29,13 @@ export class FetchError extends Error {
 
 async function request<T>(
   url: string,
+  init: RequestInit | undefined,
   read: (response: Response) => Promise<T>,
 ) {
   let response: Response;
 
   try {
-    response = await fetch(url);
+    response = await fetch(url, init);
   } catch (error) {
     throw new FetchError(`Failed to fetch ${url}`, true, { cause: error });
   }
@@ -53,11 +54,18 @@ async function request<T>(
   }
 }
 
-export const fetchJSON = <T>(url: string) =>
-  request(url, async (response) => (await response.json()) as T);
+/**
+ * A body that broke off may arrive whole when asked again; one that arrived whole but isn't JSON (e.g. a captive
+ * portal's page) won't, so only reading it is retried, not parsing it.
+ */
+export async function fetchJSON<T>(url: string, init?: RequestInit) {
+  return JSON.parse(
+    await request(url, init, (response) => response.text()),
+  ) as T;
+}
 
 export const fetchBytes = (url: string) =>
-  request(url, (response) => response.arrayBuffer());
+  request(url, undefined, (response) => response.arrayBuffer());
 
 export interface DatabaseRelease {
   /**
@@ -78,6 +86,11 @@ export interface DatabaseSource {
    * Asks for the latest release, without downloading it.
    */
   fetchRelease: () => Promise<DatabaseRelease>;
+  /**
+   * How many times a failed request is asked again.
+   * @default 3
+   */
+  retries?: number;
 }
 
 /**
@@ -86,8 +99,10 @@ export interface DatabaseSource {
  */
 export async function fetchRelease(
   source: DatabaseSource,
-  onRetry: (attempt: number) => void,
+  onRetry: (attempt: number, retries: number) => void,
 ) {
+  const { retries = 3 } = source;
+
   for (let attempt = 1; ; attempt++) {
     try {
       const release = await source.fetchRelease();
@@ -101,11 +116,14 @@ export async function fetchRelease(
 
       return release;
     } catch (error) {
-      if (attempt > 3 || !(error instanceof FetchError && error.retryable)) {
+      if (
+        attempt > retries
+        || !(error instanceof FetchError && error.retryable)
+      ) {
         throw error;
       }
 
-      onRetry(attempt);
+      onRetry(attempt, retries);
       await wait(1000 * 2 ** (attempt - 1));
     }
   }
@@ -218,19 +236,21 @@ export async function sha256(file: ArrayBuffer | Uint8Array<ArrayBuffer>) {
  * The packed index in a downloaded file, which is gzipped, unless a host served it gzip-encoded and the browser
  * already decompressed it. Throws unless it's the one the metadata describes.
  */
+export function isGzip(file: ArrayBuffer) {
+  const [first, second] = new Uint8Array(file.slice(0, 2));
+
+  return first === 0x1f && second === 0x8b;
+}
+
 export async function readPrebuiltFile(
   file: ArrayBuffer,
   metadata: PrebuiltIndexMetadata,
 ) {
-  const [first, second] = new Uint8Array(file.slice(0, 2));
-  const packed =
-    first === 0x1f && second === 0x8b
-      ? await new Response(
-          new Blob([file])
-            .stream()
-            .pipeThrough(new DecompressionStream('gzip')),
-        ).arrayBuffer()
-      : file;
+  const packed = isGzip(file)
+    ? await new Response(
+        new Blob([file]).stream().pipeThrough(new DecompressionStream('gzip')),
+      ).arrayBuffer()
+    : file;
 
   if ((await sha256(packed)) !== metadata.sha256) {
     throw new Error("The prebuilt anime index doesn't match its SHA-256");
@@ -245,10 +265,13 @@ export async function readPrebuiltFile(
  */
 export const prebuiltSource: DatabaseSource = {
   name: 'aniscore.link',
+  // Only once: the upstream sources still answer while the site is down, and a first install waits for them
+  retries: 1,
   fetchRelease: async () => {
     const metadata = v.parse(
       PrebuiltIndexMetadataSchema,
-      await fetchJSON(prebuiltIndexURLs.metadata),
+      // Asks the site even when the browser holds a recent copy, which could describe a file a deploy since replaced
+      await fetchJSON(prebuiltIndexURLs.metadata, { cache: 'no-cache' }),
     );
     const age = Date.now() - Date.parse(metadata.checkedAt);
 

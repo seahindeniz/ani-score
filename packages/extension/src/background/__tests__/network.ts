@@ -22,8 +22,6 @@ export const databaseURLs = {
     'https://github.com/athanasso/anime-offline-database/releases/latest/download/anime-offline-database-minified.json',
 };
 
-export const prebuiltURLs = prebuiltIndexURLs;
-
 export const anilistURL = 'https://graphql.anilist.co/';
 
 export const databaseEntries = [
@@ -133,7 +131,7 @@ export async function prebuiltRoutes(
   return {
     indexURL,
     routes: {
-      [prebuiltURLs.metadata]: {
+      [prebuiltIndexURLs.metadata]: {
         format,
         source: 'cedya77/anime-offline-database',
         lastUpdate,
