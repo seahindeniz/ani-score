@@ -11,10 +11,12 @@ beforeEach(async () => {
   await tokenStore.dataReady;
 });
 
-function expectBadge(text: string, color: string) {
-  expect(fakeBrowser.action.setBadgeText).toHaveBeenLastCalledWith({ text });
+function expectLoginBadge() {
+  expect(fakeBrowser.action.setBadgeText).toHaveBeenLastCalledWith({
+    text: 'Login',
+  });
   expect(fakeBrowser.action.setBadgeBackgroundColor).toHaveBeenLastCalledWith({
-    color,
+    color: '#DD0303',
   });
 }
 
@@ -23,10 +25,13 @@ test('shows no badge when the viewer is signed in', async () => {
 
   await checkAnilistAuthorization();
 
-  expectBadge('', '');
+  expect(fakeBrowser.action.setBadgeText).toHaveBeenLastCalledWith({
+    text: '',
+  });
   expect(fakeBrowser.action.setBadgeText).not.toHaveBeenCalledWith({
     text: 'Login',
   });
+  expect(fakeBrowser.action.setBadgeBackgroundColor).not.toHaveBeenCalled();
 });
 
 test('asks the viewer to sign in, and clears the badge once they do', async () => {
@@ -34,11 +39,19 @@ test('asks the viewer to sign in, and clears the badge once they do', async () =
 
   await checkAnilistAuthorization();
 
-  expectBadge('Login', '#DD0303');
+  expectLoginBadge();
+
+  const colorCalls =
+    fakeBrowser.action.setBadgeBackgroundColor.mock.calls.length;
 
   tokenStore.setData({ anilist: 'token' });
 
-  expectBadge('', '');
+  expect(fakeBrowser.action.setBadgeText).toHaveBeenLastCalledWith({
+    text: '',
+  });
+  expect(fakeBrowser.action.setBadgeBackgroundColor).toHaveBeenCalledTimes(
+    colorCalls,
+  );
 });
 
 test('asks the viewer to sign in again after they sign out', async () => {
@@ -47,5 +60,5 @@ test('asks the viewer to sign in again after they sign out', async () => {
   await checkAnilistAuthorization();
   tokenStore.setData({ anilist: '' });
 
-  expectBadge('Login', '#DD0303');
+  expectLoginBadge();
 });

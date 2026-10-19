@@ -195,7 +195,10 @@ function createFakeBrowser() {
       setBadgeText: mock(async ({ text }: { text: string }) => {
         badgeText = text;
       }),
-      setBadgeBackgroundColor: mock(async (_details: unknown) => {}),
+      setBadgeBackgroundColor: mock(async ({ color }: { color: unknown }) => {
+        if (color === '')
+          throw new Error('The color specification could not be parsed.');
+      }),
       setIcon: mock(async (_details: unknown) => {}),
     },
     tabs: {
