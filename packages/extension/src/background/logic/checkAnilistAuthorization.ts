@@ -14,9 +14,9 @@ export async function checkAnilistAuthorization() {
         () => Boolean(tokenStore.data().anilist),
         (signedIn) => {
           browser.action.setBadgeText({ text: signedIn ? '' : 'Login' });
-          browser.action.setBadgeBackgroundColor({
-            color: signedIn ? '' : '#DD0303',
-          });
+          // Chrome rejects an empty color, and with no text there's no badge to color
+          if (!signedIn)
+            browser.action.setBadgeBackgroundColor({ color: '#DD0303' });
         },
       ),
     );
