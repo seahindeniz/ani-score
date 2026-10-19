@@ -225,7 +225,7 @@ export const parsePrebuiltIndexMetadata = (input: unknown) =>
  * How long a prebuilt index may go without being built again before the upstream sources are asked instead, e.g. once
  * the site's daily job stopped.
  */
-const prebuiltMaxAge = 3 * 24 * 60 * 60 * 1000;
+export const prebuiltMaxAge = 3 * 24 * 60 * 60 * 1000;
 
 export async function sha256(file: ArrayBuffer | Uint8Array<ArrayBuffer>) {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', file));

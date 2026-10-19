@@ -52,18 +52,20 @@ export function mockFetch(routes: Record<string, Handler | object>) {
  */
 export async function prebuiltRoutes(
   options: {
+    source?: string;
     checkedAt?: number;
     format?: number;
     serve?: (file: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
   } = {},
 ) {
   const {
+    source = 'cedya77/anime-offline-database',
     checkedAt = Date.now(),
     format = 1,
     serve = (file: Uint8Array<ArrayBuffer>) => Bun.gzipSync(file),
   } = options;
   const { metadata, file } = await createPrebuiltIndex(
-    { source: 'cedya77/anime-offline-database', lastUpdate: '2026-10-01' },
+    { source, lastUpdate: '2026-10-01' },
     buildAnimeIndex(entries).stored,
     new Date(checkedAt),
   );

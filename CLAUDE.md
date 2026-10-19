@@ -4,7 +4,7 @@
 
 AniScore is a browser extension that displays anime ratings from AniList on streaming sites. Built with SolidJS, TypeScript, and the Vitesse WebExt boilerplate. Currently supports Anizm.net and TRanimeizle with an extensible architecture for adding more sites.
 
-This is a **Bun workspace monorepo**: Bun is both the package manager and the runtime. The extension lives in `packages/extension/`, the site in `packages/site/`, and the anime index both use in `packages/anime-index/` (its format and sources: the site builds and publishes the index, the extension reads it and builds it itself when the site's copy can't be used). Root scripts delegate to workspace packages.
+This is a **Bun workspace monorepo**: Bun is both the package manager and the runtime. The extension lives in `packages/extension/`, the site in `packages/site/`, and the anime index both use in `packages/anime-index/` (its format and sources, and how it's published: the site has it build and publish the index, the extension reads it and builds it itself when the site's copy can't be used). Root scripts delegate to workspace packages.
 
 ## Commands
 
@@ -41,7 +41,7 @@ Always use `bun run test` / `bun run build`. Bare `bun build` invokes Bun's bund
 
 ### Data Flow
 
-1. Background script loads anime database from [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database), falling back to [athanasso/anime-offline-database](https://github.com/athanasso/anime-offline-database) (both continue the archived manami-project dataset), through the index the site builds from them daily (`packages/site/scripts/anime-index.ts`, published by `.github/workflows/site.yml`; `@ani-score/anime-index` falls back to the upstream sources when it's missing, stale, of another format or corrupt). It checks for updates at most once a day, and keeps the database in IndexedDB as a term index (`@ani-score/anime-index`), which is read on the first title that isn't in the search cache
+1. Background script loads anime database from [cedya77/anime-offline-database](https://github.com/cedya77/anime-offline-database), falling back to [athanasso/anime-offline-database](https://github.com/athanasso/anime-offline-database) (both continue the archived manami-project dataset), through the index the site builds from them daily (`publishAnimeIndex` in `@ani-score/anime-index/publish`, which `packages/site/scripts/anime-index.ts` calls with the site's output directory in `.github/workflows/site.yml`; `@ani-score/anime-index` falls back to the upstream sources when it's missing, stale, of another format or corrupt). It checks for updates at most once a day, and keeps the database in IndexedDB as a term index (`@ani-score/anime-index`), which is read on the first title that isn't in the search cache
 2. Content scripts detect anime cards on supported sites using site-specific selectors
 3. Title is matched against the database to get AniList ID
 4. Background script queries AniList GraphQL API for ratings/details, and keeps them 15 minutes per title (`background/logic/detailsCache.ts`), until the AniList account changes; a card asks past that after the user favorites the anime, or opens its details more than a minute after they were fetched
