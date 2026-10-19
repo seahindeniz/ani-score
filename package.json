@@ -16,7 +16,7 @@
     "build": "bun run --workspaces --if-present build",
     "build-firefox": "bun run --workspaces --if-present build-firefox",
     "build:site": "bun run --filter @ani-score/site build",
-    "lint": "bun lint --no-script && bun fmt --no-script --check && bun run --workspaces --if-present lint",
+    "lint": "bun lint --no-script && bun fmt --no-script --check && bun check -p scripts && bun run --workspaces --if-present lint",
     "test": "bun run --workspaces --if-present test",
     "release": "bun run --workspaces --if-present release",
     "format": "bun fmt --no-script"

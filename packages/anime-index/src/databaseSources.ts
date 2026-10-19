@@ -1,11 +1,10 @@
 import * as v from 'valibot';
 
 import type { AnimeData } from './animeData';
-import type { AnimeIndexData, BuiltAnimeIndex } from './animeIndex';
+import type { BuiltAnimeIndex } from './animeIndex';
 import {
   animeIndexFormat,
   buildAnimeIndex,
-  packAnimeIndex,
   readAnimeIndex,
   unpackAnimeIndex,
 } from './animeIndex';
@@ -18,12 +17,18 @@ const wait = (milliseconds: number) =>
  * off, but not for a missing file or a rate limit.
  */
 export class FetchError extends Error {
+  /**
+   * The response's status, when there was one.
+   */
+  readonly status: number | undefined;
+
   constructor(
     message: string,
     readonly retryable: boolean,
-    options?: ErrorOptions,
+    options?: ErrorOptions & { status?: number },
   ) {
     super(message, options);
+    this.status = options?.status;
   }
 }
 
@@ -44,6 +49,7 @@ async function request<T>(
     throw new FetchError(
       `Failed to fetch ${url}: ${response.status} ${response.statusText}`,
       response.status >= 500,
+      { status: response.status },
     );
   }
 
@@ -202,7 +208,8 @@ export const prebuiltIndexDownloadURL = (metadata: { sha256: string }) =>
  */
 export const PrebuiltIndexMetadataSchema = v.object({
   format: v.literal(animeIndexFormat),
-  source: v.picklist(upstreamSources.map(({ name }) => name)),
+  // The site only builds it from the preferred source, so its data never makes an extension pass that source by
+  source: v.literal(upstreamSources[0].name),
   lastUpdate: v.string(),
   /**
    * When the site's daily job last built the index from its source.
@@ -225,7 +232,7 @@ export const parsePrebuiltIndexMetadata = (input: unknown) =>
  * How long a prebuilt index may go without being built again before the upstream sources are asked instead, e.g. once
  * the site's daily job stopped.
  */
-export const prebuiltMaxAge = 3 * 24 * 60 * 60 * 1000;
+const prebuiltMaxAge = 3 * 24 * 60 * 60 * 1000;
 
 export async function sha256(file: ArrayBuffer | Uint8Array<ArrayBuffer>) {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', file));
@@ -235,16 +242,16 @@ export async function sha256(file: ArrayBuffer | Uint8Array<ArrayBuffer>) {
   );
 }
 
-/**
- * The packed index in a downloaded file, which is gzipped, unless a host served it gzip-encoded and the browser
- * already decompressed it. Throws unless it's the one the metadata describes.
- */
 export function isGzip(file: ArrayBuffer) {
   const [first, second] = new Uint8Array(file.slice(0, 2));
 
   return first === 0x1f && second === 0x8b;
 }
 
+/**
+ * The packed index in a downloaded file, which is gzipped, unless a host served it gzip-encoded and the browser
+ * already decompressed it. Throws unless it's the one the metadata describes.
+ */
 export async function readPrebuiltFile(
   file: ArrayBuffer,
   metadata: PrebuiltIndexMetadata,
@@ -299,23 +306,3 @@ export const prebuiltSource: DatabaseSource = {
     };
   },
 };
-
-/**
- * The index of a release as the site publishes it: the packed file (which it gzips) and its metadata.
- */
-export async function createPrebuiltIndex(
-  release: Pick<DatabaseRelease, 'source' | 'lastUpdate'>,
-  stored: AnimeIndexData,
-  checkedAt = new Date(),
-) {
-  const file = packAnimeIndex(stored);
-  const metadata: PrebuiltIndexMetadata = {
-    format: animeIndexFormat,
-    source: release.source,
-    lastUpdate: release.lastUpdate,
-    checkedAt: checkedAt.toISOString(),
-    sha256: await sha256(file),
-  };
-
-  return { metadata, file };
-}

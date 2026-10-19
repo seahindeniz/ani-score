@@ -1,11 +1,14 @@
 // Builds the index the site publishes, and writes it into the site's output. It runs on Bun, in the site's build, so it
-// has an entry point of its own (`@ani-score/anime-index/publish`) that the extension never imports.
+// has an entry point of its own (`@ani-score/anime-index/publish`) that the extension never bundles. The tests that
+// stand in for the site use it too.
 import { join } from 'node:path';
 
-import type { DatabaseSource, PrebuiltIndexMetadata } from './databaseSources';
+import type { AnimeIndexData } from './animeIndex';
+import { animeIndexFormat, packAnimeIndex } from './animeIndex';
+import type { DatabaseRelease } from './databaseSources';
 import {
-  createPrebuiltIndex,
   fetchBytes,
+  FetchError,
   fetchJSON,
   fetchRelease,
   isGzip,
@@ -13,23 +16,41 @@ import {
   prebuiltIndexDownloadURL,
   prebuiltIndexFiles,
   prebuiltIndexURLs,
-  prebuiltMaxAge,
   readPrebuiltFile,
+  sha256,
   upstreamSources,
 } from './databaseSources';
+
+export { packAnimeIndex } from './animeIndex';
+export { prebuiltIndexDownloadURL } from './databaseSources';
 
 // The index is a database derived from the upstream one, so it's shared under the same terms
 const license = {
   license: 'ODbL-1.0, with contents under DbCL-1.0',
   attribution:
-    'Built from anime-offline-database (https://github.com/cedya77/anime-offline-database, or https://github.com/athanasso/anime-offline-database when it is unavailable), continuations of https://github.com/manami-project/anime-offline-database',
+    'Built from https://github.com/cedya77/anime-offline-database, a continuation of https://github.com/manami-project/anime-offline-database',
 };
 
 /**
- * How long the published index is kept while the preferred source is down, before it's built from the fallback: a day
- * less than extensions accept it for, so it never goes stale while the fallback answers.
+ * The index of a release as the site publishes it: the packed file (which it gzips) and its metadata.
  */
-const republishMaxAge = prebuiltMaxAge - 24 * 60 * 60 * 1000;
+export async function createPrebuiltIndex(
+  release: Pick<DatabaseRelease, 'source' | 'lastUpdate'>,
+  stored: AnimeIndexData,
+  checkedAt = new Date(),
+) {
+  const file = packAnimeIndex(stored);
+  // Checked like extensions check it, so the site can't publish an index they would refuse
+  const metadata = parsePrebuiltIndexMetadata({
+    format: animeIndexFormat,
+    source: release.source,
+    lastUpdate: release.lastUpdate,
+    checkedAt: checkedAt.toISOString(),
+    sha256: await sha256(file),
+  });
+
+  return { metadata, file };
+}
 
 interface PublishedIndex {
   metadata: object;
@@ -39,11 +60,11 @@ interface PublishedIndex {
   file: Uint8Array<ArrayBuffer>;
 }
 
-async function buildFrom(
-  source: DatabaseSource,
-): Promise<PublishedIndex | undefined> {
+async function buildFromPreferredSource(): Promise<PublishedIndex | undefined> {
+  const [source] = upstreamSources;
+
   try {
-    // Retried like the extension does, so one failed request doesn't make the index switch sources
+    // Retried like the extension does
     const release = await fetchRelease(source, (attempt, retries) =>
       console.warn(`Asking ${source.name} again (${attempt}/${retries})`),
     );
@@ -64,60 +85,46 @@ async function buildFrom(
 }
 
 /**
- * The published index again, as is, if `accept` takes it. Its metadata stays as it was, so extensions see how long ago
- * it was built, and ask the upstream sources themselves once it's too old.
+ * The published index again, as is, or nothing when none is published yet. Its metadata stays as it was, so
+ * extensions see how long ago it was built, and turn to the upstream sources themselves once it's too old. Throws for
+ * a published index it can't reach or read.
  */
-async function copyPublished(
-  accept: (metadata: PrebuiltIndexMetadata) => boolean = () => true,
-): Promise<PublishedIndex | undefined> {
+async function copyPublished(): Promise<PublishedIndex | undefined> {
+  let published: object;
+
   try {
-    const published = await fetchJSON<object>(prebuiltIndexURLs.metadata);
-    const metadata = parsePrebuiltIndexMetadata(published);
-
-    if (!accept(metadata)) return undefined;
-
-    const file = await fetchBytes(prebuiltIndexDownloadURL(metadata));
-    const packed = await readPrebuiltFile(file, metadata);
-
-    console.warn('Publishing the current index again');
-
-    return {
-      metadata: published,
-      file: isGzip(file)
-        ? new Uint8Array(file)
-        : Bun.gzipSync(new Uint8Array(packed), { level: 9 }),
-    };
+    published = await fetchJSON<object>(prebuiltIndexURLs.metadata);
   } catch (error) {
-    console.warn('Could not copy the published index:', error);
+    if (error instanceof FetchError && error.status === 404) return undefined;
 
-    return undefined;
+    throw error;
   }
+
+  const metadata = parsePrebuiltIndexMetadata(published);
+  const file = await fetchBytes(prebuiltIndexDownloadURL(metadata));
+  const packed = await readPrebuiltFile(file, metadata);
+
+  console.warn('Publishing the current index again');
+
+  return {
+    metadata: published,
+    file: isGzip(file)
+      ? new Uint8Array(file)
+      : Bun.gzipSync(new Uint8Array(packed), { level: 9 }),
+  };
 }
 
 /**
- * Builds the index from the preferred upstream source and writes it, with its metadata, into the directory. Resolves
- * with what it wrote, or with nothing when it could neither build the index nor copy the published one (e.g. the
- * first deploy, or the first of a new format, while the upstream sources are down); extensions then download from the
- * upstream sources until a later deploy carries an index.
+ * Builds the index from the preferred upstream source and writes it, with its metadata, into the directory. While that
+ * source is down, the published index is written again instead: one built from a fallback would have extensions take
+ * that source's data, then download again once the preferred one is back.
+ *
+ * Resolves with what it wrote, or with nothing when there's no index to write and none is published, e.g. on the first
+ * deploy (or the first of a new format) while the source is down; extensions then download from the upstream sources.
+ * Throws when the published index can't be copied, so a deploy doesn't drop it.
  */
 export async function publishAnimeIndex(directory: string) {
-  const [preferred, ...fallbacks] = upstreamSources;
-
-  // While the preferred source is down briefly, the index it built stays. One built from a fallback would have users
-  // download twice: the fallback's data, then the preferred source's once it's back.
-  let index =
-    (await buildFrom(preferred))
-    ?? (await copyPublished(
-      (metadata) =>
-        metadata.source === preferred.name
-        && Date.now() - Date.parse(metadata.checkedAt) < republishMaxAge,
-    ));
-
-  for (const source of fallbacks) {
-    index ??= await buildFrom(source);
-  }
-
-  index ??= await copyPublished();
+  const index = (await buildFromPreferredSource()) ?? (await copyPublished());
 
   if (!index) return undefined;
 

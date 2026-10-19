@@ -5,7 +5,6 @@ import { join } from 'node:path';
 
 import {
   buildAnimeIndex,
-  packAnimeIndex,
   readAnimeIndex,
   unpackAnimeIndex,
 } from '../animeIndex';
@@ -13,9 +12,14 @@ import {
   isGzip,
   parsePrebuiltIndexMetadata,
   prebuiltIndexFiles,
+  prebuiltIndexURLs,
   readPrebuiltFile,
 } from '../databaseSources';
-import { publishAnimeIndex } from '../publish';
+import {
+  createPrebuiltIndex,
+  packAnimeIndex,
+  publishAnimeIndex,
+} from '../publish';
 import { entries, mockFetch, prebuiltRoutes, upstreamURLs } from './network';
 
 const day = 24 * 60 * 60 * 1000;
@@ -90,15 +94,13 @@ describe('publishAnimeIndex', () => {
         ),
       ).search('Frieren', 10),
     ).toHaveLength(1);
-    expect(requested(upstreamURLs.athanassoRelease)).toBe(0);
   });
 
-  test('asks a failing source again rather than switching sources', async () => {
+  test('asks the preferred source again after a failed request', async () => {
     let attempts = 0;
 
     fetchMock = mockFetch({
       ...cedya77Routes,
-      ...athanassoRoutes,
       [upstreamURLs.cedya77LastUpdate]: () =>
         ++attempts === 1
           ? new Response('Bad Gateway', { status: 502 })
@@ -107,13 +109,11 @@ describe('publishAnimeIndex', () => {
 
     await publishAnimeIndex(directory);
 
-    expect((await written()).metadata.source).toBe(
-      'cedya77/anime-offline-database',
-    );
+    expect((await written()).metadata.lastUpdate).toBe('2026-10-08');
   });
 
-  test('keeps the published index while the preferred source is down', async () => {
-    const published = await prebuiltRoutes({ checkedAt: Date.now() - day });
+  test('publishes the current index again, whatever its age, while the preferred source is down', async () => {
+    const published = await prebuiltRoutes({ checkedAt: Date.now() - 5 * day });
 
     fetchMock = mockFetch({ ...published, ...athanassoRoutes });
 
@@ -124,52 +124,13 @@ describe('publishAnimeIndex', () => {
       url.includes('.bin.gz'),
     )![1] as () => Response;
 
-    // As it was published, built from the preferred source a day ago
+    // As it was published; extensions see its age, and turn to the upstream sources themselves
     expect(metadata).toEqual(Object.values(published)[0]);
     expect(new Uint8Array(file)).toEqual(
       new Uint8Array(await served().arrayBuffer()),
     );
-    expect(requested(upstreamURLs.athanasso)).toBe(0);
-  });
-
-  test('builds the index afresh from the fallback rather than keep one the fallback built', async () => {
-    fetchMock = mockFetch({
-      ...(await prebuiltRoutes({
-        source: 'athanasso/anime-offline-database',
-        checkedAt: Date.now() - day,
-      })),
-      ...athanassoRoutes,
-    });
-
-    await publishAnimeIndex(directory);
-
-    expect((await written()).metadata.lastUpdate).toBe('2026-10-09');
-  });
-
-  test('builds it from the fallback once the published index is a day from going stale', async () => {
-    fetchMock = mockFetch({
-      ...(await prebuiltRoutes({ checkedAt: Date.now() - 2.5 * day })),
-      ...athanassoRoutes,
-    });
-
-    await publishAnimeIndex(directory);
-
-    expect((await written()).metadata).toMatchObject({
-      source: 'athanasso/anime-offline-database',
-      lastUpdate: '2026-10-09',
-    });
-  });
-
-  test('publishes the current index again, whatever its age, when no upstream source answers', async () => {
-    fetchMock = mockFetch(
-      await prebuiltRoutes({ checkedAt: Date.now() - 2.5 * day }),
-    );
-
-    await publishAnimeIndex(directory);
-
-    expect((await written()).metadata.source).toBe(
-      'cedya77/anime-offline-database',
-    );
+    // Not built from the fallback source
+    expect(requested(upstreamURLs.athanassoRelease)).toBe(0);
   });
 
   test('gzips a published index that was served decompressed', async () => {
@@ -180,21 +141,43 @@ describe('publishAnimeIndex', () => {
     expect(isGzip((await written()).file)).toBe(true);
   });
 
-  test("doesn't publish an index again that doesn't match its metadata", async () => {
-    fetchMock = mockFetch(
-      await prebuiltRoutes({
-        serve: () => Bun.gzipSync(packAnimeIndex(buildAnimeIndex([]).stored)),
-      }),
-    );
+  test('writes nothing when there is no index to build and none is published', async () => {
+    fetchMock = mockFetch({});
 
     expect(await publishAnimeIndex(directory)).toBeUndefined();
     expect(existsSync(directory)).toBe(false);
   });
 
-  test('writes nothing when it can neither build an index nor copy the published one', async () => {
-    fetchMock = mockFetch({});
+  test("fails rather than drop a published index it can't copy", async () => {
+    // Unreachable, or not the file its metadata describes
+    for (const routes of [
+      {
+        [prebuiltIndexURLs.metadata]: () =>
+          new Response('Service Unavailable', { status: 503 }),
+      },
+      await prebuiltRoutes({
+        serve: () => Bun.gzipSync(packAnimeIndex(buildAnimeIndex([]).stored)),
+      }),
+    ]) {
+      fetchMock?.mockRestore();
+      fetchMock = mockFetch(routes);
 
-    expect(await publishAnimeIndex(directory)).toBeUndefined();
-    expect(existsSync(directory)).toBe(false);
+      await expect(publishAnimeIndex(directory)).rejects.toThrow();
+      expect(existsSync(directory)).toBe(false);
+    }
+  });
+});
+
+describe('createPrebuiltIndex', () => {
+  test('refuses to describe an index that extensions would refuse', async () => {
+    await expect(
+      createPrebuiltIndex(
+        {
+          source: 'athanasso/anime-offline-database',
+          lastUpdate: '2026-10-09',
+        },
+        buildAnimeIndex(entries).stored,
+      ),
+    ).rejects.toThrow();
   });
 });

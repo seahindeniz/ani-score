@@ -1,10 +1,7 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 
-import {
-  buildAnimeIndex,
-  packAnimeIndex,
-  prebuiltIndexURLs,
-} from '@ani-score/anime-index';
+import { buildAnimeIndex, prebuiltIndexURLs } from '@ani-score/anime-index';
+import { packAnimeIndex } from '@ani-score/anime-index/publish';
 
 import type { AnimeData } from '~/logic';
 import { useAnimeDatabaseSearchCacheStore } from '~/logic';

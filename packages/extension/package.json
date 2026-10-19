@@ -38,7 +38,7 @@
     "start:firefox": "web-ext run --source-dir ./extension --target=firefox-desktop",
     "clear": "bun scripts/clear.ts",
     "lint": "bun scripts/css-module-types.ts && bun check -b",
-    "test": "bun test --conditions development --conditions browser --coverage && bun scripts/check-coverage.ts",
+    "test": "bun test --conditions development --conditions browser --coverage && bun ../../scripts/check-coverage.ts src/gql",
     "test:e2e": "playwright test",
     "codegen": "graphql-codegen",
     "release": "release-it",

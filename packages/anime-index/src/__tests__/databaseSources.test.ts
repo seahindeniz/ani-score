@@ -154,6 +154,14 @@ describe('prebuilt index', () => {
     );
   });
 
+  test('is refused when built from a source other than the preferred one', async () => {
+    fetchMock = mockFetch(
+      await prebuiltRoutes({ source: 'athanasso/anime-offline-database' }),
+    );
+
+    await expect(prebuiltSource.fetchRelease()).rejects.toThrow();
+  });
+
   test('is also read when served decompressed', async () => {
     fetchMock = mockFetch(await prebuiltRoutes({ serve: (file) => file }));
 

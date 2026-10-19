@@ -1,9 +1,7 @@
 import type { AnimeData } from '@ani-score/anime-index';
-import {
-  buildAnimeIndex,
-  createPrebuiltIndex,
-  prebuiltIndexURLs,
-} from '@ani-score/anime-index';
+import { buildAnimeIndex, prebuiltIndexURLs } from '@ani-score/anime-index';
+// Stands in for the site, which publishes the index
+import { createPrebuiltIndex } from '@ani-score/anime-index/publish';
 import type { BrowserContext, Route } from '@playwright/test';
 
 /**

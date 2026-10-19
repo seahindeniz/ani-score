@@ -34,7 +34,7 @@ Always use `bun run test` / `bun run build`. Bare `bun build` invokes Bun's bund
 ### Unit tests
 
 - `bun test` with happy-dom; tests live in `__tests__/` folders next to the code. `packages/extension/test/` holds the setup: `preload.ts` registers the DOM, the Vite `define` globals and a fake `browser`/`chrome` (`fake-browser.ts`). `vite-compat-plugin.ts` compiles Solid JSX with `babel-preset-solid` and stubs Vite-only imports (`~icons/*`, styles, `?url`/`?raw`, `.svg`).
-- `bun run test` enforces 100% line and function coverage of `src/` (minus generated `src/gql/`). Bun can't measure branches, and only reports files a test imports, so `scripts/check-coverage.ts` fails for any source file with runtime code that is missing from `coverage/lcov.info`.
+- `bun run test` enforces 100% line and function coverage of `src/` (minus generated `src/gql/`). Bun can't measure branches, and only reports files a test imports, so the root `scripts/check-coverage.ts` fails for any source file with runtime code that is missing from `coverage/lcov.info`. `@ani-score/anime-index` runs the same check on its own `src/`.
 - For a fresh copy of a module with state, import it with a query string (`await import('../store.ts?case=1')`); its own imports stay shared.
 
 ## Architecture

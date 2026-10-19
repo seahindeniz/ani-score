@@ -12,8 +12,7 @@
     "src/**/*.d.ts",
     "src/**/__tests__/**/*.ts",
     "src/**/__tests__/**/*.tsx",
-    "test/**/*.ts",
-    "scripts/check-coverage.ts"
+    "test/**/*.ts"
   ],
   "exclude": ["dist", "node_modules"]
 }

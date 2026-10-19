@@ -1,11 +1,10 @@
 import { spyOn } from 'bun:test';
 
+import { buildAnimeIndex, prebuiltIndexURLs } from '@ani-score/anime-index';
 import {
-  buildAnimeIndex,
   createPrebuiltIndex,
   prebuiltIndexDownloadURL,
-  prebuiltIndexURLs,
-} from '@ani-score/anime-index';
+} from '@ani-score/anime-index/publish';
 
 import type { AnimeData } from '~/logic';
 

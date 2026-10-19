@@ -8,3 +8,5 @@ coverageSkipTestFiles = true
 coveragePathIgnorePatterns = ["src/**/__tests__/**"]
 # Bun measures lines and functions (not branches)
 coverageThreshold = { lines = 1.0, functions = 1.0 }
+# For the root scripts/check-coverage.ts, which finds source files no test imports
+coverageReporter = ["text", "lcov"]

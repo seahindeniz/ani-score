@@ -8,7 +8,7 @@
     "./publish": "./src/publish.ts"
   },
   "scripts": {
-    "test": "bun test --coverage",
+    "test": "bun test --coverage && bun ../../scripts/check-coverage.ts",
     "lint": "bun check"
   },
   "dependencies": {

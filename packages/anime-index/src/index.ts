@@ -1,5 +1,19 @@
 // The anime index and where it comes from, shared by the extension, which reads it (and builds it itself when the
-// site's copy is unavailable), and the site, which builds and publishes it. Its format is the contract between them.
+// site's copy can't be used), and the site, which publishes it with `@ani-score/anime-index/publish`. Its format is
+// the contract between them.
 export type { AnimeData, AnimeMatch } from './animeData';
-export * from './animeIndex';
-export * from './databaseSources';
+export type { AnimeIndex, AnimeIndexData, BuiltAnimeIndex } from './animeIndex';
+export {
+  animeIndexFormat,
+  buildAnimeIndex,
+  listSiteHosts,
+  readAnimeIndex,
+} from './animeIndex';
+export type { DatabaseRelease, DatabaseSource } from './databaseSources';
+export {
+  fetchRelease,
+  prebuiltIndexFiles,
+  prebuiltIndexURLs,
+  prebuiltSource,
+  upstreamSources,
+} from './databaseSources';
