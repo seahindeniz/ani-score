@@ -76,6 +76,31 @@ function storeDatabase(info: Partial<DatabaseInfo> = {}) {
 }
 
 /**
+ * Holds a write transaction on the database store, so IndexedDB requests made meanwhile wait until it's released.
+ */
+async function holdStore() {
+  const database = await new Promise<IDBDatabase>((resolve) => {
+    indexedDB.open('anime-database', 1).onsuccess = function () {
+      resolve(this.result);
+    };
+  });
+  const store = database
+    .transaction('database', 'readwrite')
+    .objectStore('database');
+  let held = true;
+  const keepBusy = () => {
+    if (held) store.get('info').onsuccess = keepBusy;
+  };
+
+  keepBusy();
+
+  return () => {
+    held = false;
+    database.close();
+  };
+}
+
+/**
  * Makes each IndexedDB write fail, as when the disk is full.
  */
 function failWrites() {
@@ -434,7 +459,7 @@ describe('loadDatabase', () => {
     expect(downloads()).toEqual([databaseURLs.primary]);
   });
 
-  test("drops a stored index it can't read, so the next start downloads it again", async () => {
+  test("downloads the database again right away when the stored index can't be read", async () => {
     await writeDatabase(
       {
         lastUpdate: '2026-10-01',
@@ -451,13 +476,36 @@ describe('loadDatabase', () => {
     fetchMock = mockFetch(databaseRoutes());
     await loader.loadDatabase();
 
-    expect(
-      await loader.searchAnimeByTitle('Sousou no Frieren'),
-    ).toBeUndefined();
-    expect(await readDatabaseIndex()).toBeUndefined();
     expect(downloads()).toEqual([]);
+    // The search that found it unreadable waits for the new download
+    expect(await loader.searchAnimeByTitle('Sousou no Frieren')).toMatchObject({
+      title: 'Sousou no Frieren',
+    });
+    expect(downloads()).toEqual([databaseURLs.primary]);
+    expect(await readDatabaseIndex()).toBeDefined();
+  });
+
+  test("waits an hour to download a database again that couldn't be stored", async () => {
+    failWrites();
+    fetchMock = mockFetch(databaseRoutes());
+    await loader.loadDatabase();
 
     await restart();
+    await loader.loadDatabase();
+
+    expect(downloads()).toEqual([databaseURLs.primary]);
+
+    clock += 2 * 60 * 60 * 1000;
+    await restart();
+    await loader.loadDatabase();
+
+    expect(downloads()).toEqual([databaseURLs.primary, databaseURLs.primary]);
+  });
+
+  test('still downloads when the database earlier versions kept cannot be removed', async () => {
+    fakeBrowser.storage.local.remove.mockRejectedValueOnce(new Error('busy'));
+    fetchMock = mockFetch(databaseRoutes());
+
     await loader.loadDatabase();
 
     expect(downloads()).toEqual([databaseURLs.primary]);
@@ -556,12 +604,55 @@ describe('searchAnimeByTitle', () => {
 
     await downloadStarted.promise;
 
+    // The new index is searched before it's stored
+    const releaseStore = await holdStore();
     const search = loader.searchAnimeByTitle('Brand New Anime');
 
     finishDownload.resolve();
 
     expect(await search).toMatchObject({ title: 'Brand New Anime' });
+    releaseStore();
     await update;
+  });
+
+  test("doesn't cache a match from an index that a download replaced meanwhile", async () => {
+    const checking = Promise.withResolvers<void>();
+    const answerCheck = Promise.withResolvers<void>();
+
+    routesAgain({
+      ...databaseRoutes(),
+      [databaseURLs.primaryLastUpdate]: async () => {
+        checking.resolve();
+        await answerCheck.promise;
+
+        return Response.json({ lastUpdate: '2026-10-08' });
+      },
+    });
+    aDayLater();
+    await restart();
+    searchCacheStore.setData({ 'Some Title': cachedMatch });
+
+    const update = loader.loadDatabase();
+
+    await checking.promise;
+
+    // The search reads the stored index, slowly, while the download replaces it
+    const releaseStore = await holdStore();
+    const search = loader.searchAnimeByTitle('The Apothecary Diaries Season 3');
+
+    answerCheck.resolve();
+
+    while ('Some Title' in searchCacheStore.data()) {
+      await new Promise((resolve) => realSetTimeout(resolve, 5));
+    }
+
+    releaseStore();
+
+    expect(await search).toMatchObject({
+      title: 'Kusuriya no Hitorigoto 3rd Season',
+    });
+    await update;
+    expect(searchCacheStore.data()).toEqual({});
   });
 
   test('reads the stored database again after a failed read', async () => {

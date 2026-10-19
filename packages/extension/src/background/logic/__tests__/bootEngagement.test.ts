@@ -72,7 +72,7 @@ test('sets the sign-in badge before the database download, which then leaves it 
   });
 });
 
-test('keeps going when the sign-in check fails', async () => {
+test('still loads the database when the sign-in check fails', async () => {
   const engage = await importEngage('failure');
 
   fakeBrowser.action.setBadgeText.mockImplementationOnce(() => {
@@ -80,6 +80,5 @@ test('keeps going when the sign-in check fails', async () => {
   });
 
   expect(await engage()).toBeUndefined();
-  // The database isn't loaded after a failed check
-  expect(updateChecks()).toHaveLength(0);
+  expect(updateChecks()).toHaveLength(1);
 });

@@ -48,6 +48,25 @@ describe('database storage', () => {
     expect(await readDatabaseInfo()).toEqual({ ...info, checkedAt: 2000 });
   });
 
+  test('counts a database stored in another format as nothing stored', async () => {
+    await writeDatabase(info, buildAnimeIndex([]).stored);
+
+    // As an earlier (or later) version of the extension stored it
+    await new Promise((resolve) => {
+      indexedDB.open('anime-database', 1).onsuccess = function () {
+        const transaction = this.result.transaction('database', 'readwrite');
+
+        transaction.objectStore('database').put({ ...info, format: 0 }, 'info');
+        transaction.oncomplete = () => {
+          this.result.close();
+          resolve(undefined);
+        };
+      };
+    });
+
+    expect(await readDatabaseInfo()).toBeUndefined();
+  });
+
   test('counts info without its index as nothing stored', async () => {
     await writeDatabase(info, buildAnimeIndex([]).stored);
     await removeDatabaseIndex();

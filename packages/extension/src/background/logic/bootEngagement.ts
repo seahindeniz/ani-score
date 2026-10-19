@@ -12,11 +12,12 @@ export async function engage() {
 
   initialized = true;
 
-  try {
-    // Runs after the sign-in check, so its badge is set before the loading one, yet a search made during the check
-    // already waits for the database
-    await loadDatabase(checkAnilistAuthorization());
-  } catch (error) {
-    logger.error(error);
-  }
+  const signInCheck = checkAnilistAuthorization();
+
+  // The database update runs after the sign-in check, so the sign-in badge is set before the loading one, yet a search
+  // made during the check already waits for it. A failed check doesn't keep the database from loading.
+  await Promise.all([
+    signInCheck.catch((error: unknown) => logger.error(error)),
+    loadDatabase(signInCheck),
+  ]);
 }

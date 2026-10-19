@@ -13,6 +13,7 @@ import { wait } from '~/utils/wait';
 
 import { anilistClient } from '../client/anilist';
 import { batchTemplate, singleAnimeQuery } from '../gql-queries/anilist';
+import { listSiteHosts } from './animeIndex';
 import { cacheDetails, readCachedDetails } from './detailsCache';
 import { searchAnimeByTitle } from './loadDatabase';
 
@@ -166,19 +167,20 @@ async function findSourceInDatabase(title: string) {
     return undefined;
   }
 
+  // `toSorted`: the sources belong to the index and the search cache
   return anime.sources
-    ?.sort(
+    ?.toSorted(
       (a, b) =>
         Number.parseInt(removeAllBeforeSlash(a))
         - Number.parseInt(removeAllBeforeSlash(b)),
     )
     .reduce(
       (map, item) => {
-        if (item.includes('anilist.co')) {
+        if (item.includes(listSiteHosts.anilist)) {
           map.anilist = removeAllBeforeSlash(item);
         }
 
-        if (item.includes('myanimelist.net')) {
+        if (item.includes(listSiteHosts.mal)) {
           map.mal = removeAllBeforeSlash(item);
         }
 

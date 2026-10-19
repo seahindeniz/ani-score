@@ -1,4 +1,5 @@
 import type { AnimeIndexData } from './animeIndex';
+import { animeIndexFormat } from './animeIndex';
 
 export interface DatabaseInfo {
   lastUpdate: string;
@@ -57,18 +58,37 @@ async function withStore<Result>(
 const noResult = () => undefined;
 
 /**
- * The info of the stored database, unless its index is missing; then nothing counts as stored, so it's downloaded
- * again.
+ * The info as stored, with the version of the index it describes.
+ */
+interface StoredInfo extends DatabaseInfo {
+  format: number;
+}
+
+const toStored = (info: DatabaseInfo): StoredInfo => ({
+  ...info,
+  format: animeIndexFormat,
+});
+
+/**
+ * The info of the stored database, unless its index is missing or of another version; then nothing counts as stored,
+ * so it's downloaded again.
  */
 export const readDatabaseInfo = () =>
   withStore('readonly', (store) => {
     const info = store.get('info');
     const index = store.getKey('index');
 
-    return () =>
-      index.result === undefined
-        ? undefined
-        : (info.result as DatabaseInfo | undefined);
+    return (): DatabaseInfo | undefined => {
+      const stored = info.result as StoredInfo | undefined;
+
+      if (index.result === undefined || stored?.format !== animeIndexFormat) {
+        return undefined;
+      }
+
+      const { lastUpdate, source, checkedAt } = stored;
+
+      return { lastUpdate, source, checkedAt };
+    };
   });
 
 export const readDatabaseIndex = () =>
@@ -80,7 +100,7 @@ export const readDatabaseIndex = () =>
 
 export const writeDatabaseInfo = (info: DatabaseInfo) =>
   withStore('readwrite', (store) => {
-    store.put(info, 'info');
+    store.put(toStored(info), 'info');
 
     return noResult;
   });
@@ -91,7 +111,7 @@ export const writeDatabaseInfo = (info: DatabaseInfo) =>
 export const writeDatabase = (info: DatabaseInfo, index: AnimeIndexData) =>
   withStore('readwrite', (store) => {
     store.put(index, 'index');
-    store.put(info, 'info');
+    store.put(toStored(info), 'info');
 
     return noResult;
   });

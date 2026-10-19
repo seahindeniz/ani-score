@@ -24,7 +24,7 @@ import { anilistClient } from '../../client/anilist';
 import { detailsTtl, forgetDetails } from '../detailsCache';
 import type { AnimeDetails } from '../fetchDetails';
 import { fetchDetails } from '../fetchDetails';
-import { loadDatabase } from '../loadDatabase';
+import { loadDatabase, searchAnimeByTitle } from '../loadDatabase';
 
 // Partial AniList responses: the mock returns them as they are
 const frieren = {
@@ -281,5 +281,19 @@ describe('fetchDetails', () => {
     ).toBeUndefined();
 
     query.mockRestore();
+  });
+
+  test("leaves the database entry's sources in their order", async () => {
+    await fetchDetails({
+      cards: [{ title: 'Kusuriya no Hitorigoto', episodeNumber: 1 }],
+    });
+
+    // Sorting them by ID in place would reorder the entry the index and the search cache share
+    expect(
+      (await searchAnimeByTitle('Kusuriya no Hitorigoto'))?.sources,
+    ).toEqual([
+      'https://anilist.co/anime/161645',
+      'https://myanimelist.net/anime/54492',
+    ]);
   });
 });

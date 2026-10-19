@@ -41,9 +41,22 @@ function termsOf(text: string) {
     .map((term) => term.toLowerCase());
 }
 
-// Matches are looked up on AniList, by its own ID or the MyAnimeList one
+/**
+ * The version of the stored form: a stored index of another version is downloaded again. Bump it whenever the
+ * tokenizer, the entry fields or the layout changes.
+ */
+export const animeIndexFormat = 1;
+
+/**
+ * Hosts of the sites whose IDs AniList can be asked about: its own, and MyAnimeList's.
+ */
+export const listSiteHosts = {
+  anilist: 'anilist.co',
+  mal: 'myanimelist.net',
+} as const;
+
 const isListSource = (source: string) =>
-  source.includes('anilist.co') || source.includes('myanimelist.net');
+  source.includes(listSiteHosts.anilist) || source.includes(listSiteHosts.mal);
 
 /**
  * Indexes the entries with an AniList or MyAnimeList source. Gives the index to search right away, and the form to
