@@ -2,6 +2,8 @@
 // `bun scripts/anime-index.ts <directory>` writes the index and its metadata into the directory.
 import { join } from 'node:path';
 
+import * as v from 'valibot';
+
 import {
   animeIndexFormat,
   packAnimeIndex,
@@ -10,8 +12,12 @@ import type { PrebuiltIndexMetadata } from '../src/background/logic/databaseSour
 import {
   fetchBytes,
   fetchJSON,
+  fetchRelease,
+  prebuiltIndexDownloadURL,
   prebuiltIndexFiles,
-  prebuiltIndexSite,
+  PrebuiltIndexMetadataSchema,
+  prebuiltIndexURLs,
+  readPrebuiltFile,
   sha256,
   upstreamSources,
 } from '../src/background/logic/databaseSources';
@@ -33,7 +39,10 @@ const license = {
 async function buildFromUpstream() {
   for (const source of upstreamSources) {
     try {
-      const release = await source.fetchRelease();
+      // Retried like the extension does, so one failed request doesn't make the index switch sources for a day
+      const release = await fetchRelease(source, (attempt) =>
+        console.warn(`Asking ${source.name} again (${attempt}/3)`),
+      );
       const { stored } = await release.download();
       const file = packAnimeIndex(stored);
       const metadata: PrebuiltIndexMetadata & typeof license = {
@@ -57,27 +66,43 @@ async function buildFromUpstream() {
 // With no upstream source answering, the site keeps the index it has. Its metadata stays as it was, so extensions see
 // how long ago it was built, and ask the upstream sources themselves once it's too old.
 async function copyPublished() {
-  console.warn('Publishing the current index again');
+  try {
+    const published = await fetchJSON<object>(prebuiltIndexURLs.metadata);
+    const metadata = v.parse(PrebuiltIndexMetadataSchema, published);
+    const packed = await readPrebuiltFile(
+      await fetchBytes(prebuiltIndexDownloadURL(metadata)),
+      metadata,
+    );
 
-  const url = (file: string) => new URL(file, prebuiltIndexSite).href;
+    console.warn('Publishing the current index again');
 
-  return {
-    metadata: await fetchJSON(url(prebuiltIndexFiles.metadata)),
-    file: new Uint8Array(await fetchBytes(url(prebuiltIndexFiles.index))),
-  };
+    return { metadata: published, file: Bun.gzipSync(packed, { level: 9 }) };
+  } catch (error) {
+    console.warn('Could not copy the published index:', error);
+
+    return undefined;
+  }
 }
 
-const { metadata, file } =
-  (await buildFromUpstream()) ?? (await copyPublished());
+const index = (await buildFromUpstream()) ?? (await copyPublished());
+
+// E.g. the first deploy, or the first of a new format, while the upstream sources are down. The site's other changes
+// still go out, and extensions download from the upstream sources until a later deploy carries an index.
+if (!index) {
+  console.warn(
+    '::warning::Deploying the site without the prebuilt anime index',
+  );
+  process.exit(0);
+}
 
 // `Bun.write` creates the directory when needed
 await Bun.write(
   join(directory, prebuiltIndexFiles.metadata),
-  `${JSON.stringify(metadata, null, 2)}\n`,
+  `${JSON.stringify(index.metadata, null, 2)}\n`,
 );
-await Bun.write(join(directory, prebuiltIndexFiles.index), file);
+await Bun.write(join(directory, prebuiltIndexFiles.index), index.file);
 
 console.log(
-  `Wrote ${prebuiltIndexFiles.index} (${(file.byteLength / 1e6).toFixed(2)} MB):`,
-  metadata,
+  `Wrote ${prebuiltIndexFiles.index} (${(index.file.byteLength / 1e6).toFixed(2)} MB):`,
+  index.metadata,
 );

@@ -4,12 +4,15 @@ import microfuzz from '@nozbe/microfuzz';
 import type { AnimeMatch } from '~/logic';
 import { useAnimeDatabaseSearchCacheStore } from '~/logic';
 import { logger } from '~/utils/logger';
-import { wait } from '~/utils/wait';
 
 import type { AnimeIndex } from './animeIndex';
 import { readAnimeIndex } from './animeIndex';
-import type { DatabaseRelease, DatabaseSource } from './databaseSources';
-import { FetchError, prebuiltSource, upstreamSources } from './databaseSources';
+import type { DatabaseRelease } from './databaseSources';
+import {
+  fetchRelease,
+  prebuiltSource,
+  upstreamSources,
+} from './databaseSources';
 import type { DatabaseInfo } from './databaseStorage';
 import {
   readDatabaseIndex,
@@ -87,44 +90,6 @@ function isRecent(time: number, interval: number) {
 
 const getBadgeText = async () =>
   (await browser.action.getBadgeText({ tabId: undefined })).trim();
-
-async function fetchRelease(
-  source: DatabaseSource,
-  retryCount = 0,
-): Promise<DatabaseRelease> {
-  let release: DatabaseRelease;
-
-  try {
-    logger.log(`Fetching metadata from ${source.name} to check for updates...`);
-
-    release = await source.fetchRelease();
-  } catch (error) {
-    // Only a failed request (a network or server error) may work when tried again; a missing file, a rate limit or
-    // unexpected metadata won't
-    const isRetryable =
-      error instanceof FetchError
-        ? error.response.status >= 500
-        : error instanceof TypeError;
-
-    if (retryCount < 3 && isRetryable) {
-      logger.warn(`Retrying database update check... (${retryCount + 1}/3)`);
-      await wait(1000 * 2 ** retryCount);
-
-      return fetchRelease(source, retryCount + 1);
-    }
-
-    throw error;
-  }
-
-  // An unparsable date would make every comparison false and silently keep the stored database forever
-  if (Number.isNaN(Date.parse(release.lastUpdate))) {
-    throw new TypeError(
-      `Invalid last update date from ${source.name}: ${release.lastUpdate}`,
-    );
-  }
-
-  return release;
-}
 
 function isDatabaseOutdated(info: DatabaseInfo, release: DatabaseRelease) {
   const currentSourceIndex = upstreamRank(info.source);
@@ -249,7 +214,13 @@ async function updateDatabase() {
   // The first source that answers decides whether an update is needed; later sources are only tried when it fails
   for (const source of databaseSources) {
     try {
-      const release = await fetchRelease(source);
+      logger.log(
+        `Fetching metadata from ${source.name} to check for updates...`,
+      );
+
+      const release = await fetchRelease(source, (attempt) =>
+        logger.warn(`Retrying database update check... (${attempt}/3)`),
+      );
 
       if (info && !isDatabaseOutdated(info, release)) {
         logger.log('Database is up-to-date.');

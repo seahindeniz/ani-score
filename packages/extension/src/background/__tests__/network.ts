@@ -3,7 +3,11 @@ import { spyOn } from 'bun:test';
 import type { AnimeData } from '~/logic';
 
 import { buildAnimeIndex, packAnimeIndex } from '../logic/animeIndex';
-import { sha256 } from '../logic/databaseSources';
+import {
+  prebuiltIndexDownloadURL,
+  prebuiltIndexURLs,
+  sha256,
+} from '../logic/databaseSources';
 
 type Handler = (request: Request) => Response | Promise<Response>;
 
@@ -18,10 +22,7 @@ export const databaseURLs = {
     'https://github.com/athanasso/anime-offline-database/releases/latest/download/anime-offline-database-minified.json',
 };
 
-export const prebuiltURLs = {
-  metadata: 'https://aniscore.link/anime-index-v1.json',
-  index: 'https://aniscore.link/anime-index-v1.bin.gz',
-};
+export const prebuiltURLs = prebuiltIndexURLs;
 
 export const anilistURL = 'https://graphql.anilist.co/';
 
@@ -127,7 +128,7 @@ export async function prebuiltRoutes(
   } = options;
   const file = packAnimeIndex(buildAnimeIndex(entries).stored);
   const hash = await sha256(file);
-  const indexURL = `${prebuiltURLs.index}?sha256=${hash}`;
+  const indexURL = prebuiltIndexDownloadURL({ sha256: hash });
 
   return {
     indexURL,

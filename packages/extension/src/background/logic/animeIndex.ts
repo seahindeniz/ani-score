@@ -56,11 +56,13 @@ function termsOf(text: string) {
  */
 export const animeIndexFormat = 1;
 
-const fileHeaderSize = 16;
+const fileMagic = new TextEncoder().encode('ANIX');
+const fileHeaderSize = fileMagic.length + 16;
 
 /**
- * Packs the stored index into one file, as the site publishes it prebuilt: the byte lengths of the four parts as
- * little-endian `uint32`s, then the entries and the terms as UTF-8, then the offsets and the postings.
+ * Packs the stored index into one file, as the site publishes it prebuilt: "ANIX", the byte lengths of the four parts
+ * as little-endian `uint32`s, then the entries and the terms as UTF-8, then the offsets and the postings. The magic
+ * keeps a file served decompressed from starting like a gzip one.
  */
 export function packAnimeIndex(
   stored: AnimeIndexData,
@@ -78,8 +80,9 @@ export function packAnimeIndex(
   const header = new DataView(file.buffer);
   let position = fileHeaderSize;
 
+  file.set(fileMagic);
   parts.forEach((part, index) => {
-    header.setUint32(index * 4, part.byteLength, true);
+    header.setUint32(fileMagic.length + index * 4, part.byteLength, true);
     file.set(part, position);
     position += part.byteLength;
   });
@@ -88,31 +91,43 @@ export function packAnimeIndex(
 }
 
 /**
- * Throws for a file whose parts don't add up, e.g. a truncated download.
+ * Throws for a file that isn't a packed index, or whose parts don't add up, e.g. a truncated download.
  */
 export function unpackAnimeIndex(file: ArrayBuffer): AnimeIndexData {
   const header = new DataView(file);
-  const lengths =
-    file.byteLength < fileHeaderSize
-      ? []
-      : [0, 1, 2, 3].map((index) => header.getUint32(index * 4, true));
+  const isPacked =
+    file.byteLength >= fileHeaderSize
+    && fileMagic.every((byte, index) => header.getUint8(index) === byte);
+  const lengths = isPacked
+    ? [0, 1, 2, 3].map((index) =>
+        header.getUint32(fileMagic.length + index * 4, true),
+      )
+    : [];
 
   if (
-    lengths.reduce((size, length) => size + length, fileHeaderSize)
-    !== file.byteLength
+    !isPacked
+    || lengths.reduce((size, length) => size + length, fileHeaderSize)
+      !== file.byteLength
   ) {
     throw new TypeError('The anime index file is malformed');
   }
 
   const decoder = new TextDecoder();
   let position = fileHeaderSize;
-  const take = (length: number) => file.slice(position, (position += length));
+  const next = (length: number) => [position, (position += length)] as const;
+  const text = (length: number) => {
+    const [start] = next(length);
+
+    return decoder.decode(new Uint8Array(file, start, length));
+  };
+  // Copied, as a `Uint32Array` needs its own buffer at an offset that's a multiple of 4
+  const buffer = (length: number) => file.slice(...next(length));
 
   return {
-    entries: decoder.decode(take(lengths[0])),
-    terms: decoder.decode(take(lengths[1])),
-    offsets: take(lengths[2]),
-    postings: take(lengths[3]),
+    entries: text(lengths[0]),
+    terms: text(lengths[1]),
+    offsets: buffer(lengths[2]),
+    postings: buffer(lengths[3]),
   };
 }
 

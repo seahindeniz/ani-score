@@ -13,8 +13,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: release-${{ github.event.pull_request.number || github.ref }}
@@ -50,6 +48,10 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     environment: Production
+    # The Google Cloud sign-in exchanges an OIDC token
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/create-github-app-token@v3
         id: app-token
@@ -133,4 +135,9 @@ jobs:
   site:
     if: ${{ needs.changes.outputs.site == 'true' }}
     needs: [checkup, changes]
+    # What the deploy needs; the site workflow narrows it to that job
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     uses: ./.github/workflows/site.yml

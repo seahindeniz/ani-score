@@ -6,8 +6,7 @@ import {
   packAnimeIndex,
 } from '../src/background/logic/animeIndex';
 import {
-  prebuiltIndexFiles,
-  prebuiltIndexSite,
+  prebuiltIndexURLs,
   sha256,
 } from '../src/background/logic/databaseSources';
 import type { AnimeData } from '../src/logic/animeData';
@@ -255,9 +254,7 @@ export async function mockNetwork(
     buildAnimeIndex(database as unknown as AnimeData[]).stored,
   );
   const prebuiltSha256 = await sha256(prebuiltFile);
-  const prebuiltURL = (file: string) => new URL(file, prebuiltIndexSite).href;
-
-  await context.route(prebuiltURL(prebuiltIndexFiles.metadata), (route) =>
+  await context.route(prebuiltIndexURLs.metadata, (route) =>
     prebuiltIndexDown
       ? route.fulfill({ status: 404 })
       : json(route, {
@@ -269,7 +266,7 @@ export async function mockNetwork(
         }),
   );
   await context.route(
-    (url) => url.href.startsWith(prebuiltURL(prebuiltIndexFiles.index)),
+    (url) => url.href.startsWith(prebuiltIndexURLs.index),
     (route) => {
       recorded.databaseDownloads.push(route.request().url());
 

@@ -153,6 +153,15 @@ describe('anime index', () => {
     }
   });
 
+  test("refuses a file that isn't a packed index", () => {
+    const file = packAnimeIndex(buildAnimeIndex([entry('Frieren')]).stored);
+
+    // Gzip's own first bytes, as a file the host served without decompressing
+    file.set([0x1f, 0x8b]);
+
+    expect(() => unpackAnimeIndex(file.buffer)).toThrow('malformed');
+  });
+
   test('can be empty', () => {
     expect(storedIndex([]).search('Frieren', 10)).toEqual([]);
     expect(buildAnimeIndex([]).index.search('Frieren', 10)).toEqual([]);

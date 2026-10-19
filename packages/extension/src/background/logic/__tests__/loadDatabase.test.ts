@@ -327,6 +327,37 @@ describe('loadDatabase', () => {
     expect(downloads()).toEqual([databaseURLs.primary]);
   });
 
+  test('retries a response that broke off', async () => {
+    let attempts = 0;
+
+    fetchMock = mockFetch({
+      ...databaseRoutes(),
+      [databaseURLs.primaryLastUpdate]: () => {
+        attempts++;
+
+        return attempts === 1
+          ? new Response('{"lastUpdate": "2026-')
+          : Response.json({ lastUpdate: '2026-10-01' });
+      },
+    });
+
+    await loader.loadDatabase();
+
+    expect(attempts).toBe(2);
+    expect(downloads()).toEqual([databaseURLs.primary]);
+  });
+
+  test("doesn't retry metadata of an unexpected shape", async () => {
+    fetchMock = mockFetch({
+      // No `published_at`, so reading its date throws a TypeError
+      [databaseURLs.fallbackLastUpdate]: { name: 'latest' },
+    });
+
+    await loader.loadDatabase();
+
+    expect(requested(databaseURLs.fallbackLastUpdate)).toBe(1);
+  });
+
   test('gives up on a source after three retries', async () => {
     let attempts = 0;
 
