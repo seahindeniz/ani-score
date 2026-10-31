@@ -1,7 +1,16 @@
-import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  spyOn,
+  test,
+} from 'bun:test';
 
 import { buildAnimeIndex, prebuiltIndexURLs } from '@ani-score/anime-index';
 import { packAnimeIndex } from '@ani-score/anime-index/publish';
+import microfuzz from '@nozbe/microfuzz';
 
 import type { AnimeData } from '~/logic';
 import { useAnimeDatabaseSearchCacheStore } from '~/logic';
@@ -832,6 +841,27 @@ describe('searchAnimeByTitle', () => {
     expect(searchCacheStore.data()['The Apothecary Diaries Season 3']).toEqual(
       match!,
     );
+  });
+
+  test('finds the closest entry with microfuzz imported the way Vite does', async () => {
+    // Mocking the module also changes the `microfuzz` binding here
+    const createFuzzySearch = microfuzz;
+
+    void mock.module('@nozbe/microfuzz', () => ({
+      default: { default: createFuzzySearch },
+    }));
+
+    try {
+      await restart();
+
+      expect(
+        await loader.searchAnimeByTitle('The Apothecary Diaries Season 3'),
+      ).toMatchObject({ title: 'Kusuriya no Hitorigoto 3rd Season' });
+    } finally {
+      void mock.module('@nozbe/microfuzz', () => ({
+        default: createFuzzySearch,
+      }));
+    }
   });
 
   test('prefers the TV entry when matches score the same', async () => {

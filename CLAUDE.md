@@ -19,7 +19,7 @@ Always use `bun run test` / `bun run build`. Bare `bun build` invokes Bun's bund
 
 ### Lint, format and type check
 
-- The project uses a **Bun canary** (1.4.4 pre-release), because `bun lint` and `bun fmt` aren't in a stable release yet; CI installs `canary` too. Once 1.4.4 ships, pin it in `packageManager` and switch CI back to `bun-version-file: package.json`.
+- The project uses a **Bun canary**, because `bun lint` isn't in a stable release yet (1.4.4 has `bun fmt` but not `bun lint`, so its `bun lint` runs the `lint` script, which calls itself without end); CI installs `canary` too. Once a stable release has `bun lint`, pin it in `packageManager` and switch CI back to `bun-version-file: package.json`.
 - `bun run lint` (root) runs `bun lint`, `bun fmt --check`, then each package's type check. `bun run format` formats the repo. Both use `--no-script`, since `bun lint` otherwise runs the `lint` script.
 - Config is in the root `bunfig.toml`: Bun's built-in recommended rules plus `eslint-plugin-solid` for `.tsx` (it runs in JavaScript, and Bun installs `eslint` as its peer), and the `[fmt]` style.
 - Editors: there's no Bun formatter/linter integration yet. In VS Code, the Run on Save extension runs `bun fmt` on save (`.vscode/settings.json`), and the pre-commit hook formats and lints staged files.

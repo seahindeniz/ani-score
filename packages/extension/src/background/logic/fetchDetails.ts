@@ -12,10 +12,11 @@ import { useTokenStore } from '~/logic';
 import { logger } from '~/utils/logger';
 import { wait } from '~/utils/wait';
 
-import { anilistClient } from '../client/anilist';
+import { anilistClient, isSignedOut } from '../client/anilist';
 import { batchTemplate, singleAnimeQuery } from '../gql-queries/anilist';
 import { cacheDetails, readCachedDetails } from './detailsCache';
 import { searchAnimeByTitle } from './loadDatabase';
+import { openSignIn } from './openSignIn';
 
 interface Props {
   cards: Pick<EpisodeCard, 'title' | 'episodeNumber'>[];
@@ -221,6 +222,16 @@ export async function fetchDetails(props: Props) {
 
   if (missing.length === 0) return found;
 
+  const tokenStore = useTokenStore();
+
+  await tokenStore.dataReady;
+
+  if (!tokenStore.data().anilist) {
+    await openSignIn();
+
+    return undefined;
+  }
+
   logger.log('Fetching details for titles:', missing);
 
   try {
@@ -252,27 +263,15 @@ export async function fetchDetails(props: Props) {
 
     const results = await Promise.all(queryPromises);
 
+    // AniList rejected the token, which the client then forgot
+    if (results.some(({ error }) => isSignedOut(error))) {
+      await openSignIn();
+
+      return undefined;
+    }
+
     for (const { error } of results) {
-      if (!error) continue;
-
-      logger.error('GraphQL query error:', error);
-
-      if (error.message.includes('Invalid token')) {
-        const tokenStore = useTokenStore();
-
-        tokenStore.setData({ ...tokenStore.data(), anilist: '' });
-
-        browser.notifications.create('open-side-panel', {
-          type: 'basic',
-          iconUrl: browser.runtime.getURL('assets/icon-512.png'),
-          title: 'AniScore',
-          message:
-            'Anilist token is invalid. Please click on the AniScore extension icon and re-authenticate.',
-          priority: 2,
-        });
-
-        return undefined;
-      }
+      if (error) logger.error('GraphQL query error:', error);
     }
 
     // Other errors only lose their own batch; the titles in it come back as not found

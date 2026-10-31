@@ -6,6 +6,8 @@ import type { BrowserContext, Worker } from '@playwright/test';
 import { chromium, test as base } from '@playwright/test';
 import type { Manifest } from 'webextension-polyfill';
 
+export { signInURL } from './environment';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const extensionPath = join(__dirname, '../extension');
 
@@ -47,7 +49,18 @@ async function waitForExtensionBuild() {
   }
 }
 
+/**
+ * The AniList token tests sign in with.
+ */
+export const testToken = 'test-token';
+
 export const test = base.extend<{
+  /**
+   * Signs in to AniList before the test starts, as AniScore asks nothing of AniList while signed out.
+   * @default true
+   */
+  signedIn: boolean;
+  signIn: void;
   context: BrowserContext;
   background: Worker;
   extensionId: string;
@@ -57,6 +70,19 @@ export const test = base.extend<{
   setStorage: (items: Record<string, unknown>) => Promise<void>;
   getStorage: <T>(key: string) => Promise<T>;
 }>({
+  signedIn: [true, { option: true }],
+  signIn: [
+    async ({ background, signedIn }, use) => {
+      if (signedIn)
+        await background.evaluate(
+          (anilist) => chrome.storage.local.set({ token: { anilist } }),
+          testToken,
+        );
+
+      await use();
+    },
+    { auto: true },
+  ],
   context: [
     async ({ headless }, use) => {
       await waitForExtensionBuild();

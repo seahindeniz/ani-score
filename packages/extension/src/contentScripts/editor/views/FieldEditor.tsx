@@ -258,12 +258,8 @@ export const FieldEditor: Component<{
   numeric?: boolean;
 }> = (props) => {
   const editor = useEditor();
-  const extracts = () =>
-    props.field === undefined
-      ? []
-      : Array.isArray(props.field)
-        ? props.field
-        : [props.field];
+  // Only read while there's a field
+  const extracts = () => [props.field ?? []].flat();
   const setExtracts = (list: SiteExtract[]) =>
     props.onChange(list.length > 1 ? list : list[0]);
   const values = createMemo(() => {

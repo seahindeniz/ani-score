@@ -7,7 +7,7 @@ you get started with development.
 
 1. **Prerequisites**
    - [Bun](https://bun.sh) canary (package manager, runtime, linter and formatter): `bun upgrade --canary`.
-     The project needs `bun lint` and `bun fmt`, which aren't in a stable release until Bun 1.4.4.
+     The project needs `bun lint`, which isn't in a stable release yet (Bun 1.4.4 has only `bun fmt`).
    - VS Code: install the recommended extensions. Run on Save formats files with `bun fmt` when you save them.
 
 2. **Installation**

@@ -149,7 +149,8 @@ describe('popover', () => {
 
     expect(content()).not.toBeNull();
 
-    fireEvent.click(document.body);
+    // Unlike `fireEvent`'s, a page's own events usually aren't composed
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await waitFor(() => expect(content()).toBeNull());
   });
 

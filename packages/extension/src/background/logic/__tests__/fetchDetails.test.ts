@@ -143,22 +143,47 @@ describe('fetchDetails', () => {
     expect(Object.keys(details!)).toEqual(titles);
   });
 
-  test('clears an invalid token and asks the viewer to sign in again', async () => {
-    answerAniList(() => anilistError('Invalid token', 400));
+  test('signs out when AniList rejects the token, and opens one sign-in tab', async () => {
+    answerAniList(async (request) => {
+      requests.push({ ...(await request.json()), headers: request.headers });
 
-    expect(
-      await fetchDetails({
-        cards: [{ title: 'Sousou no Frieren', episodeNumber: 1 }],
-      }),
-    ).toBeUndefined();
-    expect(tokenStore.data().anilist).toBe('');
-    expect(fakeBrowser.notifications.create).toHaveBeenCalledWith(
-      'open-side-panel',
-      expect.objectContaining({
-        iconUrl: 'chrome-extension://test-extension-id/assets/icon-512.png',
-        title: 'AniScore',
+      return anilistError('Invalid token', 400);
+    });
+
+    const titles = ['One', 'Two', 'Three', 'Four', 'Five', 'Six'];
+    const fetches = [titles, ['Seven']].map((list) =>
+      fetchDetails({
+        cards: list.map((title) => ({ title, episodeNumber: 1 })),
       }),
     );
+
+    expect(await Promise.all(fetches)).toEqual([undefined, undefined]);
+    expect(tokenStore.data().anilist).toBe('');
+    // The six titles' second batch waits for the first one, which AniList rejected
+    expect(
+      requests.map(({ query }) => query.match(/query (\w+)/)?.[1]),
+    ).not.toContain('BatchAnimeSearch1');
+    expect(fakeBrowser.tabs.create).toHaveBeenCalledTimes(1);
+    expect(fakeBrowser.tabs.create).toHaveBeenCalledWith({
+      url: 'https://anilist.co/api/v2/oauth/authorize?client_id=test',
+    });
+    expect(fakeBrowser.notifications.create).toHaveBeenCalledTimes(1);
+  });
+
+  test('asks nothing of AniList while signed out, and opens the sign-in once its tab is closed', async () => {
+    tokenStore.setData({ anilist: '' });
+
+    const cards = [{ title: 'Sousou no Frieren', episodeNumber: 1 }];
+
+    expect(await fetchDetails({ cards })).toBeUndefined();
+    expect(await fetchDetails({ cards })).toBeUndefined();
+    expect(fakeBrowser.tabs.create).toHaveBeenCalledTimes(1);
+
+    await fakeBrowser.tabs.remove(1);
+    await fetchDetails({ cards });
+
+    expect(fakeBrowser.tabs.create).toHaveBeenCalledTimes(2);
+    expect(requests).toEqual([]);
   });
 
   test('keeps the token on other AniList errors', async () => {
@@ -172,6 +197,7 @@ describe('fetchDetails', () => {
       'Sousou no Frieren': null,
     });
     expect(tokenStore.data().anilist).toBe('token');
+    expect(fakeBrowser.tabs.create).not.toHaveBeenCalled();
     expect(fakeBrowser.notifications.create).not.toHaveBeenCalled();
   });
 

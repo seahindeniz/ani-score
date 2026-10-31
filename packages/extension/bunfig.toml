@@ -14,6 +14,8 @@ coveragePathIgnorePatterns = [
   "src/**/__tests__/**",
   "test/**",
   "scripts/**",
+  # Icon stubs from test/vite-compat-plugin.ts
+  "~icons/**",
 ]
 # Bun measures lines and functions (not branches)
 coverageThreshold = { lines = 1.0, functions = 1.0 }
