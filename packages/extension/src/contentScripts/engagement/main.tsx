@@ -5,6 +5,7 @@ import type { UserSite } from '~/logic/storage';
 import { turnedOffSitesKey, userSitesKey } from '~/logic/storage';
 import { findSiteConfig, resolveSites, turnedOn } from '~/sites/resolveSites';
 import type { SiteConfig } from '~/sites/schema';
+import { keepAlive } from '~/utils/keepAlive';
 import { logger } from '~/utils/logger';
 
 import { initSiteLogic } from './logic/loadSite';
@@ -22,7 +23,7 @@ export function engage(url: URL, sites: SiteConfig[]) {
   }
 
   const stop = initSiteLogic(site);
-  const keepAlive = setInterval(() => {
+  const stopKeepAlive = keepAlive(() => {
     void window.messageGateway
       .sendMessage('engage-with-time', Date.now())
       .catch(() => {});
@@ -30,7 +31,7 @@ export function engage(url: URL, sites: SiteConfig[]) {
 
   return () => {
     stop();
-    clearInterval(keepAlive);
+    stopKeepAlive();
   };
 }
 
