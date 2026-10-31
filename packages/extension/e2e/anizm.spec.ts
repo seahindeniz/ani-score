@@ -1,7 +1,7 @@
 import { prebuiltIndexFiles } from '@ani-score/anime-index';
 import type { Page } from '@playwright/test';
 
-import { expect, test } from './fixtures';
+import { expect, signInURL, test, testToken } from './fixtures';
 import { anizmNewEpisodesPage, frieren, mockNetwork } from './mocks';
 
 const newEpisodesURL = 'https://anizm.net/yeniler';
@@ -91,7 +91,6 @@ test('shows "Not Found" for anime that neither the database nor AniList know', a
 test('highlights anime the signed-in viewer is watching', async ({
   context,
   page,
-  setStorage,
 }) => {
   const recorded = await mockNetwork(context, {
     media: [{ ...frieren, progress: 5 }],
@@ -102,7 +101,6 @@ test('highlights anime the signed-in viewer is watching', async ({
     },
   });
 
-  await setStorage({ token: { anilist: 'test-token' } });
   await page.goto(newEpisodesURL);
 
   const card = episodeCard(page, 'Sousou no Frieren');
@@ -113,13 +111,12 @@ test('highlights anime the signed-in viewer is watching', async ({
   await expect(card.locator('.v3-poster-frame')).toHaveClass(
     /\bani-score-watching\b/,
   );
-  expect(recorded.authorizations).toContain('Bearer test-token');
+  expect(recorded.authorizations).toContain(`Bearer ${testToken}`);
 });
 
 test('toggles the anime as a favorite on AniList', async ({
   context,
   page,
-  setStorage,
 }) => {
   const recorded = await mockNetwork(context, {
     media: [frieren],
@@ -130,7 +127,6 @@ test('toggles the anime as a favorite on AniList', async ({
     },
   });
 
-  await setStorage({ token: { anilist: 'test-token' } });
   await page.goto(newEpisodesURL);
 
   const details = cardDetails(page, 'Sousou no Frieren');
@@ -234,7 +230,6 @@ test('asks to sign in on the toolbar badge again after signing out', async ({
   page,
   background,
   extensionId,
-  setStorage,
 }) => {
   await mockNetwork(context, {
     media: [frieren],
@@ -244,7 +239,6 @@ test('asks to sign in on the toolbar badge again after signing out', async ({
       ]),
     },
   });
-  await setStorage({ token: { anilist: 'test-token' } });
 
   // Visiting a supported site starts the background's work, including the badge
   await page.goto(newEpisodesURL);
@@ -265,4 +259,33 @@ test('asks to sign in on the toolbar badge again after signing out', async ({
   await sidePanel.getByRole('button', { name: 'Sign out' }).click();
 
   await expect.poll(badge).toBe('Login');
+});
+
+test.describe('signed out', () => {
+  test.use({ signedIn: false });
+
+  test('opens AniList sign-in instead of asking AniList for the cards', async ({
+    context,
+    page,
+  }) => {
+    const recorded = await mockNetwork(context, {
+      media: [frieren],
+      pages: {
+        [newEpisodesURL]: anizmNewEpisodesPage([
+          { title: 'Sousou no Frieren', episode: 5 },
+        ]),
+      },
+    });
+
+    // A tab opens blank, then navigates
+    const signIn = context.waitForEvent('page');
+
+    await page.goto(newEpisodesURL);
+    await expect(await signIn).toHaveURL(signInURL);
+
+    await expect(
+      cardDetails(page, 'Sousou no Frieren').getByTitle('Add Favorite'),
+    ).toHaveCount(0);
+    expect(recorded.authorizations).toEqual([]);
+  });
 });

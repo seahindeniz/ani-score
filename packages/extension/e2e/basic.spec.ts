@@ -1,24 +1,29 @@
 import { expect, test } from './fixtures';
 import { mockNetwork } from './mocks';
 
-test('side panel asks to authorize AniList', async ({ page, extensionId }) => {
-  await page.goto(
-    `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
-  );
-  await expect(
-    page.getByRole('button', { name: 'Sign in with AniList' }),
-  ).toBeVisible();
+test.describe('signed out', () => {
+  test.use({ signedIn: false });
+
+  test('side panel asks to authorize AniList', async ({
+    page,
+    extensionId,
+  }) => {
+    await page.goto(
+      `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
+    );
+    await expect(
+      page.getByRole('button', { name: 'Sign in with AniList' }),
+    ).toBeVisible();
+  });
 });
 
 test('side panel lets a signed-in viewer add genre colors', async ({
   context,
   page,
   extensionId,
-  setStorage,
   getStorage,
 }) => {
   await mockNetwork(context);
-  await setStorage({ token: { anilist: 'test-token' } });
   await page.goto(
     `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
   );
@@ -42,11 +47,9 @@ test('side panel signs the viewer out', async ({
   context,
   page,
   extensionId,
-  setStorage,
   getStorage,
 }) => {
   await mockNetwork(context);
-  await setStorage({ token: { anilist: 'test-token' } });
   await page.goto(
     `chrome-extension://${extensionId}/dist/sidepanel/index.html`,
   );
