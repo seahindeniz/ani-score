@@ -9,6 +9,7 @@ import {
 } from '@solidjs/testing-library';
 
 import type { AnimeDetails } from '~/background/logic/fetchDetails';
+import type { MediaRelation, MediaType } from '~/gql/graphql';
 
 import { useRefStore } from '../../../store/refStore';
 import { AnimeInfoCard } from '../AnimeInfo';
@@ -178,6 +179,40 @@ describe('anime info card', () => {
     expect(screen.getByText('Elf')).toBeTruthy();
     expect(screen.getByText('Magic')).toBeTruthy();
     expect(screen.queryByText(/more$/)).toBeNull();
+  });
+
+  it('names an untitled relation by its type when it has no format', async () => {
+    const untitled = (
+      id: number,
+      relationType: MediaRelation,
+      type: MediaType | null,
+    ) => ({
+      id,
+      relationType,
+      node: {
+        siteUrl: null,
+        title: null,
+        format: null,
+        type,
+        coverImage: null,
+      },
+    });
+
+    render(() => (
+      <AnimeInfoCard
+        anime={anime({
+          relations: {
+            edges: [untitled(1, 'SOURCE', 'MANGA'), untitled(2, 'OTHER', null)],
+          },
+        })}
+      />
+    ));
+
+    await openPopover(screen.getByTitle('Popularity [Visit AniList]'));
+
+    expect(screen.getByText('Manga')).toBeTruthy();
+    expect(screen.getByText('Source (Manga)')).toBeTruthy();
+    expect(screen.getByText('Other')).toBeTruthy();
   });
 
   it('shows the first five tags, and how many more there are', async () => {

@@ -8,9 +8,9 @@ import App from './view/App';
   // mount component to context window
   const container = document.createElement('div');
   const styleEl = document.createElement('link');
-  const shadowDOM =
-    container.attachShadow?.({ mode: __DEV__ ? 'open' : 'closed' })
-    || container;
+  const shadowDOM = container.attachShadow({
+    mode: __DEV__ ? 'open' : 'closed',
+  });
 
   container.className = __NAME__;
 

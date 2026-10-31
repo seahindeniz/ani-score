@@ -137,6 +137,13 @@ describe('App', () => {
 
     expect(props.onDraft).toHaveBeenLastCalledWith(undefined);
     expect(screen.getByText('No changes')).toBeTruthy();
+
+    // A built-in setup can't be deleted
+    fireEvent.click(button('More actions'));
+
+    expect(
+      screen.queryByRole('menuitem', { name: 'Delete this setup' }),
+    ).toBeNull();
   });
 
   it('starts from scratch, keeping the id so saving replaces the setup', () => {
