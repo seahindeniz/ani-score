@@ -1,5 +1,6 @@
-import { afterEach, expect, test } from 'bun:test';
+import { afterEach, beforeEach, expect, test } from 'bun:test';
 
+import { useTokenStore } from '~/logic';
 import { wait } from '~/utils/wait';
 
 import { fakeBrowser } from '../../../../test/fake-browser';
@@ -9,6 +10,13 @@ import type { AnimeDetails } from '../fetchDetails';
 import { makeAnimeFavorite } from '../makeAnimeFavorite';
 
 let fetchMock: ReturnType<typeof mockFetch> | undefined;
+
+beforeEach(async () => {
+  const tokenStore = useTokenStore();
+
+  await tokenStore.dataReady;
+  tokenStore.setData({ anilist: 'token' });
+});
 
 afterEach(() => {
   fetchMock?.mockRestore();

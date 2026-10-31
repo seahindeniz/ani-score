@@ -114,6 +114,7 @@ function createFakeBrowser() {
   // Optional host permissions the user granted
   const grantedOrigins = new Set<string>();
   let registeredScripts: RegisteredContentScript[] = [];
+  const openTabs = new Set<number>();
 
   return {
     storage: {
@@ -202,12 +203,22 @@ function createFakeBrowser() {
       setIcon: mock(async (_details: unknown) => {}),
     },
     tabs: {
-      create: mock(async (properties: Record<string, unknown>) => ({
-        id: 1,
-        windowId: 1,
-        status: 'loading',
-        ...properties,
-      })),
+      create: mock(async (properties: Record<string, unknown>) => {
+        const tab = { id: 1, windowId: 1, status: 'loading', ...properties };
+
+        openTabs.add(tab.id);
+
+        return tab;
+      }),
+      // Like the browser, rejects for a tab that isn't open
+      get: mock(async (id: number) => {
+        if (!openTabs.has(id)) throw new Error(`No tab with id: ${id}.`);
+
+        return { id, windowId: 1 };
+      }),
+      remove: mock(async (id: number) => {
+        openTabs.delete(id);
+      }),
       // Resolves with the open tabs; set them with `mockResolvedValueOnce`
       query: mock(
         async (
@@ -247,6 +258,7 @@ function createFakeBrowser() {
       grantedOrigins.clear();
       registeredScripts = [];
     },
+    resetTabs: () => openTabs.clear(),
   };
 }
 
@@ -281,6 +293,7 @@ export function resetFakeBrowser() {
   storage.sync.reset();
   fakeBrowser.resetBadge();
   fakeBrowser.resetPermissions();
+  fakeBrowser.resetTabs();
 
   for (const event of [
     storage.onChanged,
