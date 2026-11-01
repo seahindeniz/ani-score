@@ -14,7 +14,8 @@ export default {
     assets: [
       `${outputDirectory}/extension-\${version}.zip`,
       `${outputDirectory}/extension-\${version}.crx`,
-      `${outputDirectory}/extension-\${version}.xpi`,
+      // Temporarily disabled Mozilla (XPI) asset
+      // `${outputDirectory}/extension-\${version}.xpi`,
     ],
     comments: {
       submit: true,

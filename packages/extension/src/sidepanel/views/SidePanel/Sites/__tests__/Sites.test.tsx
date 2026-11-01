@@ -139,9 +139,18 @@ beforeEach(async () => {
   await turnedOff.dataReady;
   store.setData([]);
   turnedOff.setData([]);
+  while (document.body.attributes.length > 0) {
+    document.body.removeAttribute(document.body.attributes[0].name);
+  }
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  for (const menu of menus()) fireEvent.keyDown(menu, { key: 'Escape' });
+  cleanup();
+  while (document.body.attributes.length > 0) {
+    document.body.removeAttribute(document.body.attributes[0].name);
+  }
+});
 
 describe('sites', () => {
   it('lists the sites that are on, and offers the others to add, by name', async () => {

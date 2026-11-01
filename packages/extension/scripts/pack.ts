@@ -12,7 +12,12 @@ import { argv, log, logError, r } from './utils';
 const wantAll = Boolean(argv.pack) || (!argv.zip && !argv.crx && !argv.xpi);
 const wantZip = wantAll || Boolean(argv.zip);
 const wantCrx = wantAll || Boolean(argv.crx);
-const wantXpi = wantAll || Boolean(argv.xpi);
+// Temporarily disabled Mozilla (XPI) packing and releasing
+const wantXpi = false as boolean;
+
+if (argv.xpi) {
+  log('PACK', 'Mozilla (XPI) packing is temporarily disabled');
+}
 const { version } = await Bun.file(r('package.json')).json();
 
 if (!version) {

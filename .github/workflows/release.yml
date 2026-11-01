@@ -104,8 +104,9 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           ANILIST_TOKEN_URL: ${{ vars.ANILIST_TOKEN_URL }}
-          WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
-          WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
+          # Temporarily disabled Mozilla AMO publishing
+          # WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
+          # WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
 
       # Keyless: GitHub's OIDC token is exchanged for a short-lived token of the service account, which only trusts main
       - name: Authenticate to Google Cloud
