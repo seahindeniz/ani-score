@@ -33,4 +33,7 @@ afterEach(() => {
   globalThis.indexedDB = new IDBFactory();
   document.body.replaceChildren();
   document.head.replaceChildren();
+  while (document.body.attributes.length > 0) {
+    document.body.removeAttribute(document.body.attributes[0].name);
+  }
 });
